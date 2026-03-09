@@ -1,4 +1,5 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
 
 const questions = [
   "How does AI triage work on Swift HELP?",
@@ -7,6 +8,20 @@ const questions = [
   "How can healthcare professionals join?",
   "Does Swift HELP support teleconsultations?",
 ];
+
+function FaqHelpIcon() {
+  return (
+    <span className={styles.faqHelpIcon} aria-hidden>
+      <Image
+        src="/Figr_Icon_help_outline.png"
+        alt=""
+        width={24}
+        height={24}
+        className={styles.faqHelpIconAsset}
+      />
+    </span>
+  );
+}
 
 export function FaqSection() {
   return (
@@ -25,7 +40,7 @@ export function FaqSection() {
             {questions.slice(0, 2).map((question) => (
               <article key={question} className={styles.faqItem}>
                 <span>{question}</span>
-                <span aria-hidden>?</span>
+                <FaqHelpIcon />
               </article>
             ))}
 
@@ -37,13 +52,13 @@ export function FaqSection() {
                   patients, professionals, and organizations based on your use case.
                 </p>
               </div>
-              <span aria-hidden>?</span>
+              <FaqHelpIcon />
             </article>
 
             {questions.slice(2).map((question) => (
               <article key={question} className={styles.faqItem}>
                 <span>{question}</span>
-                <span aria-hidden>?</span>
+                <FaqHelpIcon />
               </article>
             ))}
           </div>
@@ -52,4 +67,3 @@ export function FaqSection() {
     </section>
   );
 }
-

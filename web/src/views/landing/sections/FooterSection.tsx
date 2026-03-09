@@ -1,4 +1,12 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
+
+const socialIcons = [
+  { name: "LinkedIn", src: "/mdi_linkedin.png" },
+  { name: "Facebook", src: "/ic_baseline-facebook.png" },
+  { name: "Instagram", src: "/ri_instagram-fill.png" },
+  { name: "Twitter", src: "/prime_twitter.png" },
+];
 
 export function FooterSection() {
   return (
@@ -6,7 +14,15 @@ export function FooterSection() {
       <div className={styles.container}>
         <div className={styles.footerTop}>
           <div className={styles.footerBrand}>
-            <span className={styles.brandMarkDark}>+</span>
+            <span className={styles.footerBrandMark}>
+              <Image
+                src="/Vector%20%283%29.png"
+                alt="Swifthelp footer logo"
+                width={66}
+                height={66}
+                className={styles.footerBrandIcon}
+              />
+            </span>
             <span>Swifthelp</span>
           </div>
 
@@ -27,10 +43,23 @@ export function FooterSection() {
               <a href="#contact">Contact us</a>
               <a href="#">Follow us</a>
               <div className={styles.footerSocials}>
-                <span>in</span>
-                <span>f</span>
-                <span>ig</span>
-                <span>x</span>
+                {socialIcons.map((icon) => (
+                  <a
+                    key={icon.name}
+                    href="#"
+                    aria-label={icon.name}
+                    className={styles.footerSocialLink}
+                  >
+                    <Image
+                      src={icon.src}
+                      alt=""
+                      aria-hidden
+                      width={24}
+                      height={24}
+                      className={styles.footerSocialIcon}
+                    />
+                  </a>
+                ))}
               </div>
             </div>
           </div>
@@ -51,4 +80,3 @@ export function FooterSection() {
     </footer>
   );
 }
-

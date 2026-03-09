@@ -55,6 +55,12 @@
   color: #1e88e5;
 }
 
+.brandIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
 .navLinks {
   display: flex;
   align-items: center;
@@ -157,6 +163,17 @@
   cursor: pointer;
 }
 
+.ctaArrowIcon,
+.ctaArrowIconDark {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.ctaArrowIconDark {
+  filter: brightness(0);
+}
+
 .primaryCta {
   min-width: 295px;
   color: #e3f2fd;
@@ -182,6 +199,14 @@
 .heroVisual {
   position: relative;
   min-height: 520px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.heroGroupImage {
+  width: min(568px, 100%);
+  height: auto;
 }
 
 .heroCircle {
@@ -211,6 +236,7 @@
   position: absolute;
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   min-height: 81px;
   padding: 18px 22px;
   border-radius: 200px;
@@ -221,6 +247,17 @@
   line-height: 22px;
   letter-spacing: -0.05em;
   color: #0f172a;
+}
+
+.heroBadgeIcon {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.heroBadgeLabel {
+  display: block;
 }
 
 .heroBadgeTop {
@@ -429,6 +466,9 @@
 .howDemoButton {
   border: 0;
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   height: 43px;
   border-radius: 24px;
   background: #1565c0;
@@ -439,11 +479,48 @@
   letter-spacing: -0.05em;
 }
 
+.howDemoButtonIcon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .howDemoSecondary {
   margin-top: auto;
   height: 36px;
   border-radius: 12px;
   background: #f8fafc;
+}
+
+.howDemoFrame51 {
+  margin-top: auto;
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.howDemoFrameImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 24px;
+}
+
+.howDemoStepThree {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.howDemoFrame68,
+.howDemoFrame67 {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px;
 }
 
 .featuresSection {
@@ -504,6 +581,14 @@
   height: 164px;
   border-radius: 24px 24px 0 0;
   background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  overflow: hidden;
+}
+
+.featureImageAsset {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .featureCard h3 {
@@ -640,8 +725,7 @@
   top: 4px;
   width: 18px;
   height: 18px;
-  border-radius: 999px;
-  background: #1565c0;
+  background: url("/Group%20%281%29.png") center / contain no-repeat;
 }
 
 .capabilityTextBlockWide strong {
@@ -698,6 +782,12 @@
   justify-content: center;
   color: #334155;
   font-size: 28px;
+}
+
+.securityIconAsset {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 .securityCopy h2 {
@@ -923,6 +1013,7 @@
   min-height: 52px;
   border: 1px solid #e9eaeb;
   background: #ffffff;
+  align-items: center;
 }
 
 .faqItem span:first-child,
@@ -932,13 +1023,6 @@
   line-height: 28px;
   letter-spacing: -0.05em;
   color: #0f172a;
-}
-
-.faqItem span:last-child,
-.faqItemOpen span {
-  color: #1565c0;
-  font-size: 24px;
-  line-height: 1;
 }
 
 .faqItemOpen {
@@ -959,6 +1043,25 @@
   color: #94a3b8;
 }
 
+.faqHelpIcon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.faqHelpIconAsset {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
 .contactSection {
   padding: 0 0 50px;
 }
@@ -967,14 +1070,14 @@
   position: relative;
   min-height: 517px;
   border-radius: 0;
-  background: linear-gradient(120deg, #2f3f4c, #1a1f24);
+  background: url("/Rectangle%2047.png") center / cover no-repeat;
   overflow: hidden;
 }
 
 .ctaOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(15, 23, 42, 0.45);
 }
 
 .ctaContent {
@@ -1031,9 +1134,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1565c0;
-  font-size: 66px;
-  line-height: 1;
+}
+
+.contactIconAsset {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
 }
 
 .contactCard h3 {
@@ -1085,6 +1191,20 @@
   letter-spacing: -0.05em;
 }
 
+.footerBrandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+}
+
+.footerBrandIcon {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+}
+
 .brandMarkDark {
   background: transparent;
   color: #f8fafc;
@@ -1117,17 +1237,19 @@
   gap: 12px;
 }
 
-.footerSocials span {
+.footerSocialLink {
   width: 24px;
   height: 24px;
-  font-size: 12px;
-  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
-  color: #0f172a;
-  font-weight: 600;
+}
+
+.footerSocialIcon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
 }
 
 .footerNewsletter {
@@ -1197,7 +1319,7 @@
   }
 
   .heroVisual {
-    min-height: 560px;
+    min-height: auto;
   }
 
   .featuresHeadingRow {
@@ -1367,6 +1489,12 @@
   .footerBrand {
     font-size: 20px;
     line-height: 28px;
+  }
+
+  .footerBrandMark,
+  .footerBrandIcon {
+    width: 44px;
+    height: 44px;
   }
 
   .footerNewsletter p {

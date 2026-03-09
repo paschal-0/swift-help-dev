@@ -1,4 +1,5 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
 
 const features = [
   {
@@ -12,6 +13,7 @@ const features = [
   {
     title: "Organizations",
     text: "Fill staffing gaps and manage workforce efficiently.",
+    imageSrc: "/Frame%2070.png",
   },
 ];
 
@@ -27,7 +29,17 @@ export function FeaturesSection() {
         <div className={styles.featureCards}>
           {features.map((feature) => (
             <article key={feature.title} className={styles.featureCard}>
-              <div className={styles.featureImage} />
+              <div className={styles.featureImage}>
+                {feature.imageSrc && (
+                  <Image
+                    src={feature.imageSrc}
+                    alt={`${feature.title} feature visual`}
+                    width={327}
+                    height={164}
+                    className={styles.featureImageAsset}
+                  />
+                )}
+              </div>
               <h3>{feature.title}</h3>
               <p>{feature.text}</p>
               <button type="button" className={styles.learnMoreButton}>
@@ -40,4 +52,3 @@ export function FeaturesSection() {
     </section>
   );
 }
-

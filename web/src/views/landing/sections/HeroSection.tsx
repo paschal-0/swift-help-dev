@@ -1,4 +1,5 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
 
 export function HeroSection() {
   return (
@@ -17,20 +18,39 @@ export function HeroSection() {
             </p>
             <div className={styles.heroActions}>
               <button type="button" className={styles.primaryCta}>
-                Get early access <span aria-hidden>?</span>
+                Get early access
+                <Image
+                  src="/fluent_arrow-up-12-filled.png"
+                  alt=""
+                  aria-hidden
+                  width={32}
+                  height={32}
+                  className={styles.ctaArrowIcon}
+                />
               </button>
               <button type="button" className={styles.secondaryCta}>
-                Book a demo <span aria-hidden>?</span>
+                Book a demo
+                <Image
+                  src="/fluent_arrow-up-12-filled.png"
+                  alt=""
+                  aria-hidden
+                  width={32}
+                  height={32}
+                  className={styles.ctaArrowIconDark}
+                />
               </button>
             </div>
           </div>
 
           <div className={styles.heroVisual}>
-            <div className={styles.heroCircle} />
-            <div className={styles.heroPortrait} />
-            <div className={styles.heroBadgeTop}>Intelligent Workforce Management</div>
-            <div className={styles.heroBadgeMiddle}>Smarter Healthcare</div>
-            <div className={styles.heroBadgeBottom}>Smarter Workflow</div>
+            <Image
+              src="/Group%2014.png"
+              alt="Doctor with healthcare workflow highlights"
+              width={568}
+              height={457}
+              className={styles.heroGroupImage}
+              priority
+            />
           </div>
         </div>
 
@@ -46,4 +66,3 @@ export function HeroSection() {
     </section>
   );
 }
-

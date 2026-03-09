@@ -1,10 +1,23 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
 
 const controls = [
-  "End-to-end encryption",
-  "Role-based access control",
-  "Multi-tenant isolation",
-  "Secure infrastructure",
+  {
+    label: "End-to-end encryption",
+    iconSrc: "/Frame%2031.png",
+  },
+  {
+    label: "Role-based access control",
+    iconSrc: "/uis_lock-access.png",
+  },
+  {
+    label: "Multi-tenant isolation",
+    iconSrc: "/fluent_coin-multiple-32-filled.png",
+  },
+  {
+    label: "Secure infrastructure",
+    iconSrc: "/tdesign_secured-filled.png",
+  },
 ];
 
 export function SecuritySection() {
@@ -14,11 +27,17 @@ export function SecuritySection() {
         <div className={styles.securityGrid}>
           <div className={styles.securityList}>
             {controls.map((control) => (
-              <div key={control} className={styles.securityItem}>
+              <div key={control.label} className={styles.securityItem}>
                 <span className={styles.securityIcon} aria-hidden>
-                  ?
+                  <Image
+                    src={control.iconSrc}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className={styles.securityIconAsset}
+                  />
                 </span>
-                <span>{control}</span>
+                <span>{control.label}</span>
               </div>
             ))}
           </div>
@@ -35,4 +54,3 @@ export function SecuritySection() {
     </section>
   );
 }
-

@@ -1,4 +1,5 @@
-﻿import styles from "../landing.module.css";
+﻿import Image from "next/image";
+import styles from "../landing.module.css";
 
 const links = [
   { href: "#home", label: "Home", active: true },
@@ -11,8 +12,14 @@ export function Navbar() {
   return (
     <nav className={styles.navBar}>
       <a href="#home" className={styles.navBrand}>
-        <span className={styles.brandMark} aria-hidden>
-          +
+        <span className={styles.brandMark}>
+          <Image
+            src="/jam_medical.png"
+            alt="Swifthelp logo icon"
+            width={40}
+            height={40}
+            className={styles.brandIcon}
+          />
         </span>
         <span>Swifthelp</span>
       </a>
@@ -35,4 +42,3 @@ export function Navbar() {
     </nav>
   );
 }
-
