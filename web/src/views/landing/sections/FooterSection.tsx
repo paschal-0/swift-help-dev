@@ -31,19 +31,19 @@ export function FooterSection() {
             <div className="flex flex-col gap-[11px] max-[900px]:gap-1.5">
               <a
                 href="#home"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Home
               </a>
               <a
                 href="#how-it-works"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 How it works
               </a>
               <a
                 href="#features"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Features
               </a>
@@ -52,19 +52,19 @@ export function FooterSection() {
             <div className="flex flex-col gap-[11px] max-[900px]:gap-1.5">
               <a
                 href="#faq"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 FAQ&apos;s
               </a>
               <a
                 href="#"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Privacy Policy
               </a>
               <a
                 href="#"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Terms
               </a>
@@ -73,13 +73,13 @@ export function FooterSection() {
             <div className="flex flex-col gap-[11px] max-[900px]:gap-1.5">
               <a
                 href="#contact"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Contact us
               </a>
               <a
                 href="#"
-                className="text-[21px] font-medium leading-8 tracking-[-0.05em] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[900px]:text-[12px] max-[900px]:leading-[16px]"
               >
                 Follow us
               </a>
@@ -89,7 +89,7 @@ export function FooterSection() {
                     key={icon.name}
                     href="#"
                     aria-label={icon.name}
-                    className="inline-flex h-5 w-5 items-center justify-center"
+                    className="inline-flex h-5 w-5 items-center justify-center transition duration-200 hover:scale-110 hover:opacity-85 active:scale-95"
                   >
                     <Image
                       src={icon.src}
@@ -111,11 +111,15 @@ export function FooterSection() {
             <p className="mb-5 text-[18px] font-light leading-6 tracking-[-0.05em] max-[900px]:mb-3 max-[900px]:text-[11px] max-[900px]:leading-[12px]">
               Subscribe to our newsletter
             </p>
-            <div className="h-[58px] w-full max-w-[420px] rounded-[24px] border border-slate-400 max-[900px]:h-[44px] max-[900px]:max-w-[244px] max-[900px]:rounded-[22px]" />
+            <input
+              type="email"
+              placeholder="Enter your email"
+              className="h-[58px] w-full max-w-[420px] rounded-[24px] border border-slate-400 bg-transparent px-5 text-[16px] font-light leading-6 tracking-[-0.05em] text-white outline-none transition duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-[#1e88e5] focus:shadow-[0_0_0_4px_rgba(30,136,229,0.12)] max-[900px]:h-[44px] max-[900px]:max-w-[244px] max-[900px]:rounded-[22px] max-[900px]:px-4 max-[900px]:text-[11px] max-[900px]:leading-[12px]"
+            />
           </div>
           <button
             type="button"
-            className="h-[58px] w-[160px] rounded-[36px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[20px] font-normal leading-7 tracking-[-0.05em] text-[#e3f2fd] max-[900px]:h-[44px] max-[900px]:w-[124px] max-[900px]:text-[13px] max-[900px]:leading-[16px]"
+            className="h-[58px] w-[160px] rounded-[36px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[20px] font-normal leading-7 tracking-[-0.05em] text-[#e3f2fd] transition duration-200 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_10px_24px_rgba(30,136,229,0.25)] active:scale-[0.97] max-[900px]:h-[44px] max-[900px]:w-[124px] max-[900px]:text-[13px] max-[900px]:leading-[16px]"
           >
             Sign Up
           </button>
