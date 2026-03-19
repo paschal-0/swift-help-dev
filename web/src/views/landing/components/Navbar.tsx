@@ -109,7 +109,7 @@ export function Navbar() {
           type="button"
           onClick={() => {
             setIsMenuOpen(false);
-            router.push("/signup");
+            router.push("/get-started");
           }}
           className={
             isMenuOpen

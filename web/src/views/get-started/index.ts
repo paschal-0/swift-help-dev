@@ -1,0 +1,1 @@
+export { PatientCreateAccountPage } from "./PatientCreateAccountPage";

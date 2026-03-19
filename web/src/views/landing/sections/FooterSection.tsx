@@ -119,7 +119,7 @@ export function FooterSection() {
             />
           </div>
           <Link
-            href="/signup"
+            href="/get-started"
             className="inline-flex h-[58px] w-[160px] items-center justify-center rounded-[36px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[20px] font-normal leading-7 tracking-[-0.05em] text-[#e3f2fd] transition duration-200 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_10px_24px_rgba(30,136,229,0.25)] active:scale-[0.97] max-[900px]:h-[44px] max-[900px]:w-[124px] max-[900px]:text-[13px] max-[900px]:leading-[16px]"
           >
             Sign Up

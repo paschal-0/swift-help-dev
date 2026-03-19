@@ -58,7 +58,7 @@ export function ContactSection() {
             </span>
           </p>
             <div className={`${heroActionsClass} justify-center max-[900px]:hidden`}>
-              <Link href="/signup" className={primaryCtaClass}>
+              <Link href="/get-started" className={primaryCtaClass}>
                 Get early access
                 <Image
                   src="/Vector.png"
@@ -69,7 +69,7 @@ export function ContactSection() {
                   className={ctaIconClass}
                 />
               </Link>
-              <Link href="/signup" className={`${secondaryLightCtaClass} !border-white !text-white`}>
+              <Link href="/get-started" className={`${secondaryLightCtaClass} !border-white !text-white`}>
                 Book a demo
                 <Image
                   src="/Vector.png"

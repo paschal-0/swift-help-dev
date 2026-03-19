@@ -34,12 +34,12 @@ export function OtpPage() {
         </div>
 
         <div className="absolute left-1/2 top-[566px] flex h-[50px] w-[312px] -translate-x-1/2 items-center gap-[17px] p-0 max-[900px]:top-[560px]">
-          <button
-            type="button"
+          <Link
+            href="/get-started"
             className="flex h-[50px] w-[153px] items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd]"
           >
             Next
-          </button>
+          </Link>
 
           <Link
             href="/signup"
