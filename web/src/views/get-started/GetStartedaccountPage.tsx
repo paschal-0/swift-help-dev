@@ -167,7 +167,7 @@ const customFlags: CustomFlagImage[] = defaultCountries.flatMap(([, iso2]) => {
   };
 });
 
-export function PatientCreateAccountPage() {
+export function GetStartedaccountPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [formValues, setFormValues] = useState({
@@ -206,7 +206,7 @@ export function PatientCreateAccountPage() {
       return;
     }
 
-    router.push("/otp");
+    router.push("/get-started/otp");
   };
 
   return (

@@ -1,5 +1,5 @@
-import { OtpPage } from "@/views/otp";
+import { redirect } from "next/navigation";
 
-export default function OtpRoute() {
-  return <OtpPage />;
+export default function LegacyOtpRoute() {
+  redirect("/get-started/otp");
 }

@@ -167,7 +167,7 @@ function OrganisationIcon() {
   );
 }
 
-export function GetStartedPage() {
+export function WelcomePage() {
   const [activeMobileTab, setActiveMobileTab] = useState(0);
 
   return (

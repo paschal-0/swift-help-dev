@@ -59,7 +59,7 @@ export function SignupPage() {
           </div>
 
           <Link
-            href="/otp"
+            href="/get-started/otp"
             className="absolute bottom-6 left-[29px] flex h-[50px] w-[370px] items-center justify-center gap-[10.64px] rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] max-[900px]:left-1/2 max-[900px]:w-[calc(100%-58px)] max-[900px]:-translate-x-1/2"
           >
             Next

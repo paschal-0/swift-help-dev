@@ -1,5 +1,5 @@
-import { PatientCreateAccountPage } from "@/views/get-started";
+import { GetStartedaccountPage } from "@/views/get-started";
 
 export default function GetStartedCreateAccountRoute() {
-  return <PatientCreateAccountPage />;
+  return <GetStartedaccountPage />;
 }
