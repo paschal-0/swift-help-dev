@@ -1,1 +1,0 @@
-export { PatientHealthProfilePage } from "./PatientHealthProfilePage";

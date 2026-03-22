@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "mobile-expo",
+    "slug": "mobile-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/swifthelp-logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/swifthelp-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E6F4FE"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/swifthelp-logo.png",
+        "monochromeImage": "./assets/swifthelp-logo.png"
+      },
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}

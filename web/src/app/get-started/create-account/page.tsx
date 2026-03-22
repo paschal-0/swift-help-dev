@@ -1,4 +1,4 @@
-import { GetStartedaccountPage } from "@/views/get-started";
+import { GetStartedaccountPage } from "./GetStartedaccountPage";
 
 export default function GetStartedCreateAccountRoute() {
   return <GetStartedaccountPage />;
