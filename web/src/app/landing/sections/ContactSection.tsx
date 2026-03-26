@@ -58,7 +58,7 @@ export function ContactSection() {
             </span>
           </p>
             <div className={`${heroActionsClass} justify-center max-[767px]:hidden`}>
-              <Link href="/get-started" className={primaryCtaClass}>
+              <Link href="/get-started" className={`${primaryCtaClass} !text-white`}>
                 Get early access
                 <Image
                   src="/Vector.png"

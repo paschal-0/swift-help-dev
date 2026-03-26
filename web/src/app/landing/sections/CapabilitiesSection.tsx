@@ -53,7 +53,7 @@ const listItemVariants = {
 
 export function CapabilitiesSection() {
   return (
-    <section className="py-[110px] pb-14 max-[1100px]:hidden">
+    <section className="py-[110px] pb-14 max-[1310px]:hidden">
       <div className={containerClass}>
         <motion.h2
           className="mx-auto mb-[42px] text-center text-[48px] font-semibold leading-[46px] tracking-[-0.05em] text-slate-900 max-[1100px]:text-[36px] max-[1100px]:leading-10"

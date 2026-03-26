@@ -2,20 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  defaultCountries,
-  PhoneInput,
-  type CustomFlagImage,
-} from "react-international-phone";
-import * as flagSvgs from "country-flag-icons/string/3x2";
-import {
-  useEffect,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion, type Variants } from "framer-motion";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
@@ -51,17 +39,6 @@ const bannerTextChild: Variants = {
   hidden: { opacity: 0, x: -30 },
   show: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
-
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-      <path
-        fill="#1877F2"
-        d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.03 4.39 11.02 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.03 1.79-4.7 4.54-4.7 1.32 0 2.7.24 2.7.24v2.98h-1.52c-1.5 0-1.97.94-1.97 1.9v2.28h3.36l-.54 3.49h-2.82V24C19.61 23.09 24 18.1 24 12.07Z"
-      />
-    </svg>
-  );
-}
 
 function AppleIcon() {
   return (
@@ -119,95 +96,16 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-function SocialButton({
-  href,
-  label,
-  icon,
-}: {
-  href: string;
-  label: string;
-  icon: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f8fafc] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,136,229,0.12)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe]"
-    >
-      {icon}
-    </Link>
-  );
-}
-
-function FormField({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex w-full flex-col items-start gap-2">
-      <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 const inputClassName =
   "h-[47px] w-full rounded-[12px] border border-[#94A3B8] bg-transparent px-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none transition duration-300 placeholder:text-[#94A3B8] hover:border-[#64748b] focus:border-[#1e88e5] focus:shadow-[0_0_0_4px_rgba(191,219,254,0.75)]";
 
-const flagSvgMap = flagSvgs as Record<string, string>;
-
-const customFlags: CustomFlagImage[] = defaultCountries.flatMap(([, iso2]) => {
-  const svg = flagSvgMap[iso2.toUpperCase()];
-
-  if (!svg) {
-    return [];
-  }
-
-  return {
-    iso2,
-    src: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-  };
-});
-
-const roleContent = {
-  patient: {
-    accountTitle: "Create your account",
-    setupText: "Set up your secure account to get started",
-    heroTitle: "Care starts with a secure connection",
-    heroBody: "Secure account setup for AI-guided support.",
-    nextLabel: "Next",
-  },
-  professional: {
-    accountTitle: "Create your professional account",
-    setupText: "Set up your secure workspace to get started",
-    heroTitle: "Professional care begins with a secure workspace",
-    heroBody: "Secure account setup for consultations, schedules, and patient care.",
-    nextLabel: "Next",
-  },
-  organisation: {
-    accountTitle: "Create your organisation account",
-    setupText: "Set up your secure organisation workspace to get started",
-    heroTitle: "Healthcare operations start with a secure foundation",
-    heroBody: "Secure account setup for teams, staffing, and coordinated care operations.",
-    nextLabel: "Next",
-  },
-} as const;
-
-export function GetStartedaccountPage() {
+export function GetStartedLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
-    fullName: "",
     email: "",
-    phone: "+234",
     password: "",
   });
 
@@ -221,37 +119,22 @@ export function GetStartedaccountPage() {
       }));
     };
 
-  const trimmedFullName = formValues.fullName.trim();
   const trimmedEmail = formValues.email.trim();
-  const normalizedPhone = formValues.phone.replace(/\s+/g, "");
   const trimmedPassword = formValues.password.trim();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
-  const isPhoneValid = normalizedPhone.replace(/[^\d+]/g, "").length >= 10;
   const isPasswordValid = trimmedPassword.length >= 8;
-  const validationError =
-    trimmedFullName.length <= 1
-      ? "Please enter your full name."
-      : !isEmailValid
-        ? "Please enter a valid email address."
-        : !isPhoneValid
-          ? "Please enter a valid phone number with at least 10 digits."
-          : !isPasswordValid
-            ? "Password must be at least 8 characters long."
-            : null;
+  const validationError = !isEmailValid
+    ? "Please enter a valid email address."
+    : !isPasswordValid
+      ? "Password must be at least 8 characters long."
+      : null;
   const isFormValid = validationError === null;
-  const roleParam = searchParams.get("role");
-  const role =
-    roleParam === "professional" || roleParam === "organisation" || roleParam === "patient"
-      ? roleParam
-      : "patient";
-  const content = roleContent[role];
-  const hasLongAccountTitle = role !== "patient";
 
   useEffect(() => {
     if (!hasInteracted) {
       return;
     }
-    showValidationToast("get-started-create-account", validationError);
+    showValidationToast("get-started-login", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -259,11 +142,11 @@ export function GetStartedaccountPage() {
 
     if (validationError) {
       setHasInteracted(true);
-      showValidationToast("get-started-create-account", validationError);
+      showValidationToast("get-started-login", validationError);
       return;
     }
 
-    router.push(`/get-started/otp?role=${role}`);
+    router.push("/");
   };
 
   return (
@@ -325,13 +208,14 @@ export function GetStartedaccountPage() {
                 variants={bannerTextChild}
                 className="m-0 w-full max-w-[250px] text-[29px] font-semibold leading-[0.98] tracking-[-0.06em] text-[#F8FAFC] sm:max-w-[451px] sm:text-[40px] sm:leading-[42px] xl:text-[64px] xl:leading-[68px]"
               >
-                <span className="xl:block">{content.heroTitle}</span>
+                <span className="xl:block">One platform. Every part of care</span>
               </motion.h1>
               <motion.p
                 variants={bannerTextChild}
                 className="m-0 max-w-[240px] text-[10px] font-light leading-[13px] tracking-[-0.04em] whitespace-normal text-center text-white/92 sm:hidden xl:block xl:max-w-[496px] xl:text-[24px] xl:leading-[28px] xl:text-left"
               >
-                {content.heroBody}
+                Sign in to manage appointments, health records, provider workflows, and
+                organizational operations in one secure place.
               </motion.p>
             </div>
           </motion.div>
@@ -352,100 +236,42 @@ export function GetStartedaccountPage() {
             >
               <motion.div
                 variants={itemVariants}
-                className={`flex w-full flex-col items-center text-center ${hasLongAccountTitle ? "max-w-[388px] gap-1 xl:max-w-[420px]" : "max-w-[341px] gap-1.5"}`}
+                className="flex w-full max-w-[341px] flex-col items-center gap-1.5 text-center"
               >
-                <h2
-                  className={`m-0 w-full font-normal tracking-[-0.055em] text-[#334155] text-[27px] leading-[31px] sm:text-[32px] sm:leading-9 ${hasLongAccountTitle ? "xl:text-[31px] xl:leading-[35px]" : "xl:text-[36px] xl:leading-10"}`}
-                >
-                  {content.accountTitle}
+                <h2 className="m-0 w-full text-[27px] leading-[31px] font-normal tracking-[-0.055em] text-[#334155] sm:text-[32px] sm:leading-9 xl:text-[48px] xl:leading-10">
+                  Sign in
                 </h2>
-                <p
-                  className={`m-0 text-[13px] font-light leading-[18px] tracking-[-0.04em] text-black sm:max-w-none sm:text-[15px] sm:leading-5 xl:tracking-[-0.05em] ${hasLongAccountTitle ? "max-w-[320px] xl:max-w-[360px] xl:text-[16px] xl:leading-5" : "max-w-[280px] xl:text-[18px] xl:leading-[22px]"}`}
-                >
-                  {content.setupText}
+                <p className="m-0 max-w-[280px] text-[13px] leading-[18px] font-light tracking-[-0.04em] text-black sm:max-w-none sm:text-[15px] sm:leading-5 xl:max-w-[341px] xl:text-[18px] xl:leading-[22px] xl:tracking-[-0.05em]">
+                  To sign in to your account, enter your email and password
                 </p>
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="mt-4 flex h-[42px] w-[186px] items-center justify-between rounded-full bg-[#f8fafc] px-1 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)] sm:mt-5 sm:bg-transparent sm:px-0 sm:shadow-none xl:mt-[18px]">
-                <SocialButton href="#" label="Continue with Facebook" icon={<FacebookIcon />} />
-                <SocialButton href="#" label="Continue with Apple" icon={<AppleIcon />} />
-                <SocialButton href="#" label="Continue with Google" icon={<GoogleIcon />} />
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="mt-5 flex h-[19px] w-full max-w-[391px] items-center gap-[10px] sm:mt-6 xl:mt-7">
-                <span className="h-px flex-1 bg-[#556578]" />
-                <span className="text-[16px] font-normal leading-[120%] text-[#334155]">Or</span>
-                <span className="h-px flex-1 bg-[#556578]" />
               </motion.div>
 
               <motion.form
                 variants={itemVariants}
                 onSubmit={handleSubmit}
                 onBlurCapture={() => setHasInteracted(true)}
-                className="mt-5 w-full rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:mt-6 sm:px-5 sm:py-6 xl:animate-form-panel-shadow xl:mt-9 xl:rounded-[32px] xl:px-[25px] xl:py-[34px] xl:shadow-[0_0_30px_rgba(0,0,0,0.05)] xl:h-[543px]"
+                className="mt-6 w-full max-w-[392px] rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:px-5 sm:py-6 xl:mt-8 xl:max-w-[408px] xl:rounded-[28px] xl:px-4 xl:py-5 xl:shadow-[0_0_30px_rgba(0,0,0,0.05)]"
               >
-              <div className="flex w-full flex-col gap-4">
-                <div>
-                  <FormField label="Full Name">
-                    <input
-                      type="text"
-                      placeholder="eg John Doe"
-                      className={inputClassName}
-                      value={formValues.fullName}
-                      onChange={handleChange("fullName")}
-                      autoComplete="name"
-                      required
-                    />
-                  </FormField>
-                </div>
-
-                <div>
-                  <FormField label="Email address">
+                <div className="flex w-full flex-col gap-2">
+                  <label className="flex w-full flex-col items-start gap-1.5">
+                    <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
+                      Email address
+                    </span>
                     <input
                       type="email"
-                      placeholder="eg john@dig.com"
+                      placeholder="e.g john@dig.com"
                       className={inputClassName}
                       value={formValues.email}
                       onChange={handleChange("email")}
                       autoComplete="email"
                       required
                     />
-                  </FormField>
-                </div>
+                  </label>
 
-                <div>
-                  <FormField label="Phone number">
-                    <PhoneInput
-                      defaultCountry="ng"
-                      value={formValues.phone}
-                      onChange={(phone) =>
-                        {
-                          setHasInteracted(true);
-                          setFormValues((current) => ({
-                            ...current,
-                            phone,
-                          }));
-                        }
-                      }
-                      inputProps={{
-                        name: "phone",
-                        autoComplete: "tel",
-                        placeholder: "Phone number",
-                        required: true,
-                      }}
-                      className="swifthelp-phone-input"
-                      inputClassName="swifthelp-phone-input__field"
-                      flags={customFlags}
-                      countrySelectorStyleProps={{
-                        buttonClassName: "swifthelp-phone-input__selector",
-                        dropdownArrowClassName: "swifthelp-phone-input__arrow",
-                      }}
-                    />
-                  </FormField>
-                </div>
-
-                <div>
-                  <FormField label="Password">
+                  <label className="flex w-full flex-col items-start gap-1.5">
+                    <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
+                      Password
+                    </span>
                     <span className="relative block h-[47px] w-full rounded-[12px] border border-[#94A3B8] transition duration-300 hover:border-[#64748b] focus-within:border-[#1e88e5] focus-within:shadow-[0_0_0_4px_rgba(191,219,254,0.75)]">
                       <input
                         type={showPassword ? "text" : "password"}
@@ -453,7 +279,7 @@ export function GetStartedaccountPage() {
                         className="h-full w-full rounded-[12px] border-0 bg-transparent px-[18px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
                         value={formValues.password}
                         onChange={handleChange("password")}
-                        autoComplete="new-password"
+                        autoComplete="current-password"
                         required
                         minLength={8}
                       />
@@ -466,29 +292,53 @@ export function GetStartedaccountPage() {
                         <EyeIcon open={showPassword} />
                       </button>
                     </span>
-                  </FormField>
+                  </label>
                 </div>
-              </div>
 
-              <p className="mt-5 w-full text-[12px] font-semibold leading-4 tracking-[-0.04em] text-black sm:text-[13px] sm:leading-4 xl:mt-7 xl:text-[14px] xl:leading-[17px] xl:tracking-[-0.05em]">
-                By continuing, you agree to our Terms of Service and Privacy Policy.
-              </p>
+                <div className="mt-4 flex justify-end">
+                  <Link
+                    href="#"
+                    className="text-[14px] font-semibold leading-[17px] tracking-[-0.05em] text-[#1565C0] transition duration-300 hover:text-[#114B7F]"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
 
-              <button
-                type="submit"
-                disabled={!isFormValid}
-                className="mt-5 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-7 tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none xl:mt-6 xl:text-[20.0088px] xl:leading-[30px]"
-              >
-                {content.nextLabel}
-              </button>
+                <button
+                  type="submit"
+                  disabled={!isFormValid}
+                  className="mt-4 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
+                >
+                  Continue
+                </button>
+
+                <p className="mt-3 text-center text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
+                  Don&apos;t have an account yet?{" "}
+                  <Link
+                    href="/get-started/create-account"
+                    className="font-semibold text-[#1565C0] hover:text-[#114B7F]"
+                  >
+                    Sign Up
+                  </Link>
+                </p>
+
+                <div className="mt-4 flex w-full flex-col gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[20px] bg-[#e2e8f0] text-[18px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] transition duration-300 hover:bg-[#d5deea]"
+                  >
+                    <AppleIcon />
+                    <span>Sign in with Apple</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[20px] bg-[#e2e8f0] text-[18px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] transition duration-300 hover:bg-[#d5deea]"
+                  >
+                    <GoogleIcon />
+                    <span>Sign in with Google</span>
+                  </button>
+                </div>
               </motion.form>
-
-              <motion.p variants={itemVariants} className="mt-5 text-center text-[15px] font-light leading-5 tracking-[-0.04em] text-black sm:text-[16px] xl:mt-[30px] xl:text-[18px] xl:leading-[22px] xl:tracking-[-0.05em]">
-                Already have an account?{" "}
-                <Link href="/get-started/login" className="font-semibold text-[#1565C0] hover:text-[#114B7F]">
-                  Log in
-                </Link>
-              </motion.p>
             </motion.div>
           </div>
         </div>

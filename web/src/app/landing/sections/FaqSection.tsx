@@ -7,29 +7,20 @@ import { containerClass } from "../classes";
 
 const questions = [
   {
-    title: "Your Question goes here?",
-    description:
-      "Accordion description goes here, try to keep it under 2 lines so it looks good and minimal",
+    title: "Is Swift HELP providing medical diagnosis?",
   },
   {
-    title: "Your Question goes here?",
-    description:
-      "Accordion description goes here, try to keep it under 2 lines so it looks good and minimal",
+    title: "How are healthcare professionals verified?",
   },
   {
-    title: "Your Question goes here?",
-    description:
-      "Accordion description goes here, try to keep it under 2 lines so it looks good and minimal",
+    title: "Can hospitals and agencies manage staff shifts?",
   },
   {
-    title: "Your Question goes here?",
-    description:
-      "Accordion description goes here, try to keep it under 2 lines so it looks good and minimal",
+    title: "Is patient data secure?",
   },
   {
-    title: "Your Question goes here?",
-    description:
-      "Accordion description goes here, try to keep it under 2 lines so it looks good and minimal",
+    title: "Who can use Swift HELP?",
+    description: "Everyone; patients, professionals & Organisations.",
   },
 ];
 
@@ -48,7 +39,7 @@ function FaqHelpIcon() {
 }
 
 export function FaqSection() {
-  const [activeIndex, setActiveIndex] = useState(2);
+  const [activeIndex, setActiveIndex] = useState(4);
 
   return (
     <section id="faq" className="bg-[#dcecf8] py-[46px] pb-[38px] max-[1100px]:py-6 max-[1100px]:pb-6">

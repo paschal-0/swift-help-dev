@@ -84,7 +84,7 @@ export function HowItWorksSection() {
           </div>
         </div>
 
-        <div className="relative grid grid-cols-3 gap-[42px] px-[66px] max-[1320px]:grid-cols-2 max-[1320px]:px-6 max-[1100px]:mt-3 max-[1100px]:grid-cols-1 max-[1100px]:gap-5 max-[1100px]:px-0 max-[1100px]:pl-[100px]">
+        <div className="relative grid grid-cols-3 gap-[42px] px-[66px] max-[1320px]:px-6 max-[1100px]:mt-3 max-[1100px]:grid-cols-1 max-[1100px]:gap-5 max-[1100px]:px-0 max-[1100px]:pl-[100px]">
           <div className="absolute top-6 bottom-6 left-[42px] hidden w-[4px] rounded-full bg-[#1e88e5] max-[1100px]:block" />
           {cards.map((card, index) => (
             <motion.div

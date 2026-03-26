@@ -36,7 +36,7 @@ export function FeaturesSection() {
           </p>
         </div>
 
-        <div className="mt-10 grid grid-cols-[repeat(3,minmax(0,1fr))] justify-center gap-[14px] px-1 max-[1320px]:grid-cols-2 max-[1320px]:px-6 max-[1100px]:mt-6 max-[1100px]:grid-cols-3 max-[1100px]:gap-4 max-[1100px]:px-3 max-[1100px]:pb-2 max-[767px]:grid-cols-1 max-[767px]:gap-3 max-[767px]:flex max-[767px]:justify-start max-[767px]:overflow-x-auto max-[767px]:[-ms-overflow-style:none] max-[767px]:[scrollbar-width:none] max-[767px]:[&::-webkit-scrollbar]:hidden">
+        <div className="mt-10 grid grid-cols-[repeat(3,minmax(0,1fr))] justify-center gap-[14px] px-1 max-[1320px]:px-6 max-[1100px]:mt-6 max-[1100px]:grid-cols-3 max-[1100px]:gap-4 max-[1100px]:px-3 max-[1100px]:pb-2 max-[767px]:grid-cols-1 max-[767px]:gap-3 max-[767px]:flex max-[767px]:justify-start max-[767px]:overflow-x-auto max-[767px]:[-ms-overflow-style:none] max-[767px]:[scrollbar-width:none] max-[767px]:[&::-webkit-scrollbar]:hidden">
           {features.map((feature) => (
             <article
               key={feature.title}
