@@ -1,15 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { toast } from "sonner";
-import { PatientPlatformShell } from "../components/PatientPlatformShell";
 
 export function PatientSymptomCheckerMainPage() {
-  const [searchText, setSearchText] = useState("");
-
   return (
-    <PatientPlatformShell searchText={searchText} onSearchTextChange={setSearchText}>
-      <article className="mt-[26px] min-h-[678px] rounded-[12px] bg-[#F8FAFC] px-5 pb-8 pt-6 xl:px-9 xl:pb-10 xl:pt-[15px]">
+    <article className="mt-[26px] min-h-[678px] rounded-[12px] bg-[#F8FAFC] px-5 pb-8 pt-6 xl:px-9 xl:pb-10 xl:pt-[15px]">
         <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Symptom Checker</h1>
 
         <div className="mt-[20px] rounded-[12px] border border-[#94A3B8] px-[14px] py-6 xl:flex xl:min-h-[344px] xl:items-center xl:gap-[23px]">
@@ -70,8 +65,7 @@ export function PatientSymptomCheckerMainPage() {
             Start Assessment
           </button>
         </div>
-      </article>
-    </PatientPlatformShell>
+    </article>
   );
 }
 

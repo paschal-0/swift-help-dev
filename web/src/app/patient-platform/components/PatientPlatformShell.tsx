@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { toast } from "sonner";
 
 type NavItem = {
@@ -100,43 +101,95 @@ function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
   );
 }
 
-function SidebarNavItem({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarNavItem({
+  item,
+  active,
+  isExpanded,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  isExpanded: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <Link
+    <motion.div layout whileHover={{ x: 3 }} whileTap={{ scale: 0.985 }}>
+      <Link
       href={item.href}
+      onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-[49px] w-full items-center rounded-[12px] pl-6 pr-2 text-left transition ${
+      className={`relative flex h-[49px] w-full items-center rounded-[12px] text-left transition ${
         active ? "bg-[#E3F2FD]" : "hover:bg-[#eef4fb]"
-      } cursor-pointer`}
+      } cursor-pointer ${isExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"}`}
     >
-      {active ? <span className="absolute left-0 top-[-1px] h-[51px] w-[11px] bg-[#1565C0]" /> : null}
-      <span className="inline-flex items-center gap-3">
+      {active ? <motion.span layoutId="patient-platform-active-nav" className="absolute inset-y-0 left-0 w-[11px] rounded-r-md bg-[#1565C0]" /> : null}
+      <span className={`inline-flex items-center ${isExpanded ? "gap-3" : "gap-0 xl:gap-3"}`}>
         <Icon type={item.icon} active={active} />
+        <AnimatePresence initial={false}>
+          {(isExpanded || typeof window === "undefined") ? (
+            <motion.span
+              key={`${item.href}-label-mobile`}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className={`overflow-hidden whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] xl:hidden ${
+                active ? "text-[#1E88E5]" : "text-[#94A3B8]"
+              }`}
+            >
+              {item.label}
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
         <span
-          className={`text-[16px] font-medium leading-[42px] tracking-[-0.05em] whitespace-nowrap ${
+          className={`hidden overflow-hidden whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] xl:inline ${
             active ? "text-[#1E88E5]" : "text-[#94A3B8]"
           }`}
         >
           {item.label}
         </span>
       </span>
-    </Link>
+      </Link>
+    </motion.div>
   );
 }
 
 type PatientPlatformShellProps = {
   children: ReactNode;
-  searchText: string;
-  onSearchTextChange: (value: string) => void;
 };
+
+type PatientPlatformShellContextValue = {
+  searchText: string;
+  setSearchText: (value: string) => void;
+};
+
+const PatientPlatformShellContext = createContext<PatientPlatformShellContextValue | null>(null);
+
+export function usePatientPlatformShell() {
+  const context = useContext(PatientPlatformShellContext);
+
+  if (!context) {
+    throw new Error("usePatientPlatformShell must be used within PatientPlatformShell");
+  }
+
+  return context;
+}
 
 export function PatientPlatformShell({
   children,
-  searchText,
-  onSearchTextChange,
 }: PatientPlatformShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const contextValue = useMemo(
+    () => ({
+      searchText,
+      setSearchText,
+    }),
+    [searchText]
+  );
 
   const isActiveNavItem = (href: string) => {
     if (href === "/patient-platform") {
@@ -146,48 +199,144 @@ export function PatientPlatformShell({
   };
 
   return (
-    <section className="min-h-screen bg-[#E2E8F0]">
+    <PatientPlatformShellContext.Provider value={contextValue}>
+      <section className="min-h-screen bg-[#E2E8F0]">
+      <AnimatePresence>
+        {isMobileNavExpanded ? (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/35 xl:hidden"
+            onClick={() => setIsMobileNavExpanded(false)}
+            aria-label="Close navigation"
+          />
+        ) : null}
+      </AnimatePresence>
+
       <div className="flex w-full flex-col bg-[#E2E8F0] xl:min-h-screen xl:flex-row">
-        <aside className="w-full bg-[#F8FAFC] px-5 py-6 xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:px-0 xl:py-4">
-          <div className="mx-auto flex w-full max-w-[208px] flex-row items-center gap-1">
-            <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority />
+        <motion.aside
+          initial={false}
+          animate={{
+            width: isMobileNavExpanded ? 264 : 72,
+            boxShadow: isMobileNavExpanded
+              ? "0 24px 64px rgba(15,23,42,0.24)"
+              : "0 8px 24px rgba(148,163,184,0.18)",
+          }}
+          transition={{ type: "spring", stiffness: 260, damping: 28 }}
+          className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
+        >
+          {!isMobileNavExpanded ? (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 xl:hidden"
+              onClick={() => setIsMobileNavExpanded(true)}
+              aria-label="Open navigation"
+            />
+          ) : null}
+
+          <div className={`relative z-20 flex w-full items-center gap-1 ${isMobileNavExpanded ? "px-2" : "justify-center"} xl:mx-auto xl:max-w-[208px] xl:justify-start`}>
+            <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+            <AnimatePresence initial={false}>
+              {isMobileNavExpanded ? (
+                <motion.span
+                  key="mobile-brand"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5] xl:hidden"
+                >
+                  Swifthelp
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
+            <span className="hidden text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5] xl:block">
+              Swifthelp
+            </span>
+          </div>
+
+          <LayoutGroup id="patient-platform-nav">
+            <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
+              {mainNav.map((item) => (
+                <SidebarNavItem
+                  key={item.label}
+                  item={item}
+                  active={isActiveNavItem(item.href)}
+                  isExpanded={isMobileNavExpanded}
+                  onClick={() => setIsMobileNavExpanded(false)}
+                />
+              ))}
+            </div>
+
+            <div className="relative z-20 mt-auto flex w-full flex-col gap-2 pb-3 xl:mx-auto xl:max-w-[208px]">
+              {lowerNav.map((item) => (
+                <SidebarNavItem
+                  key={item.label}
+                  item={item}
+                  active={isActiveNavItem(item.href)}
+                  isExpanded={isMobileNavExpanded}
+                  onClick={() => setIsMobileNavExpanded(false)}
+                />
+              ))}
+            </div>
+          </LayoutGroup>
+        </motion.aside>
+
+        <aside className="hidden xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4">
+          <div className="relative z-20 mx-auto flex w-full max-w-[208px] items-center gap-1">
+            <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
             <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">
               Swifthelp
             </span>
           </div>
 
-          <div className="mx-auto mt-4 flex w-full max-w-[208px] flex-col gap-2">
-            {mainNav.map((item) => (
-              <SidebarNavItem key={item.label} item={item} active={isActiveNavItem(item.href)} />
-            ))}
-          </div>
+          <LayoutGroup id="patient-platform-nav-desktop">
+            <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
+              {mainNav.map((item) => (
+                <SidebarNavItem
+                  key={`desktop-${item.label}`}
+                  item={item}
+                  active={isActiveNavItem(item.href)}
+                  isExpanded
+                />
+              ))}
+            </div>
 
-          <div className="mx-auto mt-auto flex w-full max-w-[208px] flex-col gap-2 pb-3">
-            {lowerNav.map((item) => (
-              <SidebarNavItem key={item.label} item={item} active={isActiveNavItem(item.href)} />
-            ))}
-          </div>
+            <div className="relative z-20 mt-auto mx-auto flex w-full max-w-[208px] flex-col gap-2 pb-3">
+              {lowerNav.map((item) => (
+                <SidebarNavItem
+                  key={`desktop-${item.label}`}
+                  item={item}
+                  active={isActiveNavItem(item.href)}
+                  isExpanded
+                />
+              ))}
+            </div>
+          </LayoutGroup>
         </aside>
 
-        <main className="w-full px-4 pb-8 pt-6 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px] xl:pb-[34px] xl:pt-[35px]">
+        <main className="ml-[72px] w-[calc(100%-72px)] px-3 pb-8 pt-3 transition-all duration-300 sm:px-4 sm:pt-4 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px] xl:pb-[34px] xl:pt-[35px]">
           <div className="mx-auto w-full max-w-[903px]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <label className="relative block h-[57px] w-full max-w-[344px] rounded-[24px] bg-[#F8FAFC] shadow-[0_0_25px_rgba(148,163,184,0.15)]">
-                <svg viewBox="0 0 24 24" className="absolute left-[13px] top-[13px] h-8 w-8" aria-hidden>
+            <div className="flex items-center justify-between gap-3">
+              <label className="relative block h-[42px] w-full max-w-[194px] rounded-[20px] bg-[#F8FAFC] shadow-[0_0_18px_rgba(148,163,184,0.14)] sm:h-[48px] sm:max-w-[250px] xl:h-[57px] xl:max-w-[344px] xl:rounded-[24px] xl:shadow-[0_0_25px_rgba(148,163,184,0.15)]">
+                <svg viewBox="0 0 24 24" className="absolute left-[11px] top-[11px] h-5 w-5 sm:left-[12px] sm:top-[12px] sm:h-6 sm:w-6 xl:left-[13px] xl:top-[13px] xl:h-8 xl:w-8" aria-hidden>
                   <path fill="#334155" d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
                 </svg>
                 <input
                   value={searchText}
-                  onChange={(event) => onSearchTextChange(event.target.value)}
-                  className="h-full w-full rounded-[24px] border-0 bg-transparent pl-[70px] pr-10 text-[16px] font-light tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
-                  placeholder="Search for anything"
+                  onChange={(event) => setSearchText(event.target.value)}
+                  className="h-full w-full rounded-[20px] border-0 bg-transparent pl-10 pr-8 text-[12px] font-light tracking-[-0.04em] text-[#334155] outline-none placeholder:text-[#94A3B8] sm:rounded-[22px] sm:pl-11 sm:pr-9 sm:text-[13px] xl:rounded-[24px] xl:pl-[70px] xl:pr-10 xl:text-[16px] xl:tracking-[-0.05em]"
+                  placeholder="Search..."
                   aria-label="Search dashboard"
                 />
                 {searchText ? (
                   <button
                     type="button"
-                    onClick={() => onSearchTextChange("")}
-                    className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-sm text-[#64748B] hover:bg-[#e2e8f0]"
+                    onClick={() => setSearchText("")}
+                    className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-xs text-[#64748B] hover:bg-[#e2e8f0] xl:right-3 xl:h-7 xl:w-7 xl:text-sm"
                     aria-label="Clear search"
                   >
                     X
@@ -195,31 +344,37 @@ export function PatientPlatformShell({
                 ) : null}
               </label>
 
-              <div className="flex h-12 items-center gap-3 self-end sm:self-auto">
-                <button
+              <div className="flex items-center gap-2 sm:gap-3">
+                <motion.button
                   type="button"
                   onClick={() => toast.info("No new notifications")}
-                  className="inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD]"
+                  className="flex aspect-square h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition-colors hover:bg-[#d1e9ff] sm:h-11 sm:w-11 xl:h-12 xl:w-12"
                   aria-label="Notifications"
+                  whileHover={{ y: -1, scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
                 >
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                    <path fill="#1565C0" d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z" />
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-[22px] sm:w-[22px] xl:h-6 xl:w-6" aria-hidden>
+                    <path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z" />
                   </svg>
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
                   onClick={() => router.push("/patient-platform/my-profile")}
-                  className="cursor-pointer"
+                  className="shrink-0 cursor-pointer rounded-full"
                   aria-label="Open profile"
+                  whileHover={{ y: -1, scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
                 >
-                  <Image
-                    src="/doctor.jpg"
-                    alt="Patient avatar"
-                    width={48}
-                    height={48}
-                    className="h-12 w-12 rounded-full object-cover"
-                  />
-                </button>
+                  <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm sm:h-11 sm:w-11 xl:h-12 xl:w-12">
+                    <Image
+                      src="/doctor.jpg"
+                      alt="Patient avatar"
+                      width={48}
+                      height={48}
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                </motion.button>
               </div>
             </div>
 
@@ -227,7 +382,8 @@ export function PatientPlatformShell({
           </div>
         </main>
       </div>
-    </section>
+      </section>
+    </PatientPlatformShellContext.Provider>
   );
 }
 
