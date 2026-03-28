@@ -107,21 +107,21 @@ export function PatientConsultationRoomPage() {
   const [emailReminder, setEmailReminder] = useState(true);
 
   return (
-    <article className="mt-[26px] min-h-[672px] rounded-[12px] bg-[#F8FAFC] px-4 pb-5 pt-[17px] md:px-6 xl:px-7">
+    <article className="mt-[26px] min-h-[672px] rounded-[12px] bg-[#F8FAFC] px-5 pb-8 pt-5 md:px-7 md:pb-8 xl:px-7 xl:pt-[20px]">
       <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
         Today&apos;s Consultations
       </h1>
-      <p className="-mt-1 text-[16px] font-normal leading-[30px] tracking-[-0.05em] text-[#334155]">
+      <p className="mt-1 text-[16px] font-normal leading-[28px] tracking-[-0.05em] text-[#334155]">
         You have 3 scheduled consultations today. Your next appointment is highlighted below.
       </p>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[369px_171px_270px]">
-        <section className="rounded-[12px] bg-[#F8FAFC] p-[11px] shadow-[0_0_20px_rgba(30,136,229,0.1)]">
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[369px_171px_270px] xl:gap-3">
+        <section className="rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_0_24px_rgba(30,136,229,0.1)]">
           <h2 className="text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">
             Appointment Details
           </h2>
 
-          <div className="mt-3 rounded-[12px] border border-[#94A3B8] p-2">
+          <div className="mt-4 rounded-[16px] border border-[#94A3B8] p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-[15px]">
                 <span className="relative h-[74px] w-[74px] overflow-hidden rounded-full">
@@ -144,18 +144,18 @@ export function PatientConsultationRoomPage() {
             </div>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-4">
             <AppointmentFactsCard />
           </div>
         </section>
 
-        <div className="space-y-3">
-          <section className="rounded-[12px] bg-[#F8FAFC] p-[6px] shadow-[0_0_25px_rgba(34,132,217,0.1)]">
-            <h2 className="px-[2px] pt-[6px] text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">
+        <div className="space-y-4 xl:space-y-3">
+          <section className="rounded-[16px] bg-[#F8FAFC] p-3 shadow-[0_0_25px_rgba(34,132,217,0.1)]">
+            <h2 className="px-[2px] pt-[2px] text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">
               Your Provider
             </h2>
 
-            <div className="relative mt-3 h-[77px] overflow-hidden rounded-[8px] bg-[#E3F2FD]">
+            <div className="relative mt-4 h-[88px] overflow-hidden rounded-[10px] bg-[#E3F2FD]">
               <Image
                 src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
                 alt="Dr. Michael Chen"
@@ -170,14 +170,14 @@ export function PatientConsultationRoomPage() {
               </div>
             </div>
 
-            <div className="mt-[2px]">
+            <div className="mt-3">
               <p className="text-[16px] font-normal leading-[25px] tracking-[-0.05em] text-[#334155]">Dr. Michael Chen</p>
               <p className="-mt-1 text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
                 General Practitioner
               </p>
             </div>
 
-            <div className="mt-[2px] rounded-[8px] bg-[#E3F2FD] px-[5px] py-[5px]">
+            <div className="mt-3 rounded-[10px] bg-[#E3F2FD] px-[8px] py-[7px]">
               <div className="flex items-center gap-[1px]">
                 <div className="flex w-2 flex-col gap-1">
                   <SparkIcon />
@@ -192,19 +192,19 @@ export function PatientConsultationRoomPage() {
               </div>
             </div>
 
-            <p className="mt-[4px] text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
+            <p className="mt-3 text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
               Next available: Tomorrow, 10:00 AM
             </p>
           </section>
 
-          <section className="rounded-[12px] bg-[#0F172A] px-[10px] py-[13px]">
+          <section className="rounded-[16px] bg-[#0F172A] px-4 py-4">
             <p className="text-[10px] font-medium leading-3 tracking-[-0.05em] text-white">
               You&apos;ll meet with a licensed healthcare professional for your scheduled consultation.
             </p>
           </section>
         </div>
 
-        <aside className="flex h-full flex-col rounded-[12px] bg-[#E3F2FD] px-5 py-[37px]">
+        <aside className="flex h-full flex-col rounded-[16px] bg-[#E3F2FD] px-5 py-8 xl:py-[37px]">
           <div className="mx-auto max-w-[236px] text-center">
             <h2 className="text-[24px] font-medium leading-[27px] tracking-[-0.05em] text-[#334155]">
               Ready to join?
@@ -215,7 +215,7 @@ export function PatientConsultationRoomPage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-[28px] w-full max-w-[230px]">
+          <div className="mx-auto mt-8 w-full max-w-[230px]">
             <div className="space-y-2">
               <button
                 type="button"
@@ -239,7 +239,7 @@ export function PatientConsultationRoomPage() {
             </p>
           </div>
 
-          <div className="mt-auto rounded-[12px] bg-[#F8FAFC] p-4">
+          <div className="mt-8 rounded-[16px] bg-[#F8FAFC] p-4 xl:mt-auto">
             <div className="mx-auto flex w-full max-w-[206px] flex-col items-center gap-[6px]">
               <span className="inline-flex h-[28.17px] w-[27px] items-center justify-center rounded-full bg-[#1565C0]">
                 <AlertIcon />
@@ -251,18 +251,18 @@ export function PatientConsultationRoomPage() {
           </div>
         </aside>
 
-        <section className="rounded-[12px] bg-[#F8FAFC] p-2 shadow-[0_0_25px_rgba(30,136,229,0.1)]">
+        <section className="rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_0_25px_rgba(30,136,229,0.1)]">
           <h2 className="text-[12px] font-semibold leading-4 tracking-[-0.05em] text-[#334155]">Shared health context</h2>
 
-          <div className="mt-3 space-y-[3px]">
+          <div className="mt-4 space-y-2">
             {sharedContextItems.map((item) => (
-              <div key={item} className="inline-flex h-[22px] items-center rounded-[24px] bg-[#E3F2FD] px-[10px]">
+              <div key={item} className="inline-flex min-h-[24px] items-center rounded-[24px] bg-[#E3F2FD] px-[10px] py-[3px]">
                 <span className="text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">{item}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-2 flex items-center gap-[10px] px-1">
+          <div className="mt-4 flex items-center gap-[10px] px-1">
             <ToggleSwitch checked={emailReminder} onChange={setEmailReminder} />
             <span className="text-[12px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
               Send appointment reminder by email
@@ -270,10 +270,10 @@ export function PatientConsultationRoomPage() {
           </div>
         </section>
 
-        <section className="rounded-[12px] bg-[#F8FAFC] p-2 shadow-[0_0_25px_rgba(30,136,229,0.1)]">
+        <section className="rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_0_25px_rgba(30,136,229,0.1)]">
           <h2 className="text-[12px] font-semibold leading-[21px] tracking-[-0.05em] text-[#334155]">Before you join</h2>
 
-          <div className="mt-2 space-y-2">
+          <div className="mt-4 space-y-3">
             {beforeYouJoinItems.map((item) => (
               <div key={item} className="flex items-start gap-[6px]">
                 <span className="mt-[1px] inline-flex h-4 w-4 shrink-0 rounded-full border border-[#334155] bg-white" />

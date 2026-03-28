@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 type MeetingMode = "video" | "in-person";
@@ -116,20 +117,40 @@ export function PatientAppointmentSchedulePage() {
     [selectedDate]
   );
 
-  return (
-    <article className="mt-[26px] min-h-[976px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-4 md:px-6 xl:px-10 xl:pb-[26px] xl:pt-[17px]">
-      <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">Schedule</h1>
+  const handleContinue = () => {
+    toast.success("Schedule saved.");
+    router.push("/patient-platform/appointments/details");
+  };
 
-      <div className="mt-[26px] flex flex-col gap-5 xl:flex-row xl:items-start">
+  return (
+    <article className="mt-[20px] min-h-screen rounded-[20px] bg-[#F8FAFC] px-4 pb-[180px] pt-5 md:px-6 xl:mt-[26px] xl:min-h-[976px] xl:rounded-[12px] xl:px-10 xl:pb-[26px] xl:pt-[17px]">
+      <div className="space-y-1">
+        <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.05em] text-[#334155] xl:text-[24px] xl:leading-[42px]">
+          Schedule
+        </h1>
+        <p className="text-[14px] font-light leading-5 tracking-[-0.04em] text-[#64748B] xl:hidden">
+          Pick how you want to meet, then choose your date and time.
+        </p>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-5 xl:mt-[26px] xl:flex-row xl:items-start">
         <div className="w-full max-w-[562px] space-y-5">
-          <section className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-            <h2 className="text-[18px] font-normal leading-[42px] tracking-[-0.05em] text-[#334155]">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] xl:rounded-[12px] xl:border-transparent xl:bg-[#F8FAFC] xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]"
+          >
+            <h2 className="text-[18px] font-medium leading-6 tracking-[-0.04em] text-[#334155] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
               How would you like to meet?
             </h2>
-            <div className="mt-1 grid grid-cols-1 gap-4 sm:grid-cols-[249px_215px]">
-              <button
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[249px_215px]">
+              <motion.button
                 type="button"
                 onClick={() => setMeetingMode("video")}
+                whileTap={{ scale: 0.985 }}
+                animate={{ y: meetingMode === "video" ? -2 : 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={`relative flex h-[57px] cursor-pointer items-center justify-center rounded-[12px] ${
                   meetingMode === "video"
                     ? "bg-[#E3F2FD]"
@@ -145,11 +166,14 @@ export function PatientAppointmentSchedulePage() {
                     Video consultation
                   </span>
                 </span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setMeetingMode("in-person")}
+                whileTap={{ scale: 0.985 }}
+                animate={{ y: meetingMode === "in-person" ? -2 : 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={`relative flex h-[57px] cursor-pointer items-center justify-center rounded-[12px] ${
                   meetingMode === "in-person"
                     ? "bg-[#E3F2FD]"
@@ -165,17 +189,22 @@ export function PatientAppointmentSchedulePage() {
                     In Person
                   </span>
                 </span>
-              </button>
+              </motion.button>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="rounded-[12px] border border-[#1565C0] bg-[#F8FAFC] p-4 shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-            <h2 className="text-[18px] font-normal leading-[42px] tracking-[-0.05em] text-[#334155]">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut", delay: 0.05 }}
+            className="rounded-[20px] border border-[#1565C0] bg-[#FCFEFF] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] xl:rounded-[12px] xl:bg-[#F8FAFC] xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]"
+          >
+            <h2 className="text-[18px] font-medium leading-6 tracking-[-0.04em] text-[#334155] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
               Select time and date
             </h2>
 
-            <div className="mt-[2px] flex flex-col gap-4 lg:flex-row">
-              <div className="w-full max-w-[257px]">
+            <div className="mt-3 flex flex-col gap-5 lg:flex-row">
+              <div className="w-full max-w-none lg:max-w-[257px]">
                 <div className="flex h-6 items-center justify-between">
                   <button
                     type="button"
@@ -208,7 +237,7 @@ export function PatientAppointmentSchedulePage() {
                   </button>
                 </div>
 
-                <div className="mt-1 grid grid-cols-7 gap-[2px]">
+                <div className="mt-2 grid grid-cols-7 gap-[2px]">
                   {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((dayName) => (
                     <div
                       key={dayName}
@@ -232,7 +261,7 @@ export function PatientAppointmentSchedulePage() {
                     const isMarked = [9, 20, 24].includes(day);
 
                     return (
-                      <button
+                      <motion.button
                         key={`${displayMonth.getFullYear()}-${displayMonth.getMonth()}-${day}`}
                         type="button"
                         onClick={() =>
@@ -240,6 +269,7 @@ export function PatientAppointmentSchedulePage() {
                             new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day)
                           )
                         }
+                        whileTap={{ scale: 0.94 }}
                         className={`flex h-[33px] w-[35px] cursor-pointer items-center justify-center text-[10px] font-normal leading-5 tracking-[-0.05em] ${
                           isSelected
                             ? "rounded-[60px] bg-[#1E88E5] text-[#F8FAFC]"
@@ -250,13 +280,13 @@ export function PatientAppointmentSchedulePage() {
                         aria-label={`Choose ${day}`}
                       >
                         {day}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="w-full max-w-[231px]">
+              <div className="w-full max-w-none lg:max-w-[231px]">
                 <div className="mb-1 flex items-center justify-between px-[2px]">
                   <p className="w-[76px] text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
                     EET
@@ -274,10 +304,13 @@ export function PatientAppointmentSchedulePage() {
                   {timeSlots.map((slot) => {
                     const selected = selectedSlot === slot.id;
                     return (
-                      <button
+                      <motion.button
                         key={slot.id}
                         type="button"
                         onClick={() => setSelectedSlot(slot.id)}
+                        whileTap={{ scale: 0.985 }}
+                        animate={{ y: selected ? -1 : 0 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
                         className={`h-10 w-full cursor-pointer rounded-[8px] border px-3 ${
                           selected
                             ? "border-[#1565C0] bg-[#E3F2FD]"
@@ -305,28 +338,33 @@ export function PatientAppointmentSchedulePage() {
                             {slot.patient}
                           </span>
                         </div>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
               </div>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-            <h2 className="text-[18px] font-normal leading-[42px] tracking-[-0.05em] text-[#334155]">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut", delay: 0.1 }}
+            className="rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] xl:rounded-[12px] xl:border-transparent xl:bg-[#F8FAFC] xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]"
+          >
+            <h2 className="text-[18px] font-medium leading-6 tracking-[-0.04em] text-[#334155] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
               Reason for visit
             </h2>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              className="h-[143px] w-full resize-none rounded-[8px] border border-[#94A3B8] bg-transparent px-[9px] py-2 text-[12px] font-normal leading-[20px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+              className="mt-3 h-[143px] w-full resize-none rounded-[12px] border border-[#94A3B8] bg-transparent px-[12px] py-3 text-[13px] font-normal leading-[20px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
               placeholder="Add any details you’d like the provider to know before your appointment."
             />
-          </section>
+          </motion.section>
         </div>
 
-        <aside className="flex h-auto w-full max-w-[272px] flex-col rounded-[12px] bg-[#E3F2FD] xl:min-h-[785px]">
+        <aside className="hidden h-auto w-full max-w-[272px] flex-col rounded-[12px] bg-[#E3F2FD] xl:flex xl:min-h-[785px]">
           <div className="inline-flex h-[65px] items-center justify-center rounded-t-[12px] bg-[#0F172A] px-[10px]">
             <h2 className="text-[18px] font-normal leading-[42px] tracking-[-0.05em] text-[#F8FAFC]">
               Booking Summary
@@ -336,15 +374,15 @@ export function PatientAppointmentSchedulePage() {
           <div className="space-y-4 px-[14px] pb-4 pt-2">
             {[
               { label: "Care type:", value: "General Consultation" },
-              { label: "Care type:", value: "General Consultation" },
-              { label: "Care type:", value: "General Consultation" },
-              { label: "Care type:", value: formattedDate },
+              { label: "Provider type:", value: "General Practitioner" },
+              { label: "Provider:", value: "Dr. Amanda Ellis" },
+              { label: "Date:", value: formattedDate },
               {
-                label: "Care type:",
+                label: "Time:",
                 value: `${selectedTimeSlot.consultant} / ${selectedTimeSlot.patient}`,
               },
               {
-                label: "Care type:",
+                label: "Meeting mode:",
                 value: meetingMode === "video" ? "Video consultation" : "In Person",
               },
             ].map((item, index) => (
@@ -368,7 +406,7 @@ export function PatientAppointmentSchedulePage() {
                   <InsightIcon />
                 </span>
                 <p className="text-center text-[16px] font-medium leading-[18px] tracking-[-0.05em] text-[#1565C0]">
-                  You&apos;ll choose a date and time in the next step.
+                  Review everything before continuing.
                 </p>
               </div>
             </div>
@@ -376,17 +414,50 @@ export function PatientAppointmentSchedulePage() {
         </aside>
       </div>
 
-      <div className="mt-5 flex justify-center">
-        <button
+      <div className="mt-5 hidden justify-center xl:flex">
+        <motion.button
           type="button"
-          onClick={() => {
-            toast.success("Schedule saved.");
-            router.push("/patient-platform/appointments/details");
-          }}
+          onClick={handleContinue}
+          whileTap={{ scale: 0.985 }}
           className="inline-flex h-[46px] w-full max-w-[300px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD]"
         >
           Continue
-        </button>
+        </motion.button>
+      </div>
+
+      <div
+        className="fixed bottom-0 left-[72px] right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:left-0 md:px-4 xl:hidden"
+      >
+        <div className="mx-auto max-w-[640px]">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase leading-4 tracking-[0.12em] text-[#94A3B8]">
+                Selected Date
+              </p>
+              <p className="truncate text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#334155]">
+                {formattedDate}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-[10px] font-medium uppercase leading-4 tracking-[0.12em] text-[#94A3B8]">
+                Time
+              </p>
+              <p className="text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#1565C0]">
+                {selectedTimeSlot.patient}
+              </p>
+            </div>
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={handleContinue}
+            whileTap={{ scale: 0.985 }}
+            className="inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[999px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[16px] font-medium leading-none tracking-[-0.04em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0"
+          >
+            Continue
+          </motion.button>
+        </div>
       </div>
     </article>
   );

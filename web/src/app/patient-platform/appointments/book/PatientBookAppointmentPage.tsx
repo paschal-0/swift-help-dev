@@ -173,7 +173,7 @@ export function PatientBookAppointmentPage() {
               </h2>
             </div>
 
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
               {careTypes.map((item) => (
                 <motion.button
                   key={item.id}
@@ -213,7 +213,7 @@ export function PatientBookAppointmentPage() {
               </h2>
             </div>
 
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
               {professionalTypes.map((item) => {
                 const isSelected = selectedProfessionalType === item.id;
 
@@ -251,7 +251,7 @@ export function PatientBookAppointmentPage() {
               </h2>
             </div>
 
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3 xl:gap-2">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3 xl:gap-2">
               <AnimatePresence mode="popLayout">
                 {professionals.map((prof, idx) => (
                   <motion.div
@@ -394,25 +394,40 @@ export function PatientBookAppointmentPage() {
       </div>
 
       <motion.div
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className="fixed inset-x-0 bottom-0 z-[100] border-t border-[#DCE8F6] bg-white/80 p-4 pb-8 backdrop-blur-xl xl:hidden"
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.28, ease: "easeOut", delay: 0.12 }}
+        className="fixed bottom-0 left-[72px] right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:left-0 md:px-4 xl:hidden"
       >
-        <div className="mx-auto flex max-w-md items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-              Booking For
-            </p>
-            <p className="truncate text-[14px] font-semibold text-[#334155]">
-              {selectedProfessional.name}
-            </p>
+        <div className="mx-auto max-w-[640px]">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase leading-4 tracking-[0.12em] text-[#94A3B8]">
+                Selected Provider
+              </p>
+              <p className="truncate text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#334155]">
+                {selectedProfessional.name}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-[10px] font-medium uppercase leading-4 tracking-[0.12em] text-[#94A3B8]">
+                Care
+              </p>
+              <p className="text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#1565C0]">
+                {selectedCare.title}
+              </p>
+            </div>
           </div>
-          <button
+
+          <motion.button
+            type="button"
             onClick={proceedToSchedule}
-            className="rounded-full bg-[#1565C0] px-8 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-blue-500/30 transition-transform active:scale-95"
+            whileTap={{ scale: 0.985 }}
+            className="inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[999px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[16px] font-medium leading-none tracking-[-0.04em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0"
           >
-            Continue
-          </button>
+            Continue to Schedule
+          </motion.button>
         </div>
       </motion.div>
     </article>

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 type DetailItem = {
@@ -60,12 +61,12 @@ function DetailGrid({
   className?: string;
 }) {
   return (
-    <div className={`rounded-[12px] bg-[#E3F2FD] p-[10px] ${className ?? ""}`}>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+    <div className={`rounded-[16px] bg-[#E3F2FD] p-4 sm:p-5 ${className ?? ""}`}>
+      <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
         {items.map((item) => (
           <p
             key={`${item.label}-${item.value}`}
-            className="text-[18px] font-normal leading-[22px] tracking-[-0.05em] text-[#94A3B8]"
+            className="text-[18px] font-normal leading-[24px] tracking-[-0.05em] text-[#94A3B8]"
           >
             {item.label} <span className="text-[#1E88E5]">{item.value}</span>
           </p>
@@ -83,18 +84,28 @@ export function PatientAppointmentDetailsPage() {
   const [consentChecked, setConsentChecked] = useState(false);
 
   return (
-    <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-4 md:px-6 xl:px-10 xl:pb-[33px] xl:pt-[17px]">
-      <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
+    <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-5 md:px-8 md:pb-12 md:pt-6 xl:px-10 xl:pb-[40px] xl:pt-[20px]">
+      <h1 className="text-center text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155] xl:text-left">
         Appointment Details
       </h1>
 
-      <div className="mx-auto mt-6 w-full max-w-[826px]">
-        <div className="grid grid-cols-1 gap-[18px] xl:grid-cols-2">
-          <section className="rounded-[12px] border border-[#1E88E5] p-[11px]">
-            <div className="h-[90px] rounded-[12px] border border-[#94A3B8] p-2">
-              <div className="flex h-full items-center justify-between gap-2">
-                <div className="flex items-center gap-[15px]">
-                  <span className="relative h-[74px] w-[74px] overflow-hidden rounded-full">
+      <div className="mx-auto mt-7 w-full max-w-[860px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 xl:gap-6">
+          <motion.section
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="rounded-[16px] border border-[#1E88E5] p-3 sm:p-4"
+          >
+            <motion.div
+              animate={{ y: 0, scale: 1 }}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="rounded-[16px] border border-[#94A3B8] p-3 sm:min-h-[102px] sm:p-4"
+            >
+              <div className="flex h-full flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                  <span className="relative h-[74px] w-[74px] shrink-0 overflow-hidden rounded-full sm:h-20 sm:w-20">
                     <Image src="/doctor.jpg" alt="Dr. Sarah Johnson" fill className="object-cover" />
                   </span>
                   <p className="text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#94A3B8]">
@@ -111,49 +122,64 @@ export function PatientAppointmentDetailsPage() {
                   </span>
                 </span>
               </div>
-            </div>
+            </motion.div>
 
-            <DetailGrid items={appointmentItems} className="mt-[8px]" />
-          </section>
+            <DetailGrid items={appointmentItems} className="mt-3" />
+          </motion.section>
 
-          <section className="rounded-[12px] border border-[#1E88E5] p-3">
-            <h2 className="text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#0F172A]">
+          <motion.section
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut", delay: 0.05 }}
+            className="rounded-[16px] border border-[#1E88E5] p-4 sm:p-5"
+          >
+            <h2 className="text-center text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#0F172A] sm:text-left">
               Shared Symptom Summary
             </h2>
-            <p className="mt-2 text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
+            <p className="mt-2 text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155] sm:text-left">
               This summary can be shared with your provider to support a more informed consultation.
             </p>
 
-            <DetailGrid items={appointmentItems} className="mt-[8px]" />
+            <DetailGrid items={appointmentItems} className="mt-4" />
 
-            <div className="mt-[8px] flex items-center gap-[10px] px-[8px]">
+            <div className="mt-4 flex items-center justify-center gap-3 px-1 text-center sm:justify-start sm:px-2 sm:text-left">
               <ToggleSwitch checked={shareReminder} onChange={setShareReminder} />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
                 Send appointment reminder by email
               </span>
             </div>
-          </section>
+          </motion.section>
         </div>
 
-        <section className="mt-6 rounded-[12px] bg-[#F8FAFC] px-[25px] py-[21px] shadow-[0_0_30px_rgba(30,136,229,0.15)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-[10px]">
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: "easeOut", delay: 0.1 }}
+          className="mt-7 rounded-[16px] bg-[#F8FAFC] px-5 py-5 shadow-[0_0_30px_rgba(30,136,229,0.15)] sm:px-6 sm:py-6"
+        >
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-center gap-3 text-center sm:text-left lg:justify-start">
               <ToggleSwitch checked={emailReminder} onChange={setEmailReminder} />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
                 Send appointment reminder by email
               </span>
             </div>
 
-            <div className="flex items-center gap-[10px]">
+            <div className="flex items-center justify-center gap-3 text-center sm:text-left lg:justify-start">
               <ToggleSwitch checked={smsReminder} onChange={setSmsReminder} />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
                 Send appointment reminder by SMS
               </span>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <div className="mt-6 flex items-start gap-2">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: "easeOut", delay: 0.15 }}
+          className="mt-7 flex items-start gap-3"
+        >
           <button
             type="button"
             onClick={() => setConsentChecked((current) => !current)}
@@ -171,17 +197,24 @@ export function PatientAppointmentDetailsPage() {
           <p className="max-w-[716px] text-[16px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155]">
             I understand this booking request is for a scheduled consultation and does not replace emergency medical care.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row sm:items-center sm:gap-4">
-          <button
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: "easeOut", delay: 0.2 }}
+          className="mt-12 flex flex-col items-center justify-center gap-4 pt-2 sm:flex-row sm:items-center sm:gap-5"
+        >
+          <motion.button
             type="button"
             onClick={() => router.push("/patient-platform/appointments/schedule")}
-            className="inline-flex h-[46px] w-full max-w-[215px] cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155]"
+            whileTap={{ scale: 0.985 }}
+            whileHover={{ y: -2 }}
+            className="inline-flex h-[46px] w-full max-w-[215px] cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155] transition duration-200 hover:shadow-[0_14px_28px_rgba(148,163,184,0.28)] active:shadow-[0_6px_14px_rgba(148,163,184,0.2)]"
           >
             Edit Details
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={() => {
               if (!consentChecked) {
@@ -191,11 +224,13 @@ export function PatientAppointmentDetailsPage() {
               toast.success("Appointment confirmed.");
               router.push("/patient-platform/appointments/confirmed");
             }}
-            className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD]"
+            whileTap={{ scale: 0.985 }}
+            whileHover={{ y: -2 }}
+            className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:shadow-[0_16px_30px_rgba(17,75,127,0.3)] active:shadow-[0_7px_16px_rgba(17,75,127,0.22)]"
           >
             Confirm appointment
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     </article>
   );
