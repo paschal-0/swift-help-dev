@@ -239,7 +239,7 @@ export function PatientLiveConsultationPage() {
   };
 
   return (
-    <article className="mt-[26px] min-h-[664px] rounded-[12px] bg-[#F8FAFC] px-4 pb-6 pt-[17px] md:px-6 xl:max-w-[899px] xl:px-7">
+    <article className="mt-3 min-h-[664px] w-full rounded-[12px] bg-[#F8FAFC] px-0 pb-5 pt-3 sm:mt-[26px] sm:px-4 sm:pb-6 sm:pt-[17px] md:px-6 xl:max-w-[899px] xl:px-7">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
@@ -815,14 +815,14 @@ export function PatientLiveConsultationPage() {
         </div>
         </div>
       ) : (
-        <div className="relative mt-4 flex flex-col rounded-[20px] border border-[#DCE8F6] bg-[linear-gradient(180deg,#FCFEFF_0%,#F8FAFC_100%)] p-4 shadow-[0_0_30px_rgba(30,136,229,0.08)] md:p-5">
+        <div className="relative mt-3 flex w-full min-w-0 flex-col rounded-[18px] border border-[#DCE8F6] bg-[linear-gradient(180deg,#FCFEFF_0%,#F8FAFC_100%)] p-2 shadow-[0_0_30px_rgba(30,136,229,0.08)] sm:mt-4 sm:rounded-[20px] sm:p-4 md:p-5">
           {callState === "failed" ? (
             <div className="mb-4 rounded-[16px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-[13px] font-light tracking-[-0.04em] text-[#991B1B]">
               {callError || "We could not connect the call. Please check camera and microphone permissions and try again."}
             </div>
           ) : null}
 
-          <div className="mb-4 flex flex-col gap-3 rounded-[16px] bg-[#E3F2FD] p-4 md:flex-row md:items-center md:justify-between">
+          <div className="mb-2 flex w-full min-w-0 flex-col gap-3 rounded-[16px] bg-[#E3F2FD] p-2.5 sm:mb-4 sm:p-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <span className="relative h-12 w-12 overflow-hidden rounded-[14px] border border-[#BFDBFE]">
                 <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
@@ -836,15 +836,15 @@ export function PatientLiveConsultationPage() {
               </div>
             </div>
 
-            <div className="rounded-[14px] bg-[#F8FAFC] px-4 py-3 text-[12px] font-light tracking-[-0.04em] text-[#334155] shadow-[0_8px_18px_rgba(30,136,229,0.08)]">
+            <div className="w-full rounded-[14px] bg-[#F8FAFC] px-3 py-3 text-[12px] font-light tracking-[-0.04em] text-[#334155] shadow-[0_8px_18px_rgba(30,136,229,0.08)] sm:w-auto sm:px-4">
               Messages stay open during the call.
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col rounded-[16px] bg-[#E2E8F0] px-[10px] py-[15px]">
+          <div className="flex w-full min-w-0 flex-1 flex-col rounded-[16px] bg-[#E2E8F0] px-1.5 py-2.5 sm:px-[10px] sm:py-[15px]">
             <ConsultationTabs activeTab={activeTab} layoutId="consultation-tabs-chat" onChange={setActiveTab} />
 
-            <div className="mt-4 min-h-[250px] overflow-y-auto pr-2 [scrollbar-color:#1E88E5_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] [&::-webkit-scrollbar-thumb]:shadow-[0_0_0_1px_rgba(227,242,253,0.45)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(227,242,253,0.35)] md:h-[360px]">
+            <div className="mt-3 w-full min-h-[56vh] min-w-0 overflow-y-auto pr-0 [scrollbar-color:#1E88E5_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] [&::-webkit-scrollbar-thumb]:shadow-[0_0_0_1px_rgba(227,242,253,0.45)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(227,242,253,0.35)] sm:mt-4 sm:min-h-[250px] sm:pr-2 md:h-[360px]">
               {activeTab !== "messages" ? (
                 <div className="rounded-[12px] bg-[#F8FAFC] p-3 text-[12px] font-normal tracking-[-0.05em] text-[#334155]">
                   {activeTab === "summary"
@@ -852,7 +852,7 @@ export function PatientLiveConsultationPage() {
                     : "Shared info from the patient profile will appear here."}
                 </div>
               ) : (
-                <div className="space-y-[13px] pr-[6px]">
+                <div className="w-full min-w-0 space-y-[13px] pr-0 sm:pr-[6px]">
                   {chatMessages.map((message, index) => (
                     <motion.div
                       key={message.id}
@@ -869,9 +869,9 @@ export function PatientLiveConsultationPage() {
                         </span>
                       ) : null}
 
-                      <div className="relative">
+                      <div className="relative min-w-0">
                         <span
-                          className={`relative z-[1] inline-flex min-h-[34px] max-w-[240px] items-center rounded-[14px] px-5 py-[8px] text-[13px] font-light leading-5 tracking-[-0.04em] ${
+                          className={`relative z-[1] inline-flex min-h-[38px] max-w-[300px] items-center rounded-[14px] px-5 py-[9px] text-[13px] font-light leading-5 tracking-[-0.04em] sm:min-h-[34px] sm:max-w-[240px] sm:py-[8px] ${
                             message.sender === "provider"
                               ? "bg-[#1565C0] text-[#F8FAFC]"
                               : "bg-[#E3F2FD] text-[#1E88E5]"
@@ -901,7 +901,7 @@ export function PatientLiveConsultationPage() {
 
             <form
               onSubmit={handleSendMessage}
-              className="sticky bottom-2 z-20 mt-4 rounded-[16px] bg-[#F8FAFC] p-2 shadow-[0_10px_35px_rgba(15,23,42,0.18)] md:static md:rounded-[12px] md:p-[10px] md:shadow-none"
+              className="sticky bottom-1 z-20 mt-3 w-full rounded-[16px] bg-[#F8FAFC] p-2 shadow-[0_10px_35px_rgba(15,23,42,0.18)] sm:bottom-2 sm:mt-4 sm:p-2 md:static md:rounded-[12px] md:p-[10px] md:shadow-none"
             >
               <div className="flex items-center justify-between gap-2">
                 <input
@@ -950,7 +950,7 @@ function ConsultationTabs({ activeTab, layoutId, onChange }: ConsultationTabsPro
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="mx-auto flex w-fit max-w-full items-center gap-1.5 rounded-full border border-white/70 bg-white/60 px-1.5 py-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-md md:gap-2 md:px-2.5 md:py-2.5 xl:ml-auto xl:mr-0"
+        className="flex w-full min-w-0 items-center justify-between gap-1 rounded-full border border-white/70 bg-white/60 px-1 py-1 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-md md:mx-auto md:w-fit md:max-w-full md:justify-start md:gap-2 md:px-2.5 md:py-2.5 xl:ml-auto xl:mr-0"
       >
         {consultationTabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -960,7 +960,7 @@ function ConsultationTabs({ activeTab, layoutId, onChange }: ConsultationTabsPro
               key={tab.id}
               type="button"
               onClick={() => onChange(tab.id)}
-              className={`relative inline-flex h-[30px] ${tab.width} items-center justify-center overflow-hidden rounded-full px-2 text-center text-[0.68rem] font-semibold leading-tight tracking-[-0.03em] transition duration-300 md:h-[34px] md:px-3 md:text-[0.8rem] ${
+              className={`relative inline-flex h-[30px] flex-1 items-center justify-center overflow-hidden rounded-full px-2 text-center text-[0.68rem] font-semibold leading-tight tracking-[-0.03em] transition duration-300 md:h-[34px] md:flex-none ${tab.width} md:px-3 md:text-[0.8rem] ${
                 isActive ? "text-white" : "text-[#475569] hover:text-[#334155]"
               }`}
               whileTap={{ scale: 0.97 }}
