@@ -157,11 +157,18 @@ export function PatientDashboardPage() {
             </div>
 
             <Image
+              src="/doctor-mobile.png"
+              alt="Doctors illustration"
+              width={128}
+              height={126}
+              className="absolute right-2 top-[42px] z-0 h-auto w-[128px] object-contain opacity-85 sm:hidden"
+            />
+            <Image
               src="/Group 14.png"
               alt="Doctors illustration"
               width={280}
               height={211}
-              className="absolute bottom-0 right-0 z-0 h-full w-[190px] object-cover opacity-85 sm:w-[240px] xl:w-[280px]"
+              className="absolute bottom-0 right-0 z-0 hidden h-full w-[240px] object-cover opacity-85 sm:block xl:w-[280px]"
             />
           </motion.article>
 
