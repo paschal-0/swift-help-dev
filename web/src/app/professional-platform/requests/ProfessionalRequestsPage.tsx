@@ -128,12 +128,18 @@ export function ProfessionalRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestStatus>("needs-action");
   const [panelSearch, setPanelSearch] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<"latest" | "patient">("latest");
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const combinedQuery = `${searchText} ${panelSearch}`.trim().toLowerCase();
 
   const filteredRequests = useMemo(() => {
-    return requests.filter((request) => {
+    const nextRequests = requests.filter((request) => {
       if (request.status !== activeTab) {
+        return false;
+      }
+      if (urgentOnly && request.urgency !== "Urgent") {
         return false;
       }
       if (!combinedQuery) {
@@ -154,7 +160,17 @@ export function ProfessionalRequestsPage() {
         .toLowerCase()
         .includes(combinedQuery);
     });
-  }, [requests, activeTab, combinedQuery]);
+
+    nextRequests.sort((left, right) => {
+      if (sortMode === "patient") {
+        return left.patient.localeCompare(right.patient);
+      }
+
+      return right.id.localeCompare(left.id);
+    });
+
+    return nextRequests;
+  }, [requests, activeTab, combinedQuery, urgentOnly, sortMode]);
 
   const activeTabRequestsCount = useMemo(
     () => requests.filter((request) => request.status === activeTab).length,
@@ -211,6 +227,11 @@ export function ProfessionalRequestsPage() {
     }
   };
 
+  const selectRequest = (id: string | null) => {
+    setSelectedRequestId(id);
+    setDetailsExpanded(false);
+  };
+
   return (
     <section className="mt-[14px] pb-9 xl:mt-[6px]">
       <div className="border-b border-[#94A3B8] pb-[18px]">
@@ -219,7 +240,7 @@ export function ProfessionalRequestsPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => toast.info("Filter options are coming next.")}
+              onClick={() => setUrgentOnly((current) => !current)}
               className="inline-flex h-8 items-center gap-2 rounded-[12px] border border-[#94A3B8] px-3 text-[16px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155]"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -228,14 +249,14 @@ export function ProfessionalRequestsPage() {
                   d="M11 18h2v-2h-2v2Zm-7-7v2h16v-2H4Zm3-7v2h10V4H7Zm-3 14v2h16v-2H4Z"
                 />
               </svg>
-              Filter
+              {urgentOnly ? "Urgent only" : "Filter"}
             </button>
             <button
               type="button"
-              onClick={() => toast.info("Sort options are coming next.")}
+              onClick={() => setSortMode((current) => (current === "latest" ? "patient" : "latest"))}
               className="inline-flex h-8 items-center gap-1 rounded-[12px] border border-[#94A3B8] px-3 text-[16px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155]"
             >
-              Sort by
+              {sortMode === "latest" ? "Latest" : "Patient"}
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                 <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
               </svg>
@@ -287,7 +308,7 @@ export function ProfessionalRequestsPage() {
 
               <button
                 type="button"
-                onClick={() => toast.info("Advanced filters are coming next.")}
+                onClick={() => setUrgentOnly((current) => !current)}
                 className="inline-flex h-8 items-center gap-2 rounded-[12px] border border-[#94A3B8] px-3 text-[16px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155]"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -296,7 +317,7 @@ export function ProfessionalRequestsPage() {
                     d="M11 18h2v-2h-2v2Zm-7-7v2h16v-2H4Zm3-7v2h10V4H7Zm-3 14v2h16v-2H4Z"
                   />
                 </svg>
-                Filter
+                {urgentOnly ? "Urgent only" : "Filter"}
               </button>
             </div>
           ) : null}
@@ -324,7 +345,7 @@ export function ProfessionalRequestsPage() {
                     key={request.id}
                     whileHover={{ y: -1 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    onClick={() => setSelectedRequestId(request.id)}
+                    onClick={() => selectRequest(request.id)}
                     className={`cursor-pointer rounded-[12px] bg-[#F8FAFC] px-[10px] pb-[13px] pt-2 shadow-[0_0_8px_rgba(0,0,0,0.2)] ${
                       isSelected ? "ring-1 ring-[#1565C0]" : ""
                     }`}
@@ -372,8 +393,8 @@ export function ProfessionalRequestsPage() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSelectedRequestId(request.id);
-                          toast.info(`Showing details for ${request.patient}`);
+                          selectRequest(request.id);
+                          setDetailsExpanded(true);
                         }}
                         className="text-[14px] font-semibold leading-4 tracking-[-0.05em] text-[#1565C0]"
                       >
@@ -499,13 +520,21 @@ export function ProfessionalRequestsPage() {
                 </div>
               </div>
 
+              {detailsExpanded ? (
+                <div className="mt-3 rounded-[12px] bg-[#E3F2FD] px-3 py-2 text-[12px] leading-[18px] tracking-[-0.05em] text-[#334155]">
+                  <p>Requested slot: {selectedRequest.slot}</p>
+                  <p>Status note: {selectedRequest.received}</p>
+                  <p>Priority: {selectedRequest.urgency}</p>
+                </div>
+              ) : null}
+
               <div className="mt-[12px] flex items-center justify-between gap-[8px]">
                 <button
                   type="button"
-                  onClick={() => toast.info(`Opening full details for ${selectedRequest.patient}`)}
+                  onClick={() => setDetailsExpanded((current) => !current)}
                   className="text-[14px] font-semibold leading-4 tracking-[-0.05em] text-[#1565C0]"
                 >
-                  View Details
+                  {detailsExpanded ? "Hide Details" : "View Details"}
                 </button>
 
                 <div className="flex gap-[6px]">

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
@@ -112,6 +113,7 @@ function TimeInput({
 }
 
 export function ProfessionalOnboardingThreePage() {
+  const router = useRouter();
   const [hasInteracted, setHasInteracted] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [availability, setAvailability] =
@@ -137,6 +139,8 @@ export function ProfessionalOnboardingThreePage() {
       showValidationToast("professional-onboarding-three", validationError);
       return;
     }
+
+    router.push("/professional-platform");
   };
 
   return (

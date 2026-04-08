@@ -152,7 +152,11 @@ export function ProfessionalEarningsPage() {
     "All Statuses"
   );
   const [payoutFilter, setPayoutFilter] = useState<"All Payouts" | "Completed">("All Payouts");
-  const showOverviewEmptyState = true;
+  const [payoutMethodIndex, setPayoutMethodIndex] = useState(0);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
+  const payoutMethods = ["GTBank - **** 2481", "Moniepoint - **** 9921", "Access Bank - **** 1014"];
+  const showOverviewEmptyState = false;
 
   const query = searchText.trim().toLowerCase();
 
@@ -189,6 +193,9 @@ export function ProfessionalEarningsPage() {
   const summaryCards = showOverviewEmptyState
     ? earningsSummary.map((item) => ({ ...item, value: "N0" }))
     : earningsSummary;
+  const selectedTransaction =
+    transactionsData.find((transaction) => transaction.id === selectedTransactionId) ?? null;
+  const selectedPayout = transactionsData.find((transaction) => transaction.id === selectedPayoutId) ?? null;
 
   return (
     <section className="mt-[14px] pb-6 xl:mt-[6px]">
@@ -354,17 +361,17 @@ export function ProfessionalEarningsPage() {
                 <div className="mt-4 grid grid-cols-2 gap-[10px]">
                   <button
                     type="button"
-                    onClick={() => toast.info("Detailed payout summary is coming next.")}
+                    onClick={() => setActiveTab("payouts")}
                     className="inline-flex h-[24px] items-center justify-center rounded-[9.26984px] bg-[#E2E8F0] text-[14px] font-light leading-[15px] tracking-[-0.05em] text-[#334155]"
                   >
                     View Details
                   </button>
                   <button
                     type="button"
-                    onClick={() => toast.success("Continuing to payout flow...")}
+                    onClick={() => toast.success("Withdrawal flow started.")}
                     className="inline-flex h-[26px] items-center justify-center rounded-[9.52381px] bg-[#1565C0] text-[14px] font-light leading-4 tracking-[-0.05em] text-[#E3F2FD]"
                   >
-                    Join Now
+                    Withdraw
                   </button>
                 </div>
               </article>
@@ -372,15 +379,15 @@ export function ProfessionalEarningsPage() {
               <article className="rounded-[12px] bg-[#F8FAFC] px-[13px] pb-[7px] pt-[10px]">
                 <h3 className="text-[16px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155]">Payout Method</h3>
                 <p className="mt-[10px] text-[12px] font-light leading-[22px] tracking-[-0.05em] text-[#334155]">
-                  Bank name: <span className="font-semibold">GTBank</span>
+                  Bank name: <span className="font-semibold">{payoutMethods[payoutMethodIndex].split(" - ")[0]}</span>
                   <br />
                   Account holder: <span className="font-semibold">Ayeni Precious</span>
                   <br />
-                  Account number: <span className="font-semibold">**** 2481</span>
+                  Account number: <span className="font-semibold">{payoutMethods[payoutMethodIndex].split(" - ")[1]}</span>
                 </p>
                 <button
                   type="button"
-                  onClick={() => toast.info("Payout method editor opens next.")}
+                  onClick={() => setPayoutMethodIndex((current) => (current + 1) % payoutMethods.length)}
                   className="mt-[10px] inline-flex h-[26px] w-full items-center justify-center rounded-[12px] bg-[#1565C0] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD]"
                 >
                   Manage Payout Method
@@ -427,6 +434,13 @@ export function ProfessionalEarningsPage() {
           </div>
 
           <div className="mt-[5px] overflow-x-auto">
+            {selectedTransaction ? (
+              <div className="mb-3 rounded-[12px] bg-[#F8FAFC] px-4 py-3 text-[14px] leading-[20px] tracking-[-0.05em] text-[#334155] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
+                <p>Transaction ID: <span className="font-semibold">{selectedTransaction.transactionId}</span></p>
+                <p>Patient: <span className="font-semibold">{selectedTransaction.patient}</span></p>
+                <p>Amount: <span className="font-semibold">{selectedTransaction.amount}</span></p>
+              </div>
+            ) : null}
             <div className="min-w-[891px]">
               <div className="grid grid-cols-[153px_175px_120px_132px_135px_99px_77px] bg-[#F8FAFC] px-[6px] py-[2px] text-[14px] font-normal leading-[22px] tracking-[-0.05em] text-[#94A3B8] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
                 <span>Transaction ID</span>
@@ -456,7 +470,7 @@ export function ProfessionalEarningsPage() {
                     <span className="text-[#19AA4A]">{transaction.status}</span>
                     <button
                       type="button"
-                      onClick={() => toast.info(`Opening ${transaction.transactionId}`)}
+                      onClick={() => setSelectedTransactionId(transaction.id)}
                       className="text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details
@@ -488,6 +502,13 @@ export function ProfessionalEarningsPage() {
           </div>
 
           <div className="mt-[5px] overflow-x-auto">
+            {selectedPayout ? (
+              <div className="mb-3 rounded-[12px] bg-[#F8FAFC] px-4 py-3 text-[14px] leading-[20px] tracking-[-0.05em] text-[#334155] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
+                <p>Payout ID: <span className="font-semibold">{selectedPayout.transactionId}</span></p>
+                <p>Processed On: <span className="font-semibold">{selectedPayout.date}</span></p>
+                <p>Amount: <span className="font-semibold">{selectedPayout.amount}</span></p>
+              </div>
+            ) : null}
             <div className="min-w-[891px]">
               <div className="grid grid-cols-[153px_175px_120px_132px_135px_99px_77px] bg-[#F8FAFC] px-[6px] py-[2px] text-[14px] font-normal leading-[22px] tracking-[-0.05em] text-[#94A3B8] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
                 <span>Payout ID</span>
@@ -517,7 +538,7 @@ export function ProfessionalEarningsPage() {
                     <span className="text-[#19AA4A]">{payout.status}</span>
                     <button
                       type="button"
-                      onClick={() => toast.info(`Opening payout ${payout.transactionId}`)}
+                      onClick={() => setSelectedPayoutId(payout.id)}
                       className="text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details

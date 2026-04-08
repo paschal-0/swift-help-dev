@@ -1,9 +1,21 @@
 "use client";
 
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  type ChartOptions,
+} from "chart.js";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { Line } from "react-chartjs-2";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 
@@ -29,6 +41,17 @@ type IncomingRequest = {
   deadline: string;
 };
 
+type EarningsRange = "today" | "week";
+
+type EarningsPoint = {
+  label: string;
+  earned: number;
+  pending: number;
+  sessions: number;
+};
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+
 type MetricCard = {
   id: string;
   title: string;
@@ -39,12 +62,10 @@ type MetricCard = {
   icon: "consultations" | "requests" | "hours" | "earnings";
 };
 
-const metricCards: MetricCard[] = [
+const metricCardMeta: Omit<MetricCard, "value" | "subtitle">[] = [
   {
     id: "today-consultations",
     title: "Today’s Consultations",
-    value: "4 Consultations",
-    subtitle: "2 Completed. 4 Upcoming",
     cta: "View Schedule",
     href: "/professional-platform/schedule",
     icon: "consultations",
@@ -52,8 +73,6 @@ const metricCards: MetricCard[] = [
   {
     id: "pending-requests",
     title: "Pending Request",
-    value: "2 New Requests",
-    subtitle: "Require response",
     cta: "Open inbox",
     href: "/professional-platform/requests",
     icon: "requests",
@@ -61,8 +80,6 @@ const metricCards: MetricCard[] = [
   {
     id: "available-hours",
     title: "Available hours today",
-    value: "9:00am-5:00pm",
-    subtitle: "Available for 8hrs today",
     cta: "Manage Schedule",
     href: "/professional-platform/schedule",
     icon: "hours",
@@ -70,8 +87,6 @@ const metricCards: MetricCard[] = [
   {
     id: "weekly-earnings",
     title: "Earnings this week",
-    value: "$5000",
-    subtitle: "+12% from last week",
     cta: "View Earnings",
     href: "/professional-platform/earnings",
     icon: "earnings",
@@ -147,6 +162,67 @@ const incomingRequests: IncomingRequest[] = [
   },
 ];
 
+const earningsDataByRange: Record<EarningsRange, EarningsPoint[]> = {
+  today: [
+    { label: "8AM", earned: 3000, pending: 1200, sessions: 1 },
+    { label: "9AM", earned: 6200, pending: 2100, sessions: 2 },
+    { label: "10AM", earned: 4100, pending: 1500, sessions: 1 },
+    { label: "11AM", earned: 8900, pending: 2700, sessions: 2 },
+    { label: "12PM", earned: 7600, pending: 2200, sessions: 2 },
+    { label: "1PM", earned: 11200, pending: 3100, sessions: 3 },
+    { label: "2PM", earned: 5400, pending: 1800, sessions: 1 },
+    { label: "3PM", earned: 14800, pending: 4200, sessions: 3 },
+    { label: "4PM", earned: 9800, pending: 2600, sessions: 2 },
+    { label: "5PM", earned: 12100, pending: 3400, sessions: 2 },
+    { label: "6PM", earned: 8300, pending: 2100, sessions: 1 },
+    { label: "7PM", earned: 10400, pending: 2900, sessions: 2 },
+  ],
+  week: [
+    { label: "Mon", earned: 18500, pending: 4200, sessions: 4 },
+    { label: "Tue", earned: 22400, pending: 5100, sessions: 5 },
+    { label: "Wed", earned: 19800, pending: 4600, sessions: 4 },
+    { label: "Thu", earned: 24800, pending: 5800, sessions: 6 },
+    { label: "Fri", earned: 27100, pending: 6200, sessions: 6 },
+    { label: "Sat", earned: 16300, pending: 3400, sessions: 3 },
+    { label: "Sun", earned: 14100, pending: 2900, sessions: 3 },
+  ],
+};
+
+const formatNaira = (value: number) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
+
+type MobileDashboardProps = {
+  activeAppointment: Appointment | null;
+  activeDayLabel: string;
+  earningsMetrics: {
+    totalEarned: number;
+    pendingPayout: number;
+    completedSessions: number;
+    nextPayoutLabel: string;
+  };
+  earningsRange: EarningsRange;
+  visibleAppointments: Appointment[];
+  visibleRequests: IncomingRequest[];
+  onAcceptRequest: (id: string) => void;
+  onDeclineRequest: (id: string) => void;
+  onJoinAppointment: () => void;
+  onNextDay: () => void;
+  onOpenEarnings: () => void;
+  onOpenRequests: () => void;
+  onOpenSchedule: () => void;
+  onOpenViewDetails: () => void;
+  onPrevDay: () => void;
+  onSelectAppointment: (id: string) => void;
+  onSelectEarningsRange: (range: EarningsRange) => void;
+};
+
 function MetricIcon({ type }: { type: MetricCard["icon"] }) {
   if (type === "consultations") {
     return (
@@ -182,10 +258,12 @@ function MetricIcon({ type }: { type: MetricCard["icon"] }) {
   }
 
   return (
-    <svg viewBox="0 0 24 24" className="h-10 w-10" aria-hidden>
+    <svg viewBox="0 0 29 30" className="h-10 w-10" aria-hidden>
       <path
         fill="#635506"
-        d="M12 2c-2.5 0-4.5.8-4.5 1.9V5c0 1.1 2 1.9 4.5 1.9S16.5 6.1 16.5 5V3.9C16.5 2.8 14.5 2 12 2Zm0 6.9c-2.5 0-4.5-.8-4.5-1.9V9c0 1.1 2 1.9 4.5 1.9s4.5-.8 4.5-1.9V7c0 1.1-2 1.9-4.5 1.9Zm0 4c-2.5 0-4.5-.8-4.5-1.9V13c0 1.1 2 1.9 4.5 1.9s4.5-.8 4.5-1.9v-2c0 1.1-2 1.9-4.5 1.9Zm0 4c-2.5 0-4.5-.8-4.5-1.9V17c0 1.1 2 1.9 4.5 1.9s4.5-.8 4.5-1.9v-2c0 1.1-2 1.9-4.5 1.9Z"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M14.3039 0C10.5398 0 7.1106 1.24333 5.08143 2.25917C4.8981 2.35083 4.72698 2.44028 4.5681 2.5275C4.2531 2.69917 3.98476 2.85917 3.77143 3L6.07976 6.39833L7.16643 6.83083C11.4131 8.97333 17.1081 8.97333 21.3556 6.83083L22.5889 6.19083L24.7714 3C24.3188 2.70592 23.8488 2.4396 23.3639 2.2025C21.3448 1.1975 17.9973 0 14.3048 0M8.93643 3.84667C8.11921 3.69287 7.31193 3.49029 6.51893 3.24C8.41976 2.39583 11.2523 1.5 14.3048 1.5C16.4189 1.5 18.4181 1.93 20.0714 2.475C18.1339 2.7475 16.0664 3.21 14.0964 3.77917C12.5464 4.2275 10.7348 4.17917 8.93643 3.84667ZM22.2364 8.06667L22.0314 8.17C17.3598 10.5267 11.1631 10.5267 6.49143 8.17L6.29726 8.07167C-0.721904 15.7725 -6.08024 29.9975 14.3039 29.9975C34.6881 29.9975 29.1998 15.5083 22.2364 8.06667ZM13.4381 15C12.9961 15 12.5721 15.1756 12.2596 15.4882C11.947 15.8007 11.7714 16.2246 11.7714 16.6667C11.7714 17.1087 11.947 17.5326 12.2596 17.8452C12.5721 18.1577 12.9961 18.3333 13.4381 18.3333V15ZM15.1048 13.3333V12.5H13.4381V13.3333C12.554 13.3333 11.7062 13.6845 11.0811 14.3096C10.456 14.9348 10.1048 15.7826 10.1048 16.6667C10.1048 17.5507 10.456 18.3986 11.0811 19.0237C11.7062 19.6488 12.554 20 13.4381 20V23.3333C12.7131 23.3333 12.0956 22.8708 11.8656 22.2225C11.8315 22.1164 11.7764 22.0183 11.7037 21.9339C11.631 21.8494 11.5421 21.7804 11.4422 21.731C11.3424 21.6815 11.2336 21.6526 11.1224 21.6459C11.0112 21.6392 10.8998 21.6549 10.7947 21.692C10.6896 21.7291 10.5931 21.7869 10.5108 21.862C10.4284 21.9371 10.362 22.0279 10.3154 22.1291C10.2688 22.2303 10.2429 22.3399 10.2394 22.4512C10.2358 22.5626 10.2547 22.6735 10.2948 22.7775C10.5245 23.4275 10.9502 23.9904 11.5132 24.3884C12.0761 24.7864 12.7486 25.0001 13.4381 25V25.8333H15.1048V25C15.9888 25 16.8367 24.6488 17.4618 24.0237C18.0869 23.3986 18.4381 22.5507 18.4381 21.6667C18.4381 20.7826 18.0869 19.9348 17.4618 19.3096C16.8367 18.6845 15.9888 18.3333 15.1048 18.3333V15C15.8298 15 16.4473 15.4625 16.6773 16.1108C16.7114 16.2169 16.7664 16.3151 16.8392 16.3995C16.9119 16.4839 17.0008 16.5529 17.1006 16.6023C17.2005 16.6518 17.3092 16.6807 17.4204 16.6874C17.5317 16.6941 17.6431 16.6785 17.7482 16.6414C17.8532 16.6042 17.9498 16.5464 18.0321 16.4713C18.1144 16.3963 18.1809 16.3054 18.2275 16.2042C18.2741 16.103 18.2999 15.9935 18.3035 15.8821C18.307 15.7707 18.2882 15.6598 18.2481 15.5558C18.0183 14.9058 17.5927 14.343 17.0297 13.9449C16.4667 13.5469 15.7942 13.3332 15.1048 13.3333ZM15.1048 20V23.3333C15.5468 23.3333 15.9707 23.1577 16.2833 22.8452C16.5958 22.5326 16.7714 22.1087 16.7714 21.6667C16.7714 21.2246 16.5958 20.8007 16.2833 20.4882C15.9707 20.1756 15.5468 20 15.1048 20Z"
       />
     </svg>
   );
@@ -215,10 +293,267 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
   );
 }
 
+function MobileDashboardView({
+  activeAppointment,
+  activeDayLabel,
+  earningsMetrics,
+  earningsRange,
+  onAcceptRequest,
+  onDeclineRequest,
+  onJoinAppointment,
+  onNextDay,
+  onOpenEarnings,
+  onOpenRequests,
+  onOpenSchedule,
+  onOpenViewDetails,
+  onPrevDay,
+  onSelectAppointment,
+  onSelectEarningsRange,
+  visibleAppointments,
+  visibleRequests,
+}: MobileDashboardProps) {
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="relative overflow-hidden rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-4 shadow-sm">
+        <Image src="/bg-platform.png" alt="" fill className="object-cover" />
+        <div className="relative z-10 space-y-4">
+          <div className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#E3F2FD] px-3 py-2 text-xs font-medium tracking-[-0.04em] text-[#1565C0]">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+              <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
+            </svg>
+            March 17, 2026
+            <span className="font-semibold">10:20 am</span>
+          </div>
+          <div className="max-w-[250px] space-y-2">
+            <h1 className="text-[2rem] font-semibold leading-8 tracking-[-0.06em] text-[#334155]">
+              Welcome back, Dr. Precious
+            </h1>
+            <p className="text-[15px] font-light leading-[18px] tracking-[-0.04em] text-[#334155]">
+              Manage your consultations, availability, records, and earnings from one place.
+            </p>
+          </div>
+          <div className="inline-flex min-h-9 items-center gap-1 rounded-full bg-[#0F172A] px-3 py-2 shadow-[0_4px_20px_rgba(30,136,229,0.25)]">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+              <path fill="#ECBE18" d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z" />
+            </svg>
+            <span className="text-xs font-medium tracking-[-0.04em] text-[#F8FAFC]">4.8 Average Rating</span>
+          </div>
+        </div>
+      </section>
+
+      {activeAppointment ? (
+        <section className="rounded-2xl border-2 border-[#1E88E5] bg-[#F8FAFC] p-4 shadow-[0_10px_30px_rgba(30,136,229,0.08)]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold tracking-[-0.04em] text-[#1565C0]">Next Consultation</h2>
+            <span className="rounded-full bg-[#FEE2E2] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#DC2626]">
+              Live now
+            </span>
+          </div>
+          <div className="flex gap-3">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#E2E8F0]">
+              <Image src="/doctor.jpg" alt="Active consultation" fill className="object-cover" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[#334155]">{activeAppointment.patient}</p>
+              <p className="mt-1 text-xs text-[#64748B]">{activeAppointment.reason}</p>
+              <p className="mt-1 text-xs text-[#94A3B8]">{activeAppointment.timeRange}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onJoinAppointment}
+              className={`inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-sm font-semibold text-white ${microInteractionClass}`}
+            >
+              Join Video Call
+            </button>
+            <button
+              type="button"
+              onClick={onOpenViewDetails}
+              className={`inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-[#334155] text-sm font-medium text-[#334155] ${microInteractionClass}`}
+            >
+              View Details
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="rounded-2xl bg-[#1565C0] px-4 pb-5 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-xl font-semibold leading-6 tracking-[-0.05em] text-white">Earnings Overview</h2>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => onSelectEarningsRange("today")}
+              className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-medium ${microInteractionClass} ${
+                earningsRange === "today" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-white"
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectEarningsRange("week")}
+              className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-medium ${microInteractionClass} ${
+                earningsRange === "week" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-white"
+              }`}
+            >
+              This week
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-white px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Earned</p>
+            <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
+              {formatNaira(earningsMetrics.totalEarned)}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Pending</p>
+            <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
+              {formatNaira(earningsMetrics.pendingPayout)}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Sessions</p>
+            <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
+              {earningsMetrics.completedSessions}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Payout</p>
+            <p className="mt-1 text-sm font-semibold tracking-[-0.04em] text-[#334155]">
+              {earningsMetrics.nextPayoutLabel}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenEarnings}
+          className={`mt-5 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-[#E3F2FD] px-4 text-sm font-medium text-[#1565C0] ${microInteractionClass}`}
+        >
+          Open earnings
+        </button>
+      </section>
+
+      <section className="rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">Today&apos;s Schedule</h3>
+          <button type="button" onClick={onOpenSchedule} className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}>
+            View full
+          </button>
+        </div>
+        <div className="mb-4 flex items-center justify-between">
+          <button type="button" onClick={onPrevDay} className={`cursor-pointer text-[#334155] ${microInteractionClass}`} aria-label="Previous day">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+              <path fill="currentColor" d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z" />
+            </svg>
+          </button>
+          <span className="text-xs font-semibold tracking-[0.08em] text-[#94A3B8]">{activeDayLabel}</span>
+          <button type="button" onClick={onNextDay} className={`cursor-pointer text-[#334155] ${microInteractionClass}`} aria-label="Next day">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+              <path fill="currentColor" d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z" />
+            </svg>
+          </button>
+        </div>
+        <div className="space-y-2">
+          {visibleAppointments.map((appointment) => (
+            <button
+              key={appointment.id}
+              type="button"
+              onClick={() => onSelectAppointment(appointment.id)}
+              className={`flex min-h-[62px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-left ${microInteractionClass} ${
+                activeAppointment?.id === appointment.id ? "border-[#1E88E5] bg-[#F3F9FF]" : "border-[#E2E8F0] bg-white"
+              }`}
+            >
+              <span className="w-10 shrink-0 text-xs font-bold text-[#94A3B8]">{appointment.timeLabel}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[#475569]">{appointment.patient}</p>
+                <p className="truncate text-xs text-[#94A3B8]">{appointment.timeRange}</p>
+              </div>
+              <StatusBadge status={appointment.status} />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl bg-[#F8FAFC] p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">Incoming Request</h3>
+          <button type="button" onClick={onOpenRequests} className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}>
+            See all
+          </button>
+        </div>
+        <div className="space-y-3">
+          {visibleRequests.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#94A3B8] p-5 text-sm text-[#64748B]">
+              No request matches your search.
+            </div>
+          ) : (
+            visibleRequests.map((request) => (
+              <article key={request.id} className="rounded-xl border border-[#1E88E5] bg-white px-4 pb-4 pt-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="inline-flex min-h-7 min-w-0 max-w-[calc(100%-68px)] items-center rounded-[14px] bg-[#E3F2FD] px-3 py-1 text-[9.5px] font-medium leading-[12px] tracking-[-0.05em] text-[#1E88E5]">
+                    New Consultation request
+                  </span>
+                  <span className="shrink-0 pt-1 text-[10px] leading-[15px] tracking-[-0.05em] text-[#94A3B8]">
+                    {request.date}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">
+                    From: {request.from}
+                  </p>
+                  <p className="mt-[6px] text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155]">
+                    {request.requestedTime}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="inline-flex min-h-7 items-center rounded-full border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                    {request.consultationType}
+                  </span>
+                  <span className="inline-flex min-h-7 items-center rounded-full border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                    {request.duration}
+                  </span>
+                </div>
+                <p className="mt-3 text-[10px] font-semibold leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                  {request.deadline}
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onDeclineRequest(request.id)}
+                    className={`inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-[#AD2525] text-sm font-medium text-[#F8FAFC] ${microInteractionClass}`}
+                  >
+                    Decline request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAcceptRequest(request.id)}
+                    className={`inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-[#1565C0] text-sm font-medium text-[#F8FAFC] ${microInteractionClass}`}
+                  >
+                    Accept request
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function ProfessionalDashboardPage() {
   const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
   const [activeAppointmentId, setActiveAppointmentId] = useState("appt-3");
+  const [earningsRange, setEarningsRange] = useState<EarningsRange>("today");
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [dashboardRequests, setDashboardRequests] = useState(incomingRequests);
 
   const query = searchText.trim().toLowerCase();
 
@@ -244,29 +579,222 @@ export function ProfessionalDashboardPage() {
 
   const visibleRequests = useMemo(() => {
     if (!query) {
-      return incomingRequests;
+      return dashboardRequests;
     }
 
-    return incomingRequests.filter((request) =>
+    return dashboardRequests.filter((request) =>
       [request.from, request.requestedTime, request.consultationType, request.duration, request.deadline, request.date]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
-  }, [query]);
+  }, [dashboardRequests, query]);
 
   const activeAppointment =
     visibleAppointments.find((appointment) => appointment.id === activeAppointmentId) ?? visibleAppointments[0] ?? null;
 
+  const earningsSeries = earningsDataByRange[earningsRange];
+
+  const earningsMetrics = useMemo(() => {
+    const totalEarned = earningsSeries.reduce((sum, point) => sum + point.earned, 0);
+    const pendingPayout = earningsSeries.reduce((sum, point) => sum + point.pending, 0);
+    const completedSessions = earningsSeries.reduce((sum, point) => sum + point.sessions, 0);
+
+    return {
+      totalEarned,
+      pendingPayout,
+      completedSessions,
+      nextPayoutLabel: earningsRange === "today" ? "Friday, 5 Apr" : "Monday, 8 Apr",
+    };
+  }, [earningsRange, earningsSeries]);
+
+  const earningsChartData = useMemo(
+    () => ({
+      labels: earningsSeries.map((point) => point.label),
+      datasets: [
+        {
+          label: "Earned",
+          data: earningsSeries.map((point) => point.earned),
+          borderColor: "#8979FF",
+          backgroundColor: "rgba(137, 121, 255, 0.18)",
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.38,
+        },
+        {
+          label: "Pending",
+          data: earningsSeries.map((point) => point.pending),
+          borderColor: "#FF928A",
+          backgroundColor: "rgba(255, 146, 138, 0.14)",
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.38,
+        },
+        {
+          label: "Sessions",
+          data: earningsSeries.map((point) => point.sessions * 3000),
+          borderColor: "#3CC3DF",
+          backgroundColor: "rgba(60, 195, 223, 0.12)",
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.38,
+        },
+      ],
+    }),
+    [earningsSeries]
+  );
+
+  const earningsChartOptions = useMemo<ChartOptions<"line">>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: "index",
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: "#0F172A",
+          titleColor: "#F8FAFC",
+          bodyColor: "#E2E8F0",
+          displayColors: true,
+          callbacks: {
+            label: (context) => {
+              if (context.dataset.label === "Sessions") {
+                return `Sessions ${Math.round(context.parsed.y / 3000)}`;
+              }
+
+              return `${context.dataset.label} ${formatNaira(context.parsed.y)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          border: {
+            display: false,
+          },
+          ticks: {
+            color: "#94A3B8",
+            font: {
+              size: 10,
+            },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(148, 163, 184, 0.16)",
+          },
+          border: {
+            display: false,
+          },
+          ticks: {
+            color: "#94A3B8",
+            font: {
+              size: 10,
+            },
+            callback: (value) => `${Number(value) / 1000}k`,
+          },
+        },
+      },
+    }),
+    []
+  );
+
+  const dashboardMetricCards = useMemo<MetricCard[]>(() => {
+    const doneCount = appointments.filter((appointment) => appointment.status === "Done").length;
+    const upcomingCount = appointments.filter((appointment) => appointment.status === "Upcoming").length;
+
+    return [
+      {
+        ...metricCardMeta[0],
+        value: `${appointments.length} Consultations`,
+        subtitle: `${doneCount} Completed. ${upcomingCount} Upcoming`,
+      },
+      {
+        ...metricCardMeta[1],
+        value: `${dashboardRequests.length} New Requests`,
+        subtitle: dashboardRequests.length ? "Require response" : "No pending requests",
+      },
+      {
+        ...metricCardMeta[2],
+        value: "9:00am-5:00pm",
+        subtitle: "Available for 8hrs today",
+      },
+      {
+        ...metricCardMeta[3],
+        value: formatNaira(earningsDataByRange.week.reduce((sum, point) => sum + point.earned, 0)),
+        subtitle: `${earningsMetrics.completedSessions} sessions completed`,
+      },
+    ];
+  }, [dashboardRequests.length, earningsMetrics.completedSessions]);
+
+  const dashboardDayLabels = ["MARCH 17", "MARCH 18", "MARCH 19"];
+
+  const handleDashboardRequestAction = (id: string, action: "accept" | "decline") => {
+    const request = dashboardRequests.find((item) => item.id === id);
+
+    if (!request) {
+      return;
+    }
+
+    setDashboardRequests((current) => current.filter((item) => item.id !== id));
+    toast[action === "accept" ? "success" : "warning"](
+      `${action === "accept" ? "Accepted" : "Declined"} request from ${request.from}`
+    );
+  };
+
+  const handleOpenSchedule = () => router.push("/professional-platform/schedule");
+  const handleOpenRequests = () => router.push("/professional-platform/requests");
+  const handleOpenEarnings = () => router.push("/professional-platform/earnings");
+  const handleOpenViewDetails = () => router.push("/professional-platform/schedule");
+  const handleJoinAppointment = () => {
+    toast.success("Opening schedule for consultation.");
+    router.push("/professional-platform/schedule");
+  };
+
   return (
-    <section className="mt-[14px] pb-9 xl:mt-[22px]">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[479px_1fr]">
+    <section className="mt-[14px] px-2 pb-9 md:px-0 xl:mt-[22px]">
+      <div className="block md:hidden">
+        <MobileDashboardView
+          activeAppointment={activeAppointment}
+          activeDayLabel={dashboardDayLabels[activeDayIndex]}
+          earningsMetrics={earningsMetrics}
+          earningsRange={earningsRange}
+          onAcceptRequest={(id) => handleDashboardRequestAction(id, "accept")}
+          onDeclineRequest={(id) => handleDashboardRequestAction(id, "decline")}
+          onJoinAppointment={handleJoinAppointment}
+          onNextDay={() => setActiveDayIndex((current) => (current + 1) % dashboardDayLabels.length)}
+          onOpenEarnings={handleOpenEarnings}
+          onOpenRequests={handleOpenRequests}
+          onOpenSchedule={handleOpenSchedule}
+          onOpenViewDetails={handleOpenViewDetails}
+          onPrevDay={() => setActiveDayIndex((current) => (current === 0 ? dashboardDayLabels.length - 1 : current - 1))}
+          onSelectAppointment={setActiveAppointmentId}
+          onSelectEarningsRange={setEarningsRange}
+          visibleAppointments={visibleAppointments}
+          visibleRequests={visibleRequests}
+        />
+      </div>
+
+      <div className="hidden md:block">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
         <motion.article
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
           className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#F8FAFC] px-5 pb-4 pt-[15px]"
         >
-          <Image src="/Group 14.png" alt="" fill className="object-cover opacity-20" />
+          <Image src="/bg-platform.png" alt="" fill className="object-cover" />
           <div className="relative z-10 inline-flex h-[27px] items-center gap-2 rounded-full bg-[#E3F2FD] px-3 text-[12px] font-light tracking-[-0.05em] text-[#1565C0]">
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
               <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
@@ -300,67 +828,61 @@ export function ProfessionalDashboardPage() {
           <Image src="/doctor.jpg" alt="" fill className="object-cover mix-blend-soft-light opacity-20" />
           <div className="relative z-10 flex items-start justify-between gap-3">
             <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#F8FAFC]">Earnings Overview</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
-                className="inline-flex h-[21px] items-center rounded-lg bg-[#E3F2FD] px-2 text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#1565C0]"
+                onClick={() => setEarningsRange("today")}
+                className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
+                  earningsRange === "today" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-[#F8FAFC]"
+                }`}
               >
                 Today
               </button>
               <button
                 type="button"
-                className="inline-flex h-[21px] items-center rounded-lg bg-[#E3F2FD] px-2 text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#1565C0]"
+                onClick={() => setEarningsRange("week")}
+                className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
+                  earningsRange === "week" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-[#F8FAFC]"
+                }`}
+              >
+                This week
+              </button>
+              <motion.button
+                type="button"
+                onClick={() => router.push("/professional-platform/earnings")}
+                whileHover={{ y: -1, scale: 1.03 }}
+                whileTap={{ scale: 0.96 }}
+                className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#E3F2FD] px-3 text-xs font-normal leading-3 tracking-[-0.05em] text-[#1565C0] sm:h-[21px] sm:px-2 sm:text-[10px]"
               >
                 Open earnings
-              </button>
+              </motion.button>
             </div>
           </div>
 
           <div className="relative z-10 mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_191px]">
-            <div className="h-[148px] rounded-lg bg-white p-2">
-              <svg viewBox="0 0 220 130" className="h-full w-full" aria-hidden>
-                <defs>
-                  <linearGradient id="lineA" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8979FF" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#8979FF" stopOpacity="0.08" />
-                  </linearGradient>
-                  <linearGradient id="lineB" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF928A" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#FF928A" stopOpacity="0.07" />
-                  </linearGradient>
-                  <linearGradient id="lineC" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3CC3DF" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#3CC3DF" stopOpacity="0.08" />
-                  </linearGradient>
-                </defs>
-                <path d="M0 110 L20 92 L40 104 L60 68 L80 82 L100 54 L120 74 L140 61 L160 85 L180 70 L200 77 L220 98 L220 130 L0 130 Z" fill="url(#lineA)" />
-                <path d="M0 102 L20 55 L40 86 L60 45 L80 63 L100 76 L120 98 L140 57 L160 64 L180 101 L200 80 L220 115 L220 130 L0 130 Z" fill="url(#lineB)" />
-                <path d="M0 84 L20 74 L40 120 L60 81 L80 44 L100 51 L120 108 L140 36 L160 92 L180 96 L200 58 L220 75 L220 130 L0 130 Z" fill="url(#lineC)" />
-                <polyline points="0,110 20,92 40,104 60,68 80,82 100,54 120,74 140,61 160,85 180,70 200,77 220,98" fill="none" stroke="#8979FF" strokeWidth="2" />
-                <polyline points="0,102 20,55 40,86 60,45 80,63 100,76 120,98 140,57 160,64 180,101 200,80 220,115" fill="none" stroke="#FF928A" strokeWidth="2" />
-                <polyline points="0,84 20,74 40,120 60,81 80,44 100,51 120,108 140,36 160,92 180,96 200,58 220,75" fill="none" stroke="#3CC3DF" strokeWidth="2" />
-              </svg>
+            <div className="min-h-[148px] rounded-lg bg-white p-2">
+              <Line data={earningsChartData} options={earningsChartOptions} />
             </div>
 
-            <div className="h-[148px] rounded-lg bg-[#F8FAFC] px-[10px] py-[14px]">
+            <div className="min-h-[148px] rounded-lg bg-[#F8FAFC] px-[10px] py-[14px]">
               <div className="rounded-lg bg-[#E3F2FD] p-[10px] text-[10px] font-medium leading-[15px] tracking-[-0.07em] text-[#94A3B8]">
                 <p>
-                  Total earned: <span className="font-semibold text-[#1565C0]">₦48,500</span>
+                  Total earned: <span className="font-semibold text-[#1565C0]">{formatNaira(earningsMetrics.totalEarned)}</span>
                 </p>
                 <p>
-                  Pending payout: <span className="font-semibold text-[#1565C0]">₦12,000</span>
+                  Pending payout: <span className="font-semibold text-[#1565C0]">{formatNaira(earningsMetrics.pendingPayout)}</span>
                 </p>
                 <p>
-                  Completed sessions: <span className="font-semibold text-[#1565C0]">8</span>
+                  Completed sessions: <span className="font-semibold text-[#1565C0]">{earningsMetrics.completedSessions}</span>
                 </p>
               </div>
               <p className="mt-3 text-[10px] font-semibold leading-[15px] tracking-[-0.07em] text-[#1565C0]">
-                Next payout: Friday, 5 Apr
+                Next payout: {earningsMetrics.nextPayoutLabel}
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/professional-platform/schedule")}
-                className="mt-2 inline-flex h-[28px] w-[125px] cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[10px] font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0]"
+                className={`mt-2 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-xs font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0] sm:h-[28px] sm:w-[125px] sm:text-[10px] ${microInteractionClass}`}
               >
                 Manage Schedule
               </button>
@@ -370,7 +892,7 @@ export function ProfessionalDashboardPage() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {metricCards.map((card) => (
+        {dashboardMetricCards.map((card) => (
           <motion.article
             key={card.id}
             whileHover={{ y: -2 }}
@@ -408,7 +930,7 @@ export function ProfessionalDashboardPage() {
             <button
               type="button"
               onClick={() => router.push(card.href)}
-              className="mt-[7px] inline-flex h-[28px] w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#1E88E5]"
+              className={`mt-[7px] inline-flex h-[28px] w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#1E88E5] ${microInteractionClass}`}
             >
               {card.cta}
             </button>
@@ -416,8 +938,8 @@ export function ProfessionalDashboardPage() {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[551px_337px]">
-        <article className="rounded-2xl bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-[17px] sm:pt-[16px]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <article className="rounded-2xl bg-[#F8FAFC] px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-5">
           <div className="flex items-center justify-between">
             <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Appointments</h3>
             <button
@@ -434,18 +956,28 @@ export function ProfessionalDashboardPage() {
               No appointments match your search.
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+            <div className="mt-5 flex flex-col-reverse gap-5 lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
               <div>
                 <div className="mb-3 flex items-center justify-center gap-14">
-                  <button type="button" className="cursor-pointer text-[#334155]" aria-label="Previous day">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDayIndex((current) => (current === 0 ? dashboardDayLabels.length - 1 : current - 1))}
+                    className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+                    aria-label="Previous day"
+                  >
                     <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
                       <path fill="currentColor" d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z" />
                     </svg>
                   </button>
                   <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">
-                    MARCH 17
+                    {dashboardDayLabels[activeDayIndex]}
                   </span>
-                  <button type="button" className="cursor-pointer text-[#334155]" aria-label="Next day">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDayIndex((current) => (current + 1) % dashboardDayLabels.length)}
+                    className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+                    aria-label="Next day"
+                  >
                     <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
                       <path fill="currentColor" d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z" />
                     </svg>
@@ -455,7 +987,7 @@ export function ProfessionalDashboardPage() {
                 <div className="grid grid-cols-[52px_1fr] gap-2">
                   <div className="flex flex-col gap-2">
                     {visibleAppointments.map((appointment, index) => (
-                      <div key={`${appointment.id}-time`} className="flex h-[50px] flex-col items-center justify-center">
+                      <div key={`${appointment.id}-time`} className="flex min-h-[60px] flex-col items-center justify-center lg:h-[50px] lg:min-h-0">
                         <span
                           className={`text-[14px] font-medium leading-[10px] tracking-[-0.05em] ${
                             index === 2 ? "text-[#1565C0]" : "text-[#94A3B8]"
@@ -481,20 +1013,20 @@ export function ProfessionalDashboardPage() {
                           onClick={() => setActiveAppointmentId(appointment.id)}
                           whileHover={{ x: 2 }}
                           whileTap={{ scale: 0.99 }}
-                          className={`relative h-[50px] cursor-pointer rounded-xl border px-2 text-left ${
+                          className={`relative min-h-[60px] cursor-pointer rounded-xl border px-2 py-2 text-left lg:h-[50px] lg:min-h-0 lg:py-0 ${
                             isActive ? "border-[#1E88E5] bg-[#F3F9FF]" : "border-[#E2E8F0] bg-transparent"
                           }`}
                         >
-                          <div className="absolute left-2 top-1">
+                          <div className="absolute left-2 right-[78px] top-2 min-w-0 lg:top-1">
                             <p
-                              className={`text-[14px] font-normal leading-5 tracking-[-0.05em] ${
+                              className={`truncate text-[14px] font-normal leading-5 tracking-[-0.05em] ${
                                 isActive ? "text-[#334155]" : "text-[#94A3B8]"
                               }`}
                             >
                               {appointment.patient}
                             </p>
                             <p
-                              className={`text-[12px] font-light leading-5 tracking-[-0.05em] ${
+                              className={`truncate text-[12px] font-light leading-5 tracking-[-0.05em] ${
                                 isActive ? "text-[#334155]" : "text-[#94A3B8]"
                               }`}
                             >
@@ -512,7 +1044,7 @@ export function ProfessionalDashboardPage() {
               </div>
 
               {activeAppointment ? (
-                <div className="rounded-xl border border-[#94A3B8] bg-[#F8FAFC] p-[11px]">
+                <div className="rounded-xl border border-[#94A3B8] bg-[#F8FAFC] p-4">
                   <div className="relative h-[121px] overflow-hidden rounded-lg bg-[#e7edf5]">
                     <Image src="/doctor.jpg" alt="Active consultation" fill className="object-cover" />
                     <span className="absolute right-2 top-2 inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[7.5px] font-medium leading-4 tracking-[-0.05em] text-[#1E88E5]">
@@ -520,7 +1052,7 @@ export function ProfessionalDashboardPage() {
                     </span>
                   </div>
 
-                  <div className="mt-3 space-y-[6px] text-[14px] font-medium leading-[12px] tracking-[-0.05em] text-[#334155]">
+                  <div className="mt-4 space-y-2 text-[14px] font-medium leading-[16px] tracking-[-0.05em] text-[#334155]">
                     <p>
                       Time: <span className="font-normal">{activeAppointment.timeRange.split("-")[0].trim()}</span>
                     </p>
@@ -535,18 +1067,21 @@ export function ProfessionalDashboardPage() {
                     </p>
                   </div>
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                     <button
                       type="button"
                       onClick={() => router.push("/professional-platform/schedule")}
-                      className="inline-flex h-[26px] flex-1 cursor-pointer items-center justify-center rounded-[9px] border border-[#334155] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#334155]"
+                      className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[9px] border border-[#334155] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#334155] sm:h-[26px] ${microInteractionClass}`}
                     >
                       View Details
                     </button>
                     <button
                       type="button"
-                      onClick={() => toast.success("Joining consultation...")}
-                      className="inline-flex h-[27px] flex-1 cursor-pointer items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD]"
+                      onClick={() => {
+                        toast.success("Opening schedule for consultation.");
+                        router.push("/professional-platform/schedule");
+                      }}
+                      className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[27px] ${microInteractionClass}`}
                     >
                       Join Now
                     </button>
@@ -557,7 +1092,7 @@ export function ProfessionalDashboardPage() {
           )}
         </article>
 
-        <article className="rounded-2xl bg-[#F8FAFC] px-[13px] pb-4 pt-4">
+        <article className="rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-5 sm:px-5">
           <div className="flex items-center justify-between">
             <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">
               Incoming Request
@@ -576,13 +1111,13 @@ export function ProfessionalDashboardPage() {
               No request matches your search.
             </div>
           ) : (
-            <div className="mt-4 space-y-2">
+            <div className="mt-5 space-y-3">
               {visibleRequests.map((request) => (
                 <motion.article
                   key={request.id}
                   whileHover={{ y: -1 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="rounded-md border border-[#1E88E5] bg-[#F8FAFC] p-2"
+                  className="rounded-xl border border-[#1E88E5] bg-[#F8FAFC] p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
@@ -614,18 +1149,18 @@ export function ProfessionalDashboardPage() {
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-[10px]">
+                  <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
                     <button
                       type="button"
-                      onClick={() => toast.info(`Declined request from ${request.from}`)}
-                      className="inline-flex h-[26px] cursor-pointer items-center justify-center rounded-[12px] bg-[#AD2525] text-[9.5px] font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC]"
+                      onClick={() => handleDashboardRequestAction(request.id, "decline")}
+                      className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#AD2525] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
                     >
                       Decline request
                     </button>
                     <button
                       type="button"
-                      onClick={() => toast.success(`Accepted request from ${request.from}`)}
-                      className="inline-flex h-[26px] cursor-pointer items-center justify-center rounded-[12px] bg-[#1565C0] text-[9.5px] font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC]"
+                      onClick={() => handleDashboardRequestAction(request.id, "accept")}
+                      className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#1565C0] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
                     >
                       Accept request
                     </button>
@@ -635,6 +1170,7 @@ export function ProfessionalDashboardPage() {
             </div>
           )}
         </article>
+      </div>
       </div>
     </section>
   );

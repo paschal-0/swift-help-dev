@@ -9,10 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "chart.js": "^4.5.1",
     "country-flag-icons": "^1.6.15",
     "framer-motion": "^12.35.2",
     "next": "16.1.6",
     "react": "19.2.3",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.3",
     "react-international-phone": "^4.8.0",
     "sonner": "^2.0.7",

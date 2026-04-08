@@ -40,7 +40,7 @@ export function FeaturesSection() {
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="flex min-h-[404px] flex-col rounded-[28px] border border-[#60a5fa] bg-[#f8fafc] px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[900px]:max-[1350px]:min-h-0 min-[900px]:max-[1350px]:w-full min-[900px]:max-[1350px]:rounded-[24px] min-[900px]:max-[1350px]:px-3 min-[900px]:max-[1350px]:py-3 max-[767px]:w-[228px] max-[767px]:min-w-[228px] max-[767px]:px-2.5 max-[767px]:py-2.5"
+              className="group flex min-h-[404px] flex-col rounded-[28px] border border-[#60a5fa] bg-[#f8fafc] px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(15,23,42,0.12)] min-[900px]:max-[1350px]:min-h-0 min-[900px]:max-[1350px]:w-full min-[900px]:max-[1350px]:rounded-[24px] min-[900px]:max-[1350px]:px-3 min-[900px]:max-[1350px]:py-3 max-[767px]:w-[228px] max-[767px]:min-w-[228px] max-[767px]:px-2.5 max-[767px]:py-2.5"
             >
               <div className="h-[154px] overflow-hidden rounded-[18px] bg-[#d8dee7] min-[900px]:max-[1350px]:h-[104px] min-[900px]:max-[1350px]:rounded-[16px]">
                 {feature.imageSrc && (
@@ -49,7 +49,7 @@ export function FeaturesSection() {
                     alt={`${feature.title} feature visual`}
                     width={333}
                     height={154}
-                    className="block h-full w-full object-cover"
+                    className="block h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 )}
               </div>
