@@ -468,7 +468,7 @@ export function ProfessionalSchedulePage() {
                     }`}
                   />
                 </span>
-                <span className="text-left text-[14px] font-medium leading-5 tracking-[-0.05em] text-[#1565C0] sm:text-[16px] sm:font-light">
+                <span className="min-w-0 whitespace-nowrap text-left text-[12px] font-medium leading-none tracking-[-0.05em] text-[#1565C0] sm:text-[14px] sm:font-light md:text-[13px]">
                   {availabilityEnabled ? "Available for new bookings" : "Not available for new bookings"}
                 </span>
               </button>
