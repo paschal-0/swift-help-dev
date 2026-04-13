@@ -620,7 +620,26 @@ export function ProfessionalRequestsPage() {
         }
 
         .requests-scroll::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #1e88e5 0%, #114b7f 100%);
+          background: #1e88e5;
+          border-radius: 999px;
+        }
+
+        .requests-tabs-list {
+          scrollbar-color: #1e88e5 #dbeafe;
+          scrollbar-width: thin;
+        }
+
+        .requests-tabs-list::-webkit-scrollbar {
+          height: 6px;
+        }
+
+        .requests-tabs-list::-webkit-scrollbar-track {
+          background: #dbeafe;
+          border-radius: 999px;
+        }
+
+        .requests-tabs-list::-webkit-scrollbar-thumb {
+          background: #1e88e5;
           border-radius: 999px;
         }
 
@@ -689,7 +708,7 @@ export function ProfessionalRequestsPage() {
             justify-content: flex-start;
             gap: 0.75rem;
             overflow-x: auto;
-            padding-bottom: 0.25rem;
+            padding-bottom: 0.75rem;
           }
 
           .requests-tab-button {
@@ -720,6 +739,7 @@ export function ProfessionalRequestsPage() {
 
           .requests-scroll {
             padding-right: 0.5rem;
+            padding-bottom: 0.5rem;
             row-gap: 1rem;
           }
 
