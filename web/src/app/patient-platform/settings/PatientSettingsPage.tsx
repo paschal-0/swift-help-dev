@@ -1232,23 +1232,23 @@ export function PatientSettingsPage() {
             <section>
               <h2 className="mb-5 text-[18px] font-semibold text-[#334155] sm:text-[20px]">Current plan</h2>
               <div className="grid gap-5 lg:grid-cols-2">
-                <div className="flex h-full flex-col rounded-[16px] border-2 border-[#1565C0] bg-[#E3F2FD] p-5 sm:p-7">
+                <div className="flex h-full flex-col rounded-[16px] border-2 border-brand bg-brand-tint p-5 sm:p-7">
                   {/* The plan name and price wrap onto separate lines rather than
                       overflowing the card when either string is long. */}
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <h3 className="min-w-0 break-words text-[22px] font-semibold text-[#334155] sm:text-[26px]">
+                      <h3 className="min-w-0 break-words text-[22px] font-semibold text-ink sm:text-[26px]">
                         {planLabel === "No active plan" ? "Beginner" : planLabel}
                       </h3>
-                      <p className="min-w-0 break-words text-[22px] font-semibold text-[#334155] sm:text-[26px]">
+                      <p className="min-w-0 break-words text-[22px] font-semibold text-ink sm:text-[26px]">
                         {currentPlan?.priceLabel ?? "Not configured"}
                       </p>
                     </div>
-                    <p className="text-[15px] font-medium text-[#94A3B8] sm:text-[16px]">
+                    <p className="text-[15px] font-medium text-ink-faint sm:text-[16px]">
                       {autoRenew ? "Auto-renew enabled" : "Auto-renew disabled"}
                     </p>
                   </div>
-                  <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-[#334155] sm:text-[16px]">
+                  <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-ink sm:text-[16px]">
                     {(currentPlan?.features?.length ? currentPlan.features : ["Book consultations", "Access medical records", "Basic reminders"]).slice(0, 3).map((feature) => (
                       <p key={feature} className="flex items-start gap-2">
                         <span className="mt-0.5 shrink-0">
@@ -1262,7 +1262,7 @@ export function PatientSettingsPage() {
                     type="button"
                     onClick={toggleAutoRenew}
                     disabled={savingAutoRenew || !hasPaidCurrentPlan}
-                    className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-center text-[15px] font-semibold text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-[16px]"
+                    className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-brand bg-surface px-5 text-center text-[15px] font-semibold text-brand transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-[16px]"
                   >
                     {savingAutoRenew
                       ? "Saving..."

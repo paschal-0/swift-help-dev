@@ -1,6 +1,64 @@
 @import "tailwindcss";
 @import "react-international-phone/style.css";
 
+/*
+ * Swifthelp theme tokens.
+ *
+ * Every value below is a colour the app already uses, so switching a component
+ * from the raw hex to the token changes nothing visually. The point is to give
+ * the palette names, so a colour can be changed in one place instead of being
+ * hunted down across thousands of arbitrary Tailwind values.
+ *
+ * Tailwind generates the usual utilities from these, e.g.
+ *   --color-brand      ->  bg-brand   text-brand   border-brand
+ *   --color-ink-faint  ->  text-ink-faint
+ *
+ * Migrating a screen: replace the hex in the arbitrary value with the token
+ * utility, using the map in the comments (bg-[#1565C0] -> bg-brand). Tailwind's
+ * own palette is still available, so partly-migrated screens keep working.
+ */
+@theme {
+  /* Brand blues -------------------------------------------------------- */
+  --color-brand: #1565c0; /* primary actions, active navigation */
+  --color-brand-accent: #1e88e5; /* lighter primary, gradient start */
+  --color-brand-dark: #114b7f; /* gradient end, pressed state */
+  --color-brand-deep: #064d83; /* deepest gradient end */
+  --color-brand-tint: #e3f2fd; /* signature light blue fill */
+  --color-brand-200: #bfdbfe;
+  --color-brand-100: #dbeafe;
+  --color-brand-50: #eff6ff;
+
+  /* Text --------------------------------------------------------------- */
+  --color-ink: #334155; /* default body text */
+  --color-ink-strong: #0f172a; /* darkest headings, dark panels */
+  --color-ink-deep: #111827;
+  --color-ink-soft: #475569;
+  --color-ink-muted: #64748b; /* secondary text */
+  --color-ink-faint: #94a3b8; /* placeholder and meta text */
+
+  /* Surfaces ----------------------------------------------------------- */
+  --color-surface: #f8fafc; /* cards and panels */
+  --color-surface-alt: #f1f5f9;
+  --color-canvas: #e2e8f0; /* page background behind cards */
+
+  /* Lines -------------------------------------------------------------- */
+  --color-line: #e2e8f0; /* same value as canvas, different intent */
+  --color-line-strong: #cbd5e1; /* input borders */
+  --color-line-soft: #dde5ef;
+  --color-line-muted: #dde6f0;
+
+  /* Status ------------------------------------------------------------- */
+  --color-success: #0d8c24;
+  --color-success-accent: #19aa4a;
+  --color-success-tint: #d9f8de;
+  --color-danger: #b91c1c;
+  --color-danger-strong: #c1121f;
+  --color-danger-tint: #fee2e2;
+  --color-warning: #af8d11;
+  --color-warning-strong: #b45309;
+  --color-warning-tint: #fef3c7;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;

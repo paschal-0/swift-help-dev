@@ -7,12 +7,14 @@ import { getApiErrorMessage } from "@/services/authApi";
 import {
   deleteAdminProfessional,
   getAdminProfessional,
+  getAdminProviderRoles,
   listAdminProfessionals,
   updateAdminProfessional,
   updateAdminUserStatus,
   type AdminProfessionalDetail,
   type AdminProfessionalListItem,
   type AdminProfessionalsResponse,
+  type ProviderRolesConfig,
   type UpdateAdminProfessionalPayload,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
@@ -385,6 +387,14 @@ function ProfessionalProfileModal({
                 <dl>
                   <DetailRow label="License No:" value={professional.professionalInformation.licenseNumber ?? "Not provided"} />
                   <DetailRow label="Speciality:" value={professional.professionalInformation.specialization ?? "Not provided"} />
+                  <DetailRow
+                    label="Provider role:"
+                    value={
+                      professional.professionalInformation.providerRoleName
+                        ? `${professional.professionalInformation.providerRoleName} (${professional.professionalInformation.providerCategoryName ?? "category not set"})`
+                        : "Not assigned"
+                    }
+                  />
                   <DetailRow label="Consultation type:" value={professional.professionalInformation.consultationType ?? "Not provided"} />
                   <DetailRow label="Years of experience:" value={professional.professionalInformation.experienceYears !== null ? `${professional.professionalInformation.experienceYears} years` : "Not provided"} />
                   <DetailRow label="Rating:" value={professional.rating ? `${professional.rating.toFixed(1)} / 5` : "No ratings yet"} />
@@ -453,11 +463,13 @@ function ProfessionalProfileModal({
 function ProfessionalEditModal({
   professional,
   saving,
+  providerRoles,
   onClose,
   onSave,
 }: {
   professional: AdminProfessionalDetail;
   saving: boolean;
+  providerRoles: ProviderRolesConfig | null;
   onClose: () => void;
   onSave: (payload: UpdateAdminProfessionalPayload) => Promise<void>;
 }) {
@@ -473,6 +485,7 @@ function ProfessionalEditModal({
     location: professional.personalInformation.location ?? "",
     licenseNumber: professional.professionalInformation.licenseNumber ?? "",
     specialization: professional.professionalInformation.specialization ?? "",
+    providerRoleId: professional.professionalInformation.providerRoleId ?? "",
     consultationType: professional.professionalInformation.consultationType ?? "",
     experienceYears: professional.professionalInformation.experienceYears?.toString() ?? "",
     professionalBio: professional.professionalInformation.professionalBio ?? "",
@@ -497,6 +510,7 @@ function ProfessionalEditModal({
       location: form.location.trim(),
       licenseNumber: form.licenseNumber.trim(),
       specialization: form.specialization.trim(),
+      providerRoleId: form.providerRoleId,
       consultationType: form.consultationType.trim(),
       experienceYears: Number(form.experienceYears) || 0,
       professionalBio: form.professionalBio.trim(),
@@ -550,6 +564,38 @@ function ProfessionalEditModal({
           <label className={labelClass}>Address<input className={inputClass} value={form.address} onChange={(event) => updateField("address", event.target.value)} /></label>
           <label className={labelClass}>License number<input className={inputClass} value={form.licenseNumber} onChange={(event) => updateField("licenseNumber", event.target.value)} /></label>
           <label className={labelClass}>Speciality<input className={inputClass} value={form.specialization} onChange={(event) => updateField("specialization", event.target.value)} /></label>
+          <label className={`${labelClass} col-span-2`}>
+            Provider role
+            <select
+              className={inputClass}
+              value={form.providerRoleId}
+              onChange={(event) => updateField("providerRoleId", event.target.value)}
+            >
+              <option value="">
+                Not assigned - work it out from the speciality
+              </option>
+              {(providerRoles?.categories ?? []).map((category) => {
+                const roles = (providerRoles?.roles ?? []).filter(
+                  (role) => role.categoryId === category.id && role.isActive,
+                );
+                if (!roles.length) return null;
+                return (
+                  <optgroup key={category.id} label={category.name}>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+            <span className="block pt-1 text-[11px] font-normal text-[#94A3B8]">
+              {form.providerRoleId
+                ? "Patients will find this provider under this role only."
+                : "Without a role, the provider is matched to roles by their speciality text."}
+            </span>
+          </label>
           <label className={labelClass}>Consultation type<input className={inputClass} value={form.consultationType} onChange={(event) => updateField("consultationType", event.target.value)} /></label>
           <label className={labelClass}>Years of experience<input className={inputClass} inputMode="numeric" value={form.experienceYears} onChange={(event) => updateField("experienceYears", event.target.value)} /></label>
           <label className={labelClass}>Currency<input className={inputClass} value={form.currencyCode} onChange={(event) => updateField("currencyCode", event.target.value.toUpperCase())} /></label>
@@ -632,8 +678,24 @@ export default function SuperAdminProfessionalsRoute() {
   const [editLoading, setEditLoading] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [providerRoles, setProviderRoles] = useState<ProviderRolesConfig | null>(
+    null,
+  );
 
   const effectiveSearch = search.trim() || searchText.trim();
+
+  // The role catalogue is the same for every professional, so it loads once.
+  useEffect(() => {
+    let active = true;
+    getAdminProviderRoles()
+      .then((config) => {
+        if (active) setProviderRoles(config);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const loadProfessionals = useCallback(async () => {
     setLoading(true);
@@ -974,6 +1036,7 @@ export default function SuperAdminProfessionalsRoute() {
         <ProfessionalEditModal
           professional={editProfessional}
           saving={savingEdit}
+          providerRoles={providerRoles}
           onClose={() => setEditProfessional(null)}
           onSave={saveProfessionalEdit}
         />

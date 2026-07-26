@@ -344,6 +344,13 @@ export type AdminProfessionalDetail = {
   professionalInformation: {
     licenseNumber: string | null;
     specialization: string | null;
+    /** Provider role assigned by an admin; null means it is inferred. */
+    providerRoleId: string | null;
+    providerRoleName: string | null;
+    providerCategoryId: string | null;
+    providerCategoryName: string | null;
+    countryCode: string | null;
+    countryName: string | null;
     consultationType: string | null;
     experienceYears: number | null;
     professionalBio: string | null;
@@ -1134,6 +1141,8 @@ export type UpdateAdminProfessionalPayload = {
   professionalBio?: string;
   licenseNumber?: string;
   specialization?: string;
+  /** Role id from the provider roles config; "" unassigns. */
+  providerRoleId?: string;
   experienceYears?: number;
   consultationType?: string;
   currencyCode?: string;
