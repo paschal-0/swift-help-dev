@@ -447,7 +447,9 @@ export function OrganisationPlatformShell({
               </span>
             </div>
 
-            <>
+            {/* Scrolls when the viewport is too short for the whole nav, so the
+                bottom items stay reachable instead of being clipped. */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]">
               <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
                 {mainNav.map((item) => (
                   <SidebarNavItem
@@ -502,7 +504,7 @@ export function OrganisationPlatformShell({
                   </span>
                 </button>
               </div>
-            </>
+            </div>
           </motion.aside>
 
           <aside className="hidden xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4">
@@ -520,7 +522,7 @@ export function OrganisationPlatformShell({
               </span>
             </div>
 
-            <>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]">
               <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
                 {mainNav.map((item) => (
                   <SidebarNavItem
@@ -557,7 +559,7 @@ export function OrganisationPlatformShell({
                   </span>
                 </button>
               </div>
-            </>
+            </div>
           </aside>
 
           <main className="w-full px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12 xl:pb-12 xl:pt-9">

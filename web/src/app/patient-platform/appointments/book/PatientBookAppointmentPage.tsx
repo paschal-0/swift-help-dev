@@ -30,6 +30,7 @@ type ProfessionalCard = {
   id: string;
   name: string;
   role: string;
+  countryName: string | null;
   imageSrc: string | null;
   nextAvailable: string;
   acceptingBookings: boolean;
@@ -165,6 +166,7 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     id: provider.userId,
     name: provider.name,
     role: provider.specialization,
+    countryName: provider.countryName?.trim() || null,
     imageSrc: normalizeAvatarUrl(provider.avatarUrl),
     nextAvailable:
       provider.nextAvailableLabel ||
@@ -368,6 +370,7 @@ export function PatientBookAppointmentPage() {
     draft?.professionalId ?? "",
   );
   const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [providerRolesConfig, setProviderRolesConfig] = useState<PatientProviderRolesConfig>(
     fallbackProviderRolesConfig,
   );
@@ -393,9 +396,9 @@ export function PatientBookAppointmentPage() {
         id: category.id,
         title:
           category.id === "general"
-            ? "Book General Consultation"
+            ? "General Consultation"
             : category.id === "specialist"
-              ? "Book Specialist"
+              ? "Specialist"
               : category.name,
         description: category.description || category.name,
       })),
@@ -461,7 +464,35 @@ export function PatientBookAppointmentPage() {
     };
   }, [activeCareType, activeProfessionalType, configuredProfessionalTypes, draft?.professionalId]);
 
-  const visibleProfessionals = providerCards;
+  // Built from the unfiltered list so the choices stay put while filtering.
+  const countryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          providerCards
+            .map((card) => card.countryName)
+            .filter((country): country is string => Boolean(country)),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [providerCards],
+  );
+
+  // A location filter only applies while the professionals on offer include it.
+  const activeCountry = useMemo(
+    () =>
+      selectedCountry && countryOptions.includes(selectedCountry)
+        ? selectedCountry
+        : "",
+    [countryOptions, selectedCountry],
+  );
+
+  const visibleProfessionals = useMemo(
+    () =>
+      activeCountry
+        ? providerCards.filter((card) => card.countryName === activeCountry)
+        : providerCards,
+    [activeCountry, providerCards],
+  );
 
   const selectedCare = useMemo(
     () => configuredCareTypes.find((i) => i.id === activeCareType) || configuredCareTypes[0] || careTypes[0],
@@ -643,14 +674,36 @@ export function PatientBookAppointmentPage() {
           </section>
 
           <section className="overflow-hidden rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] py-4 shadow-sm xl:rounded-[12px] xl:border-transparent xl:bg-[#F8FAFC] xl:p-4 xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-            <div className="mb-4 flex items-center gap-3 px-4 xl:px-0">
-              <StepBadge step="3" />
-              <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
-                <span className="xl:hidden">Available Professionals</span>
-                <span className="hidden xl:inline">
-                  Available professionals
-                </span>
-              </h2>
+            <div className="mb-4 flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between xl:px-0">
+              <div className="flex items-center gap-3">
+                <StepBadge step="3" />
+                <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
+                  <span className="xl:hidden">Available Professionals</span>
+                  <span className="hidden xl:inline">
+                    Available professionals
+                  </span>
+                </h2>
+              </div>
+
+              {countryOptions.length ? (
+                <label className="flex items-center gap-2 sm:justify-end">
+                  <span className="whitespace-nowrap text-[12px] font-medium text-[#64748B]">
+                    Location
+                  </span>
+                  <select
+                    value={activeCountry}
+                    onChange={(event) => setSelectedCountry(event.target.value)}
+                    className="min-h-[36px] min-w-[150px] cursor-pointer rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[13px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                  >
+                    <option value="">All locations</option>
+                    {countryOptions.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </div>
 
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3 xl:gap-2">
@@ -666,7 +719,7 @@ export function PatientBookAppointmentPage() {
                         setSelectedProfessionalId(prof.id);
                     }}
                     className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:min-h-[205px] xl:rounded-[12px] xl:p-[7px] ${
-                      selectedProfessionalId === prof.id
+                      selectedProfessional?.id === prof.id
                         ? "border-[#1565C0] bg-[#F2F8FF] ring-2 ring-[#1565C0]/20 xl:border-2 xl:border-[#1E88E5] xl:bg-[#F8FAFC] xl:ring-0 xl:shadow-[0_0_25px_rgba(34,132,217,0.25)]"
                         : prof.acceptingBookings
                           ? "border-[#E2EDF8] bg-white xl:border xl:bg-transparent"
@@ -690,6 +743,14 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.role}
                         </p>
+                        {prof.countryName ? (
+                          <p
+                            className="mt-0.5 truncate text-[11px] text-[#94A3B8]"
+                            title={`Based in ${prof.countryName}`}
+                          >
+                            {prof.countryName}
+                          </p>
+                        ) : null}
                         <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 xl:mt-[4px] xl:bg-transparent xl:px-0 xl:py-0 xl:font-normal xl:text-[#94A3B8]">
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                           {prof.nextAvailable}
@@ -715,6 +776,14 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.role}
                         </p>
+                        {prof.countryName ? (
+                          <p
+                            className="truncate text-[10px] font-normal leading-4 text-[#94A3B8]"
+                            title={`Based in ${prof.countryName}`}
+                          >
+                            {prof.countryName}
+                          </p>
+                        ) : null}
                       </div>
 
                       <p
@@ -739,7 +808,7 @@ export function PatientBookAppointmentPage() {
                       >
                         {!prof.acceptingBookings
                           ? "Unavailable"
-                          : selectedProfessionalId === prof.id
+                          : selectedProfessional?.id === prof.id
                             ? "Selected"
                             : "Select"}
                       </button>
@@ -749,7 +818,9 @@ export function PatientBookAppointmentPage() {
               </AnimatePresence>
               {visibleProfessionals.length === 0 ? (
                 <div className="min-w-[280px] rounded-[20px] border border-dashed border-[#94A3B8] bg-white p-4 text-sm text-[#64748B] md:min-w-0 xl:rounded-[12px]">
-                  No available professionals found yet.
+                  {activeCountry
+                    ? `No professionals based in ${activeCountry} are available yet. Choose another location.`
+                    : "No available professionals found yet."}
                 </div>
               ) : null}
             </div>

@@ -16,11 +16,22 @@ import {
 type AppointmentStatus =
   | "Completed"
   | "Upcoming"
+  | "Ongoing"
   | "Pending"
   | "Declined"
   | "Cancelled"
   | "Expired"
   | "Missed";
+
+/** Grace period after the end time before a consultation counts as missed. */
+const MISSED_GRACE_MS = 30 * 60 * 1000;
+
+/**
+ * Backend statuses that have not reached an outcome yet. A consultation the
+ * professional started stays "ongoing" until it is closed out, so it has to be
+ * treated as overdue once its end time passes rather than shown as upcoming.
+ */
+const UNFINISHED_APPOINTMENT_STATUSES = ["upcoming", "ongoing"];
 
 type AppointmentItem = {
   id: string;
@@ -83,20 +94,24 @@ function formatInstantDate(value?: string | null) {
 }
 
 function isOverdueUncompletedAppointment(appointment: PatientAppointment) {
-  if (appointment.status !== "upcoming") return false;
+  if (!UNFINISHED_APPOINTMENT_STATUSES.includes(appointment.status)) {
+    return false;
+  }
   if (appointment.endsAt) {
-    return new Date(appointment.endsAt).getTime() + 30 * 60 * 1000 <= Date.now();
+    return new Date(appointment.endsAt).getTime() + MISSED_GRACE_MS <= Date.now();
   }
 
   const endsAt = parseAppointmentDate(appointment.scheduledDate);
   const [hourText, minuteText = "00"] = appointment.endTime.split(":");
   endsAt.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
 
-  return endsAt.getTime() + 30 * 60 * 1000 <= Date.now();
+  return endsAt.getTime() + MISSED_GRACE_MS <= Date.now();
 }
 
 function mapAppointment(appointment: PatientAppointment): AppointmentItem {
   const professional = appointment.professional;
+  // Overdue is checked before "ongoing" so a consultation left open days ago
+  // reads as missed, while one running right now still reads as ongoing.
   const status: AppointmentStatus =
     appointment.status === "completed"
       ? "Completed"
@@ -106,7 +121,9 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
           ? "Missed"
           : isOverdueUncompletedAppointment(appointment)
             ? "Missed"
-          : "Upcoming";
+            : appointment.status === "ongoing"
+              ? "Ongoing"
+              : "Upcoming";
 
   return {
     id: appointment.id,
@@ -153,6 +170,7 @@ function mapRequest(request: PatientConsultationRequest): AppointmentItem {
 
 function statusClass(status: AppointmentStatus) {
   if (status === "Pending") return "bg-[#E3F2FD] text-[#1565C0]";
+  if (status === "Ongoing") return "bg-[#FEF3C7] text-[#B45309]";
   if (["Declined", "Cancelled", "Expired", "Missed"].includes(status)) {
     return "bg-[#FEE2E2] text-[#B91C1C]";
   }
@@ -254,10 +272,12 @@ export function PatientAppointmentsPage() {
   const appointments = useMemo(
     () =>
       fetchedAppointments.filter((appointment) => {
+        // A consultation in progress still belongs under Upcoming, not Past.
+        const activeStatuses = ["Upcoming", "Ongoing", "Pending"];
         const belongsToTab =
           tab === "upcoming"
-            ? appointment.status === "Upcoming" || appointment.status === "Pending"
-            : !["Upcoming", "Pending"].includes(appointment.status);
+            ? activeStatuses.includes(appointment.status)
+            : !activeStatuses.includes(appointment.status);
         if (!belongsToTab || !selectedDate) return belongsToTab;
         const appointmentDate = new Date(appointment.date);
         return (

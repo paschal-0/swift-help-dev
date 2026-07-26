@@ -146,9 +146,9 @@ export type PatientUpdate = {
 
 export type PaystackConsultationPayment = {
   alreadyPaid?: boolean;
-  authorizationUrl?: string;
+  authorizationUrl?: string | null;
   accessCode?: string | null;
-  reference?: string;
+  reference?: string | null;
   transactionId?: string;
   consultationId?: string;
   planId?: string;
@@ -157,7 +157,26 @@ export type PaystackConsultationPayment = {
   autoRenew?: boolean;
   paymentStatus?: string;
   escrowStatus?: string;
+  amount?: number;
+  amountMinor?: number;
+  currency?: string;
+  baseAmount?: number;
+  baseCurrency?: string;
+  converted?: boolean;
+  idempotentReplay?: boolean;
 };
+
+/** Currencies Paystack can collect a subscription payment in. */
+export const PAYSTACK_SUBSCRIPTION_CURRENCIES = [
+  "NGN",
+  "USD",
+  "GHS",
+  "ZAR",
+  "KES",
+] as const;
+
+export type PaystackSubscriptionCurrency =
+  (typeof PAYSTACK_SUBSCRIPTION_CURRENCIES)[number];
 
 export type PatientDashboard = {
   patient: {
@@ -184,6 +203,9 @@ export type PatientProvider = {
   specialization: string;
   consultationType: string;
   location: string | null;
+  /** Residence country of the professional. */
+  countryCode?: string | null;
+  countryName?: string | null;
   avatarUrl?: string | null;
   verificationStatus: string;
   availability: unknown;
@@ -878,6 +900,8 @@ export function listPatientProviders(params?: {
   providerCategory?: string;
   providerRoleId?: string;
   consultationType?: string;
+  /** Country code or country name to filter professionals by residence. */
+  country?: string;
 }) {
   return apiRequest<PatientProvider[]>(
     `/patient/providers${buildQuery(params)}`,
@@ -1175,6 +1199,12 @@ export function initializePaystackSubscriptionPayment(payload: {
   billingEmail: string;
   billingName: string;
   autoRenew?: boolean;
+  currency?: string;
+  /**
+   * Send the same key when retrying a failed submission so the backend reuses
+   * the pending checkout instead of starting a second payment.
+   */
+  idempotencyKey?: string;
 }) {
   return apiRequest<PaystackConsultationPayment>("/payments/paystack/subscriptions/initialize", {
     method: "POST",

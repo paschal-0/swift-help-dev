@@ -46,6 +46,7 @@ type PasswordForm = {
 type SubscriptionPaymentForm = {
   fullName: string;
   email: string;
+  currency: string;
 };
 
 type SelectOption = {
@@ -123,7 +124,16 @@ const emptyGeneralForm: GeneralForm = {
 const emptySubscriptionPaymentForm: SubscriptionPaymentForm = {
   fullName: "",
   email: "",
+  currency: "NGN",
 };
+
+const subscriptionCurrencyOptions: SelectOption[] = [
+  { label: "NGN - Nigerian naira", value: "NGN" },
+  { label: "USD - US dollar", value: "USD" },
+  { label: "GHS - Ghanaian cedi", value: "GHS" },
+  { label: "ZAR - South African rand", value: "ZAR" },
+  { label: "KES - Kenyan shilling", value: "KES" },
+];
 
 const billingRowsPerPage = 5;
 
@@ -555,6 +565,7 @@ export function PatientSettingsPage() {
   const [subscriptionPaymentForm, setSubscriptionPaymentForm] = useState<SubscriptionPaymentForm>(
     emptySubscriptionPaymentForm,
   );
+  const [subscriptionIdempotencyKey, setSubscriptionIdempotencyKey] = useState("");
   const [sessionLabel, setSessionLabel] = useState("Current browser session");
 
   const loadSettings = useCallback(async () => {
@@ -713,6 +724,7 @@ export function PatientSettingsPage() {
     () => availablePlans.find((plan) => plan.id !== currentPlan?.id) ?? availablePlans[0] ?? null,
     [availablePlans, currentPlan?.id],
   );
+  const hasPaidCurrentPlan = Number(currentPlan?.monthlyPrice ?? 0) > 0;
 
   const totalBillingPages = Math.max(1, Math.ceil(billingHistory.length / billingRowsPerPage));
   const currentBillingPage = Math.min(billingPage, totalBillingPages);
@@ -836,13 +848,21 @@ export function PatientSettingsPage() {
       return;
     }
 
+    const planCurrency = (plan.currency ?? "").toUpperCase();
+
     setSelectedSubscriptionPlan(plan);
     setShowSubscriptionPayment(true);
     setSubscriptionPaymentForm((current) => ({
       ...current,
       fullName: current.fullName || generalForm.fullName,
       email: current.email || generalForm.email,
+      currency: subscriptionCurrencyOptions.some((option) => option.value === planCurrency)
+        ? planCurrency
+        : current.currency || "NGN",
     }));
+    // One key per attempt at this plan: a retry after an error reuses it so the
+    // backend continues the same payment instead of starting a second one.
+    setSubscriptionIdempotencyKey(`sub-${plan.id}-${crypto.randomUUID()}`);
   };
 
   const submitSubscriptionPayment = async () => {
@@ -862,10 +882,22 @@ export function PatientSettingsPage() {
         billingName: subscriptionPaymentForm.fullName,
         billingEmail: subscriptionPaymentForm.email,
         autoRenew: true,
+        currency: subscriptionPaymentForm.currency,
+        idempotencyKey: subscriptionIdempotencyKey || undefined,
       });
 
+      if (payment.alreadyPaid) {
+        toast.success("This subscription is already paid for.");
+        setShowSubscriptionPayment(false);
+        setSubmittingSubscription(false);
+        await loadSettings();
+        return;
+      }
+
       if (!payment.authorizationUrl) {
-        throw new Error("Paystack checkout URL was not returned.");
+        throw new Error(
+          "Paystack did not return a checkout link. Please try again in a moment.",
+        );
       }
 
       window.location.assign(payment.authorizationUrl);
@@ -915,7 +947,7 @@ export function PatientSettingsPage() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-0">
+    <section className="mx-auto w-full max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
       <h1 className="mb-5 text-[26px] font-semibold text-[#334155] sm:text-[30px]">Settings</h1>
 
       <div className="rounded-[18px] bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:p-6 lg:p-10">
@@ -1200,58 +1232,74 @@ export function PatientSettingsPage() {
             <section>
               <h2 className="mb-5 text-[18px] font-semibold text-[#334155] sm:text-[20px]">Current plan</h2>
               <div className="grid gap-5 lg:grid-cols-2">
-                <div className="rounded-[16px] border-2 border-[#1565C0] bg-[#E3F2FD] p-5 sm:p-7">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-[24px] font-semibold text-[#334155] sm:text-[28px]">
+                <div className="flex h-full flex-col rounded-[16px] border-2 border-[#1565C0] bg-[#E3F2FD] p-5 sm:p-7">
+                  {/* The plan name and price wrap onto separate lines rather than
+                      overflowing the card when either string is long. */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <h3 className="min-w-0 break-words text-[22px] font-semibold text-[#334155] sm:text-[26px]">
                         {planLabel === "No active plan" ? "Beginner" : planLabel}
                       </h3>
-                      <p className="mt-2 text-[18px] font-medium text-[#94A3B8]">
-                        {autoRenew ? "Auto-renew enabled" : "Auto-renew disabled"}
+                      <p className="min-w-0 break-words text-[22px] font-semibold text-[#334155] sm:text-[26px]">
+                        {currentPlan?.priceLabel ?? "Not configured"}
                       </p>
                     </div>
-                    <p className="text-[28px] font-semibold text-[#334155] sm:text-[34px]">
-                      {currentPlan?.priceLabel ?? "Not configured"}
+                    <p className="text-[15px] font-medium text-[#94A3B8] sm:text-[16px]">
+                      {autoRenew ? "Auto-renew enabled" : "Auto-renew disabled"}
                     </p>
                   </div>
-                  <div className="mt-8 space-y-3 text-[16px] font-medium text-[#334155] sm:text-[18px]">
+                  <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-[#334155] sm:text-[16px]">
                     {(currentPlan?.features?.length ? currentPlan.features : ["Book consultations", "Access medical records", "Basic reminders"]).slice(0, 3).map((feature) => (
-                      <p key={feature} className="flex items-center gap-2">
-                        <CheckBadgeIcon /> {feature}
+                      <p key={feature} className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0">
+                          <CheckBadgeIcon />
+                        </span>
+                        <span className="min-w-0 break-words">{feature}</span>
                       </p>
                     ))}
                   </div>
                   <button
                     type="button"
                     onClick={toggleAutoRenew}
-                    disabled={savingAutoRenew}
-                    className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
+                    disabled={savingAutoRenew || !hasPaidCurrentPlan}
+                    className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-center text-[15px] font-semibold text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-[16px]"
                   >
-                    {savingAutoRenew ? "Saving..." : autoRenew ? "Cancel Subscription" : "Enable Auto-renew"}
+                    {savingAutoRenew
+                      ? "Saving..."
+                      : !hasPaidCurrentPlan
+                        ? "Subscribe to enable auto-renew"
+                        : autoRenew
+                          ? "Cancel Subscription"
+                          : "Enable Auto-renew"}
                   </button>
                 </div>
 
-                <div className="rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-[24px] font-semibold sm:text-[28px]">{highlightedPlan?.name ?? "Pro"}</h3>
-                      <p className="mt-2 text-[18px] font-medium text-[#CBD5E1]">Available plan</p>
+                <div className="flex h-full flex-col rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <h3 className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
+                        {highlightedPlan?.name ?? "Pro"}
+                      </h3>
+                      <p className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
+                        {highlightedPlan?.priceLabel ?? "Not configured"}
+                      </p>
                     </div>
-                    <p className="text-[28px] font-semibold sm:text-[34px]">
-                      {highlightedPlan?.priceLabel ?? "Not configured"}
-                    </p>
+                    <p className="text-[15px] font-medium text-[#CBD5E1] sm:text-[16px]">Available plan</p>
                   </div>
-                  <div className="mt-8 space-y-3 text-[16px] font-medium text-[#E2E8F0] sm:text-[18px]">
+                  <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-[#E2E8F0] sm:text-[16px]">
                     {(highlightedPlan?.features?.length ? highlightedPlan.features : ["Priority consultations", "Expanded health reports", "Advanced reminders"]).slice(0, 3).map((feature) => (
-                      <p key={feature} className="flex items-center gap-2">
-                        <CheckBadgeIcon /> {feature}
+                      <p key={feature} className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0">
+                          <CheckBadgeIcon />
+                        </span>
+                        <span className="min-w-0 break-words">{feature}</span>
                       </p>
                     ))}
                   </div>
                   <button
                     type="button"
                     onClick={() => startSubscriptionPayment(highlightedPlan)}
-                    className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
+                    className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-center text-[15px] font-semibold text-[#1565C0] transition hover:bg-white sm:text-[16px]"
                   >
                     Add payment detail
                   </button>
@@ -1297,11 +1345,29 @@ export function PatientSettingsPage() {
                       className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
                     />
                   </label>
+                  <label className="flex min-w-0 flex-col gap-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">Pay in currency</span>
+                    <select
+                      value={subscriptionPaymentForm.currency}
+                      onChange={(event) => updateSubscriptionPaymentField("currency", event.target.value)}
+                      className="min-h-[44px] cursor-pointer rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    >
+                      {subscriptionCurrencyOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[12px] font-medium leading-5 text-[#64748B]">
                     Card details are entered on Paystack secure checkout before activation.
+                    {selectedSubscriptionPlan?.currency &&
+                    subscriptionPaymentForm.currency !== selectedSubscriptionPlan.currency.toUpperCase()
+                      ? ` The plan price is converted from ${selectedSubscriptionPlan.currency.toUpperCase()} to ${subscriptionPaymentForm.currency} at today's rate, and Paystack shows the exact amount before you pay.`
+                      : ""}
                   </p>
                   <button
                     type="button"

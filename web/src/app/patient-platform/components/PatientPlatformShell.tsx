@@ -451,7 +451,10 @@ export function PatientPlatformShell({
             </span>
           </div>
 
-          <>
+          {/* Scrolls when the viewport is too short for the whole nav, so the
+              bottom items stay reachable instead of being clipped. `min-h-0` is
+              what lets this flex child shrink enough to scroll at all. */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]">
             <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
               {mainNav.map((item) => (
                 <SidebarNavItem
@@ -505,7 +508,7 @@ export function PatientPlatformShell({
                 </span>
               </button>
             </div>
-          </>
+          </div>
         </motion.aside>
 
         <aside
@@ -520,7 +523,7 @@ export function PatientPlatformShell({
             </span>
           </div>
 
-          <>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]">
             <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
               {mainNav.map((item) => (
                 <SidebarNavItem
@@ -556,7 +559,7 @@ export function PatientPlatformShell({
                 </span>
               </button>
             </div>
-          </>
+          </div>
         </aside>
 
         <main

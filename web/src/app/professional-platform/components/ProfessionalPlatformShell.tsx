@@ -542,7 +542,9 @@ export function ProfessionalPlatformShell({
               </span>
             </div>
 
-            <>
+            {/* Scrolls when the viewport is too short for the whole nav, so the
+                bottom items stay reachable instead of being clipped. */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]">
               <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
                 {mainNav.map((item) => (
                   <SidebarNavItem
@@ -579,7 +581,7 @@ export function ProfessionalPlatformShell({
                   </span>
                 </button>
               </div>
-            </>
+            </div>
           </aside>
 
           <main

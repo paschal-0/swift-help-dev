@@ -516,7 +516,7 @@ export function ProfessionalLiveConsultationPage() {
         current ? { ...current, consultation: updated } : current,
       );
       toast.info(
-        "Reconnect grace started. You have 5 minutes to return before the consultation closes.",
+        "You left the consultation. The room stays open until the consultation window ends, so you can rejoin if the patient is still there.",
       );
       router.push("/professional-platform/schedule");
     } catch (error) {
