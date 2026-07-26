@@ -7,6 +7,7 @@ import {
   configureAdminPaymentGateway,
   disconnectAdminPaymentGateway,
   flagAdminPaymentTransaction,
+  getAdminCountries,
   getAdminPaymentTransaction,
   getAdminPaymentsOverview,
   removeAdminPaymentTransaction,
@@ -307,6 +308,10 @@ export default function SuperAdminPaymentsRoute() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [country, setCountry] = useState("all");
+  const [countries, setCountries] = useState<
+    Array<{ countryCode: string; countryName: string }>
+  >([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<AdminPaymentTransaction | null>(null);
@@ -330,6 +335,7 @@ export default function SuperAdminPaymentsRoute() {
       const response = await getAdminPaymentsOverview({
         search: debouncedSearch,
         status,
+        country,
         page,
         limit: 10,
       });
@@ -339,15 +345,28 @@ export default function SuperAdminPaymentsRoute() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, status]);
+  }, [country, debouncedSearch, page, status]);
 
   useEffect(() => {
     loadPayments();
   }, [loadPayments]);
 
+  // The country list is independent of the filters, so it is fetched once.
+  useEffect(() => {
+    let active = true;
+    getAdminCountries()
+      .then((rows) => {
+        if (active) setCountries(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status]);
+  }, [country, debouncedSearch, status]);
 
   const tableRows = useMemo(() => {
     const needle = debouncedSearch.toLowerCase();
@@ -650,6 +669,25 @@ export default function SuperAdminPaymentsRoute() {
                 />
               </label>
               {activeTab === "transactions" ? <StatusDropdown value={status} onChange={setStatus} /> : null}
+              {countries.length ? (
+                <label className="flex h-11 shrink-0 items-center gap-2 rounded-[8px] bg-[#E9EFF6] px-4">
+                  <span className="whitespace-nowrap text-[13px] font-medium text-[#64748B]">
+                    Country
+                  </span>
+                  <select
+                    value={country}
+                    onChange={(event) => setCountry(event.target.value)}
+                    className="min-w-[130px] cursor-pointer bg-transparent text-[14px] font-medium text-[#334155] outline-none"
+                  >
+                    <option value="all">All countries</option>
+                    {countries.map((option) => (
+                      <option key={option.countryCode} value={option.countryCode}>
+                        {option.countryName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <button
                 type="button"
                 onClick={exportPdf}

@@ -17,6 +17,7 @@ import {
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import {
   getSuperAdminDashboard,
+  type AdminCountryBreakdownRow,
   type SuperAdminDashboard,
   type SuperAdminMetric,
 } from "@/services/adminApi";
@@ -39,6 +40,27 @@ const metricIcons = ["patients", "consultations", "professionals", "shifts", "ai
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-NG").format(value);
+}
+
+const countryColumns = [
+  { key: "countryName", label: "Country" },
+  { key: "patients", label: "Patients" },
+  { key: "professionals", label: "Professionals" },
+  { key: "organizations", label: "Organisations" },
+  { key: "appointments", label: "Appointments" },
+  { key: "completedAppointments", label: "Completed" },
+  { key: "transactions", label: "Payments" },
+  { key: "revenue", label: "Revenue" },
+] as const;
+
+type CountryColumnKey = (typeof countryColumns)[number]["key"];
+
+/**
+ * Only used to order the revenue column. Currencies are not converted, so this
+ * is a sort key rather than a figure worth showing anywhere.
+ */
+function countryRevenueTotal(row: AdminCountryBreakdownRow) {
+  return row.revenue.reduce((sum, entry) => sum + entry.amount, 0);
 }
 
 function formatCurrency(value: number, currency = "NGN") {
@@ -164,6 +186,10 @@ function DashboardSkeleton() {
 
 export function SuperAdminDashboardPage() {
   const { searchText } = useSuperAdminShell();
+  const [countrySort, setCountrySort] = useState<{
+    key: CountryColumnKey;
+    direction: "asc" | "desc";
+  }>({ key: "countryName", direction: "asc" });
   const [dashboard, setDashboard] = useState<SuperAdminDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,14 +218,46 @@ export function SuperAdminDashboardPage() {
     };
   }, []);
 
+  // The search box also matches a country, so the feed can be narrowed to one.
   const filteredActivity = useMemo(() => {
     const query = searchText.trim().toLowerCase();
     if (!dashboard) return [];
     if (!query) return dashboard.liveActivity;
     return dashboard.liveActivity.filter((activity) =>
-      activity.text.toLowerCase().includes(query),
+      [activity.text, activity.countryName ?? "", activity.countryCode ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
     );
   }, [dashboard, searchText]);
+
+  const toggleCountrySort = (key: CountryColumnKey) => {
+    setCountrySort((current) =>
+      current.key === key
+        ? {
+            key,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          }
+        : // Names read best A–Z; every other column is most useful highest-first.
+          { key, direction: key === "countryName" ? "asc" : "desc" },
+    );
+  };
+
+  const sortedCountryBreakdown = useMemo(() => {
+    const rows = dashboard?.countryBreakdown ?? [];
+    const { key, direction } = countrySort;
+    const factor = direction === "asc" ? 1 : -1;
+
+    return [...rows].sort((a, b) => {
+      if (key === "countryName") {
+        return a.countryName.localeCompare(b.countryName) * factor;
+      }
+      if (key === "revenue") {
+        return (countryRevenueTotal(a) - countryRevenueTotal(b)) * factor;
+      }
+      return (a[key] - b[key]) * factor;
+    });
+  }, [countrySort, dashboard]);
 
   const patientChartData = useMemo(() => {
     if (!dashboard) return null;
@@ -376,9 +434,14 @@ export function SuperAdminDashboardPage() {
             {filteredActivity.length ? (
               filteredActivity.map((activity, index) => (
                 <div key={`${activity.occurredAt}-${index}`} className="flex items-center gap-4 px-5 py-3">
-                  <span className="h-8 w-8 rounded-full bg-[#E3F2FD]" />
-                  <span className="flex-1 text-[15px] text-[#334155]">{activity.text}</span>
-                  <span className="text-[14px] text-[#94A3B8]">{formatRelative(activity.occurredAt)}</span>
+                  <span className="h-8 w-8 shrink-0 rounded-full bg-[#E3F2FD]" />
+                  <span className="min-w-0 flex-1 text-[15px] text-[#334155]">{activity.text}</span>
+                  {activity.countryName ? (
+                    <span className="shrink-0 rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#1565C0]">
+                      {activity.countryName}
+                    </span>
+                  ) : null}
+                  <span className="shrink-0 text-[14px] text-[#94A3B8]">{formatRelative(activity.occurredAt)}</span>
                 </div>
               ))
             ) : (
@@ -549,6 +612,107 @@ export function SuperAdminDashboardPage() {
             })}
           </div>
         </article>
+      </section>
+
+      <section className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-[20px] font-semibold text-[#334155]">
+            Activity and finance by country
+          </h2>
+          <p className="text-[14px] text-[#94A3B8]">
+            Click a column to sort. Revenue is listed per currency, because
+            accounts in different countries pay in different currencies.
+          </p>
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[860px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-[#E2E8F0] text-[13px] font-semibold uppercase text-[#64748B]">
+                {countryColumns.map((column) => (
+                  <th key={column.key} className="px-3 py-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleCountrySort(column.key)}
+                      className={`inline-flex cursor-pointer items-center gap-1 transition hover:text-[#1565C0] ${
+                        countrySort.key === column.key
+                          ? "text-[#1565C0]"
+                          : "text-[#64748B]"
+                      }`}
+                    >
+                      {column.label}
+                      <span aria-hidden className="text-[11px]">
+                        {countrySort.key === column.key
+                          ? countrySort.direction === "asc"
+                            ? "▲"
+                            : "▼"
+                          : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCountryBreakdown.length ? (
+                sortedCountryBreakdown.map((row) => (
+                  <tr
+                    key={row.countryCode ?? "unknown"}
+                    className="border-b border-[#E2E8F0] text-[15px] text-[#334155] last:border-b-0"
+                  >
+                    <td className="px-3 py-3 font-medium">
+                      {row.countryName}
+                      {row.countryCode ? (
+                        <span className="ml-2 text-[13px] text-[#94A3B8]">
+                          {row.countryCode}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3">{formatNumber(row.patients)}</td>
+                    <td className="px-3 py-3">
+                      {formatNumber(row.professionals)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {formatNumber(row.organizations)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {formatNumber(row.appointments)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {formatNumber(row.completedAppointments)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {formatNumber(row.transactions)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {row.revenue.length ? (
+                        <span className="flex flex-col gap-0.5">
+                          {row.revenue.map((entry) => (
+                            <span key={entry.currency}>
+                              {formatCurrency(entry.amount, entry.currency)}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={countryColumns.length}
+                    className="px-3 py-10 text-center text-[14px] text-[#94A3B8]"
+                  >
+                    No country data yet. Countries appear once accounts record a
+                    country or an address that names one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

@@ -16,6 +16,21 @@ export type SuperAdminActivity = {
   type: string;
   text: string;
   occurredAt: string;
+  countryCode?: string | null;
+  countryName?: string | null;
+};
+
+/** Activity and finance totals for one country. */
+export type AdminCountryBreakdownRow = {
+  countryCode: string | null;
+  countryName: string;
+  patients: number;
+  professionals: number;
+  organizations: number;
+  appointments: number;
+  completedAppointments: number;
+  transactions: number;
+  revenue: Array<{ currency: string; amount: number }>;
 };
 
 export type SuperAdminHealthRow = {
@@ -70,6 +85,7 @@ export type SuperAdminDashboard = {
     region: string;
     count: number;
   }>;
+  countryBreakdown: AdminCountryBreakdownRow[];
 };
 
 export type AdminReportCard = {
@@ -1267,6 +1283,7 @@ function mapLegacyStatsToDashboard(stats: LegacyAdminDashboardStats): SuperAdmin
     upcomingShifts: [],
     recentTransactions: [],
     topRegions: [],
+    countryBreakdown: [],
   };
 }
 
@@ -1638,6 +1655,7 @@ export async function getAdminPaymentsOverview(params: {
   search?: string;
   status?: string;
   type?: string;
+  country?: string;
   page?: number;
   limit?: number;
 } = {}) {
@@ -1646,6 +1664,9 @@ export async function getAdminPaymentsOverview(params: {
   if (params.search) query.set("search", params.search);
   if (params.status && params.status !== "all") query.set("status", params.status);
   if (params.type && params.type !== "all") query.set("type", params.type);
+  if (params.country && params.country !== "all") {
+    query.set("country", params.country);
+  }
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 
@@ -1654,6 +1675,14 @@ export async function getAdminPaymentsOverview(params: {
   return apiRequest<AdminPaymentsOverview>(`/admin/payments/overview${suffix}`, {
     method: "GET",
   });
+}
+
+/** Countries that currently have accounts, for filter menus. */
+export async function getAdminCountries() {
+  return apiRequest<Array<{ countryCode: string; countryName: string }>>(
+    "/admin/countries",
+    { method: "GET" },
+  );
 }
 
 export async function listAdminSystemConfigs(params: { category?: string } = {}) {
