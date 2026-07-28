@@ -78,7 +78,7 @@ export function OrganisationReferralWithdrawPage() {
           </p>
           <p className="mx-auto mt-4 max-w-[460px] text-[15px] leading-[1.45] tracking-[-0.05em] text-[#64748B]">
             Referral payouts are not self-service yet. Eligible referral credits will be reviewed
-            and released through the Swifthelp finance process once payout operations are enabled.
+            and released through the SwiftHelp finance process once payout operations are enabled.
           </p>
         </div>
 

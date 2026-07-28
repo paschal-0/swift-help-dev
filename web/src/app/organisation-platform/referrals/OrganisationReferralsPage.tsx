@@ -203,7 +203,7 @@ function buildOrganizationPartnerTiers(referrals: OrganizationReferrals | null):
       id: "community-advocate",
       badge: "Level 2 - Advocate",
       title: "Community Advocate",
-      description: "For organizations consistently introducing verified Swifthelp members.",
+      description: "For organizations consistently introducing verified SwiftHelp members.",
       statusLabel: advocateUnlocked ? "Unlocked" : "Locked",
       progress: Math.min(1, Math.min(totalReferrals / 20, verifiedProfessionals / 5)),
       progressLabel: `${Math.min(totalReferrals, 20)} / 20 referrals | ${Math.min(
@@ -369,8 +369,8 @@ export function OrganisationReferralsPage() {
 
       if (navigator.share) {
         await navigator.share({
-          title: "Swifthelp referral link",
-          text: "Join Swifthelp with our referral link.",
+          title: "SwiftHelp referral link",
+          text: "Join SwiftHelp with our referral link.",
           url: referralShareUrl,
         });
       }

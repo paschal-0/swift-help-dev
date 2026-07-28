@@ -653,7 +653,7 @@ export default function ProfessionalReportsRoute() {
       return;
     }
     exportTablePdf({
-      title: "Swifthelp Professional Report",
+      title: "SwiftHelp Professional Report",
       filename: `professional-report-${new Date().toISOString().slice(0, 10)}.pdf`,
       columns: ["ID", "Patient", "Type", "Date", "Duration", "Earned", "Status"],
       rows,
@@ -899,7 +899,7 @@ export default function ProfessionalReportsRoute() {
               <article key={earning.id} className="flex min-w-0 flex-col gap-2 rounded-[14px] border border-[#D8E4F1] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold sm:text-[15px]">{earning.description}</p>
-                  <p className="text-[13px] text-[#94A3B8]">{earning.counterpartyName ?? "Swifthelp"} . {formatDate(earning.createdAt)}</p>
+                  <p className="text-[13px] text-[#94A3B8]">{earning.counterpartyName ?? "SwiftHelp"} . {formatDate(earning.createdAt)}</p>
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="break-words text-[15px] font-semibold text-[#078D24] sm:text-[16px]">{formatApiMoney(earning.amountCents, earning.currency)}</p>

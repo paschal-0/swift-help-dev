@@ -851,7 +851,7 @@ export default function SuperAdminProfessionalsRoute() {
       return;
     }
     exportTablePdf({
-      title: "Swifthelp Professionals",
+      title: "SwiftHelp Professionals",
       filename: "swifthelp-professionals.pdf",
       columns: header,
       rows,

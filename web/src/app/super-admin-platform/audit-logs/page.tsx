@@ -230,7 +230,7 @@ export default function SuperAdminAuditLogsRoute() {
     }
 
     exportTablePdf({
-      title: "Swifthelp Audit Logs",
+      title: "SwiftHelp Audit Logs",
       filename: `swifthelp-audit-logs-${new Date().toISOString().slice(0, 10)}.pdf`,
       columns: ["Time", "Admin", "Action", "Target / detail", "Category", "IP address"],
       rows: rows.map((row) => [

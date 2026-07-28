@@ -62,7 +62,7 @@ export const tiers: ReferralTier[] = [
     accent: "green",
     badge: "Level 2 - Community Advocate",
     title: "Community Advocate",
-    description: "For people who actively promote Swifthelp in their network and community.",
+    description: "For people who actively promote SwiftHelp in their network and community.",
     progressLabel: "23 / 20 referrals | 3 / 5 verified pros",
     progressValue: 0.58,
     statusLabel: "Locked",

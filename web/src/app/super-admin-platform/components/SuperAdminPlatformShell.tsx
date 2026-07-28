@@ -374,8 +374,8 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
       <section className="super-admin-surface min-h-screen bg-[#E2E8F0] text-[#334155]">
         <aside className="fixed left-0 top-0 flex h-screen w-[300px] flex-col overflow-hidden bg-[#F8FAFC] px-8 py-8">
           <Link href="/super-admin-platform" className="flex shrink-0 items-center gap-2">
-            <Image src="/jam_medical.png" alt="Swifthelp logo" width={58} height={58} priority />
-            <span className="text-[28px] font-semibold text-[#1E88E5]">Swifthelp</span>
+            <Image src="/jam_medical.png" alt="SwiftHelp logo" width={58} height={58} priority />
+            <span className="text-[28px] font-semibold text-[#1E88E5]">SwiftHelp</span>
           </Link>
 
           <nav className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">

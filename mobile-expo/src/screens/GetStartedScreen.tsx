@@ -64,7 +64,7 @@ export function GetStartedScreen({ navigation }: Props) {
 
           <Text className="mt-[18px] text-center text-4xl font-bold leading-9 text-slate-700">
             Welcome to{'\n'}
-            <Text className="text-[#1E3A5F]">Swifthelp</Text>
+            <Text className="text-[#1E3A5F]">SwiftHelp</Text>
           </Text>
 
           <Text className="mt-2.5 max-w-[300px] text-center text-[15px] leading-[22px] text-slate-600">

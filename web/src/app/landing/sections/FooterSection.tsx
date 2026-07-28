@@ -19,13 +19,13 @@ export function FooterSection() {
             <span className="inline-flex h-[66px] w-[66px] items-center justify-center max-[767px]:h-11 max-[767px]:w-11">
               <Image
                 src="/Vector (3).png"
-                alt="Swifthelp footer logo"
+                alt="SwiftHelp footer logo"
                 width={66}
                 height={66}
                 className="h-[66px] w-[66px] object-contain max-[767px]:h-11 max-[767px]:w-11"
               />
             </span>
-            <span>Swifthelp</span>
+            <span>SwiftHelp</span>
           </div>
 
           <div className="grid grid-cols-3 gap-8 max-[1100px]:col-span-1 max-[1100px]:grid-cols-3 max-[1100px]:grid-cols-2 max-[767px]:grid-cols-1 max-[767px]:gap-6">

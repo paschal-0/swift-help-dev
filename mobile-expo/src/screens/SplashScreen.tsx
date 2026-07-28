@@ -29,7 +29,7 @@ export function SplashScreen({ navigation }: Props) {
         <View className="flex-1 justify-between px-6 pt-5 pb-10">
           <View className="flex-row items-center gap-1.5">
             <Image source={require('../../assets/swifthelp-logo.png')} className="h-11 w-11" />
-            <Text className="text-[22px] font-semibold text-[#1e88e5]">Swifthelp</Text>
+            <Text className="text-[22px] font-semibold text-[#1e88e5]">SwiftHelp</Text>
           </View>
 
           <View className="mb-[120px] gap-3.5">

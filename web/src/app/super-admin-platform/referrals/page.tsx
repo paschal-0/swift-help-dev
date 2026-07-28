@@ -517,7 +517,7 @@ export default function SuperAdminReferralsRoute() {
     }
 
     exportTablePdf({
-      title: `Swifthelp Referrals - ${tab === "payouts" ? "Payouts" : "Referrers"}`,
+      title: `SwiftHelp Referrals - ${tab === "payouts" ? "Payouts" : "Referrers"}`,
       filename: `swifthelp-referrals-${new Date().toISOString().slice(0, 10)}.pdf`,
       columns: header,
       rows,

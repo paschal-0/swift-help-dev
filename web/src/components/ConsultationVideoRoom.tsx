@@ -1604,7 +1604,7 @@ export function ConsultationVideoRoom({
                     Preparing video room
                   </p>
                   <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                    Swifthelp is requesting secure video access.
+                    SwiftHelp is requesting secure video access.
                   </p>
                 </div>
               )}

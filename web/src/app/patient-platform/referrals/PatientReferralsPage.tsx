@@ -266,8 +266,8 @@ export function PatientReferralsPage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Swifthelp referral link",
-          text: "Join Swifthelp with my referral link.",
+          title: "SwiftHelp referral link",
+          text: "Join SwiftHelp with my referral link.",
           url: liveReferralLink,
         });
       } else {

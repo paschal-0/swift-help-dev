@@ -454,7 +454,7 @@ export function ProfessionalPlatformShell({
             className="fixed inset-y-0 left-0 z-50 box-border flex flex-col overflow-y-auto bg-[#F8FAFC] px-2 py-4 xl:hidden"
           >
             <div className={`relative z-20 flex w-full items-center gap-1 ${isMobileNavExpanded ? "px-2" : "justify-center"} xl:mx-auto xl:max-w-[208px] xl:justify-start`}>
-              <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+              <Image src="/jam_medical.png" alt="SwiftHelp logo" width={48} height={48} priority className="min-w-[48px]" />
               <AnimatePresence initial={false}>
                 {isMobileNavExpanded ? (
                   <motion.span
@@ -465,12 +465,12 @@ export function ProfessionalPlatformShell({
                     transition={{ duration: 0.2 }}
                     className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5] xl:hidden"
                   >
-                    Swifthelp
+                    SwiftHelp
                   </motion.span>
                 ) : null}
               </AnimatePresence>
               <span className="hidden text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5] xl:block">
-                Swifthelp
+                SwiftHelp
               </span>
             </div>
 
@@ -536,9 +536,9 @@ export function ProfessionalPlatformShell({
             }`}
           >
             <div className="relative z-20 mx-auto flex w-full max-w-[208px] items-center gap-1">
-              <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+              <Image src="/jam_medical.png" alt="SwiftHelp logo" width={48} height={48} priority className="min-w-[48px]" />
               <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">
-                Swifthelp
+                SwiftHelp
               </span>
             </div>
 
@@ -600,7 +600,7 @@ export function ProfessionalPlatformShell({
                   aria-label="Open navigation"
                   whileTap={{ scale: 0.96 }}
                 >
-                  <Image src="/jam_medical.png" alt="Swifthelp menu" width={34} height={34} priority />
+                  <Image src="/jam_medical.png" alt="SwiftHelp menu" width={34} height={34} priority />
                   <span className="absolute -right-4 -top-2 inline-flex h-5 animate-pulse items-center rounded-full bg-[#1565C0] px-2 text-[9px] font-semibold leading-none tracking-normal text-white shadow-[0_0_0_0_rgba(21,101,192,0.45)]">
                     Menu
                   </span>

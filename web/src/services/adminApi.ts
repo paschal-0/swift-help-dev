@@ -1212,7 +1212,7 @@ function mapLegacyStatsToDashboard(stats: LegacyAdminDashboardStats): SuperAdmin
   return {
     generatedAt: new Date().toISOString(),
     admin: {
-      platformName: "Swifthelp",
+      platformName: "SwiftHelp",
       roleLabel: "Super Admin",
     },
     metrics: [

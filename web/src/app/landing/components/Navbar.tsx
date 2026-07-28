@@ -51,13 +51,13 @@ export function Navbar() {
         <span className="inline-flex h-9 w-9 items-center justify-center lg:h-12 lg:w-12 max-[767px]:h-9 max-[767px]:w-9">
           <Image
             src="/jam_medical.png"
-            alt="Swifthelp logo icon"
+            alt="SwiftHelp logo icon"
             width={40}
             height={40}
             className="h-9 w-9 object-contain lg:h-12 lg:w-12 max-[767px]:h-9 max-[767px]:w-9"
           />
         </span>
-        <span className="text-[#1e88e5]">Swifthelp</span>
+        <span className="text-[#1e88e5]">SwiftHelp</span>
       </Link>
 
       <button

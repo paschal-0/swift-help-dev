@@ -227,7 +227,7 @@ export function ProfessionalOnboardingOnePage() {
           <span className="inline-flex h-12 w-12 items-center justify-center max-[900px]:h-9 max-[900px]:w-9">
             <Image
               src="/jam_medical.png"
-              alt="Swifthelp logo"
+              alt="SwiftHelp logo"
               width={40}
               height={40}
               sizes="40px"
@@ -235,7 +235,7 @@ export function ProfessionalOnboardingOnePage() {
               priority
             />
           </span>
-          <span className="text-[#1e88e5]">Swifthelp</span>
+          <span className="text-[#1e88e5]">SwiftHelp</span>
         </motion.div>
 
         <div className="mx-auto flex w-full max-w-[1490px] flex-col items-center">

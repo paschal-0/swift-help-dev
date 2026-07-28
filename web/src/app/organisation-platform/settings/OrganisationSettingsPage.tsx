@@ -142,7 +142,7 @@ const defaultNotificationSections: NotificationSection[] = [
       {
         id: "platformUpdates",
         title: "Platform updates",
-        description: "News and updates about Swifthelp features",
+        description: "News and updates about SwiftHelp features",
         enabled: true,
       },
       {

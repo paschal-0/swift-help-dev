@@ -199,7 +199,7 @@ export function WelcomePage() {
             <span className="inline-flex h-12 w-12 items-center justify-center max-[900px]:h-9 max-[900px]:w-9">
               <Image
                 src="/jam_medical.png"
-                alt="Swifthelp logo"
+                alt="SwiftHelp logo"
                 width={40}
                 height={40}
                 sizes="40px"
@@ -207,7 +207,7 @@ export function WelcomePage() {
                 priority
               />
             </span>
-            <span className="text-[#1e88e5]">Swifthelp</span>
+            <span className="text-[#1e88e5]">SwiftHelp</span>
           </Link>
         </header>
 
@@ -219,7 +219,7 @@ export function WelcomePage() {
             <h1 className="mt-7 text-balance text-[3.4rem] font-semibold leading-[0.95] tracking-[-0.07em] text-[#334155] sm:text-[4.5rem]">
               Welcome to
               <span className="block bg-[linear-gradient(180deg,#334155_0%,#1e3a5f_100%)] bg-clip-text text-transparent">
-                Swifthelp
+                SwiftHelp
               </span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-pretty text-[1.05rem] font-normal leading-7 tracking-[-0.03em] text-[#475569] sm:text-[1.3rem]">

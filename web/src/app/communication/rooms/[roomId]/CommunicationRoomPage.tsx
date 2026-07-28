@@ -284,7 +284,7 @@ export function CommunicationRoomPage() {
     try {
       const report = await getCommunicationComplianceReport(roomId);
       exportTablePdf({
-        title: "Swifthelp Communication Compliance Report",
+        title: "SwiftHelp Communication Compliance Report",
         filename: `swifthelp-communication-compliance-${roomId}.pdf`,
         columns: ["Field", "Value"],
         rows: Object.entries(report).map(([key, value]) => [
@@ -339,12 +339,12 @@ export function CommunicationRoomPage() {
                   Preparing room
                 </p>
                 <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                  Swifthelp is requesting secure room access.
+                  SwiftHelp is requesting secure room access.
                 </p>
               </div>
             )
           }
-          remoteLabel={room?.title ?? "Swifthelp room"}
+          remoteLabel={room?.title ?? "SwiftHelp room"}
           remoteRoleLabel={formatRoomType(room?.type)}
           localLabel="You"
           playAllRemoteAudio

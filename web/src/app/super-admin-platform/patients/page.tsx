@@ -894,7 +894,7 @@ export default function SuperAdminPatientsRoute() {
       return;
     }
     exportTablePdf({
-      title: "Swifthelp Patients",
+      title: "SwiftHelp Patients",
       filename: "swifthelp-patients.pdf",
       columns: header,
       rows,

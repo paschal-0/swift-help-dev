@@ -1128,7 +1128,7 @@ export function PatientSettingsPage() {
               />
               <ToggleRow
                 title="Platform updates"
-                description="News and updates about Swifthelp features"
+                description="News and updates about SwiftHelp features"
                 checked={notifications.updates}
                 onChange={() => toggleNotification("updates")}
               />
@@ -1140,7 +1140,7 @@ export function PatientSettingsPage() {
               />
               <ToggleRow
                 title="Promotional offers"
-                description="Occasional offers and health tips from Swifthelp and partners"
+                description="Occasional offers and health tips from SwiftHelp and partners"
                 checked={notifications.promotions}
                 onChange={() => toggleNotification("promotions")}
               />

@@ -689,7 +689,7 @@ export function PatientLiveConsultationPage() {
                 Preparing waiting room
               </p>
               <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                Swifthelp is checking your appointment and secure video access.
+                SwiftHelp is checking your appointment and secure video access.
               </p>
             </div>
           )
@@ -755,7 +755,7 @@ export function PatientLiveConsultationPage() {
                   {completionDisputed
                     ? "Your report is under review."
                     : completionReviewRequired
-                      ? "This consultation is under Swifthelp review."
+                      ? "This consultation is under SwiftHelp review."
                       : "This consultation is waiting for your confirmation."}
                 </p>
                 <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">

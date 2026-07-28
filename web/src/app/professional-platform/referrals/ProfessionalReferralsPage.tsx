@@ -197,7 +197,7 @@ function buildPartnerTiers(referrals: ProfessionalReferrals | null): PartnerTier
       id: "community-advocate",
       badge: "Level 2 - Advocate",
       title: "Community Advocate",
-      description: "For professionals who consistently bring verified members into Swifthelp.",
+      description: "For professionals who consistently bring verified members into SwiftHelp.",
       statusLabel: advocateUnlocked ? "Unlocked" : "Locked",
       statusTone: advocateUnlocked ? "active" : "locked",
       progress: Math.min(1, Math.min(totalReferrals / 20, verifiedProfessionals / 5)),
@@ -363,8 +363,8 @@ export function ProfessionalReferralsPage() {
 
       if (navigator.share) {
         await navigator.share({
-          title: "Swifthelp referral link",
-          text: "Join Swifthelp with my referral link.",
+          title: "SwiftHelp referral link",
+          text: "Join SwiftHelp with my referral link.",
           url: referralShareUrl,
         });
       }

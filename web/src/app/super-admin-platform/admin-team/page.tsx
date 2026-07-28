@@ -265,7 +265,7 @@ export default function SuperAdminTeamRoute() {
     }
 
     exportTablePdf({
-      title: "Swifthelp Admin Team",
+      title: "SwiftHelp Admin Team",
       filename: `swifthelp-admin-team-${new Date().toISOString().slice(0, 10)}.pdf`,
       columns: ["Admin", "Email", "Role", "Permission", "Last active", "Status"],
       rows: rows.map((row) => [

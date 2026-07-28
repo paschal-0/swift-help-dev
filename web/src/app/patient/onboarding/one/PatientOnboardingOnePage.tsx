@@ -165,7 +165,7 @@ export function PatientOnboardingOnePage({
           <span className="inline-flex h-12 w-12 items-center justify-center max-[900px]:h-9 max-[900px]:w-9">
             <Image
               src="/jam_medical.png"
-              alt="Swifthelp logo"
+              alt="SwiftHelp logo"
               width={40}
               height={40}
               sizes="40px"
@@ -174,7 +174,7 @@ export function PatientOnboardingOnePage({
             />
           </span>
           <span className="text-[#1e88e5]">
-            Swifthelp
+            SwiftHelp
           </span>
         </motion.div>
 

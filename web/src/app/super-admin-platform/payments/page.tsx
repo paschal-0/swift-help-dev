@@ -494,7 +494,7 @@ export default function SuperAdminPaymentsRoute() {
     }
 
     exportTablePdf({
-      title: `Swifthelp ${labelize(activeTab)} Payments`,
+      title: `SwiftHelp ${labelize(activeTab)} Payments`,
       filename: `swifthelp-${activeTab}-payments.pdf`,
       columns: headersByTab[activeTab],
       rows,

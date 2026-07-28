@@ -86,7 +86,7 @@ const mapEarning = (earning: ProfessionalEarning): TransactionItem => ({
   id: earning.id,
   transactionId: earning.id.slice(0, 8),
   consultation: earning.description,
-  patient: earning.counterpartyName ?? "Swifthelp",
+  patient: earning.counterpartyName ?? "SwiftHelp",
   date: formatDate(earning.createdAt),
   createdAt: earning.createdAt,
   amount: formatApiMoney(earning.amountCents, earning.currency),

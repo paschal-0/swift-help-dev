@@ -33,7 +33,7 @@ const tabs: Array<{ id: SettingsTab; label: string }> = [
 ];
 
 const defaultValues: SettingsValues = {
-  "settings.platformName": "Swifthelp",
+  "settings.platformName": "SwiftHelp",
   "settings.timezone": "Africa/Lagos",
   "settings.supportEmail": "support@swifthelp.net",
   "settings.primaryCurrency": "NGN",

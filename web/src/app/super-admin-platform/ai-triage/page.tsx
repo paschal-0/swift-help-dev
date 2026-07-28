@@ -486,7 +486,7 @@ export default function SuperAdminAiTriageRoute() {
     }
 
     exportTablePdf({
-      title: "Swifthelp AI Symptom Checks",
+      title: "SwiftHelp AI Symptom Checks",
       filename: "ai-symptom-checks.pdf",
       columns: ["User", "Email", "Primary symptom", "Associated symptoms", "Recommended care", "Risk", "Date"],
       rows: rows.map((row) => [

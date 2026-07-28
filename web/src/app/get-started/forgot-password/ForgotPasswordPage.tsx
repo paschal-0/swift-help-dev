@@ -127,7 +127,7 @@ export function ForgotPasswordPage() {
               <span className="inline-flex h-[52px] w-[52px] items-center justify-center xl:h-[66px] xl:w-[66px]">
                 <Image
                   src="/jam_medical.png"
-                  alt="Swifthelp logo"
+                  alt="SwiftHelp logo"
                   width={66}
                   height={66}
                   sizes="66px"
@@ -136,7 +136,7 @@ export function ForgotPasswordPage() {
                 />
               </span>
               <span className="text-[22px] font-medium leading-[32px] tracking-[-0.05em] text-[#1E88E5] xl:text-[28.0396px] xl:leading-[42px]">
-                Swifthelp
+                SwiftHelp
               </span>
             </Link>
           </motion.div>

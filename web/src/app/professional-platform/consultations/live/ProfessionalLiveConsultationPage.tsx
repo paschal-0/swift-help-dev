@@ -792,7 +792,7 @@ export function ProfessionalLiveConsultationPage() {
                 Starting secure room
               </p>
               <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                Swifthelp is preparing your Daily consultation access.
+                SwiftHelp is preparing your Daily consultation access.
               </p>
             </div>
           )
@@ -877,13 +877,13 @@ export function ProfessionalLiveConsultationPage() {
                   {completionDisputed
                     ? "Patient reported that care was not received."
                     : completionReviewRequired
-                      ? "This consultation is under Swifthelp review."
+                      ? "This consultation is under SwiftHelp review."
                       : professionalAlreadyConfirmed
                         ? "Waiting for patient confirmation."
                         : "Mark this consultation complete after saving your clinical notes."}
                 </p>
                 <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">
-                  Payment is held until both sides confirm, unless Swifthelp
+                  Payment is held until both sides confirm, unless SwiftHelp
                   review resolves the case.
                 </p>
               </div>

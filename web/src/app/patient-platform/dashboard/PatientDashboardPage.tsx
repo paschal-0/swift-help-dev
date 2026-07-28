@@ -728,7 +728,7 @@ export function PatientDashboardPage() {
                     </button>
                   ) : isUnfinishedConsultation && isUnderReview ? (
                     <p className="mt-3 rounded-[7px] bg-[#FEF3C7] px-3 py-2 text-[10px] font-medium leading-4 tracking-[-0.03em] text-[#92400E]">
-                      Payment remains held while Swifthelp reviews this consultation.
+                      Payment remains held while SwiftHelp reviews this consultation.
                     </p>
                   ) : isUnfinishedConsultation ? (
                     <div className="mt-3 flex flex-wrap gap-2">
