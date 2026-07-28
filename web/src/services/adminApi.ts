@@ -1704,6 +1704,90 @@ export async function listAdminSystemConfigs(params: { category?: string } = {})
   });
 }
 
+/** An account waiting for an admin to approve it. */
+export type AdminVerificationAccount = {
+  /** Profile id, which is what the review endpoints expect. */
+  id: string;
+  userId: string;
+  verificationStatus: AdminVerificationStatus;
+  verificationNotes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber?: string | null;
+    createdAt?: string;
+  } | null;
+  // Professional fields
+  professionalName?: string | null;
+  specialization?: string | null;
+  licenseNumber?: string | null;
+  primaryPracticeLocation?: string | null;
+  uploadedDocuments?: Array<{
+    name?: string;
+    sizeLabel?: string;
+    url?: string | null;
+  }> | null;
+  // Organisation fields
+  organisationName?: string | null;
+  organisationType?: string | null;
+  companyEmail?: string | null;
+  facilityAddress?: string | null;
+  address?: string | null;
+};
+
+export type AdminPendingVerifications = {
+  professionals: AdminVerificationAccount[];
+  organizations: AdminVerificationAccount[];
+  total: number;
+};
+
+export type AdminVerificationStatus =
+  | "pending"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "suspended";
+
+export async function listAdminPendingVerifications(
+  status?: AdminVerificationStatus,
+) {
+  return apiRequest<AdminPendingVerifications>(
+    `/admin/verifications/pending${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+    { method: "GET" },
+  );
+}
+
+export async function reviewAdminProfessionalVerification(
+  professionalProfileId: string,
+  payload: {
+    status: AdminVerificationStatus;
+    notes?: string;
+    rejectionReason?: string;
+  },
+) {
+  return apiRequest<AdminVerificationAccount>(
+    `/admin/verifications/professionals/${encodeURIComponent(professionalProfileId)}`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+}
+
+export async function reviewAdminOrganizationVerification(
+  organizationProfileId: string,
+  payload: {
+    status: AdminVerificationStatus;
+    notes?: string;
+    rejectionReason?: string;
+  },
+) {
+  return apiRequest<AdminVerificationAccount>(
+    `/admin/verifications/organizations/${encodeURIComponent(organizationProfileId)}`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+}
+
 export async function getAdminProviderRoles() {
   return apiRequest<ProviderRolesConfig>("/admin/provider-roles", {
     method: "GET",

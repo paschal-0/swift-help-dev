@@ -37,6 +37,7 @@ type NavIcon =
   | "settings"
   | "team"
   | "notifications"
+  | "verify"
   | "audit";
 
 type NavItem = {
@@ -79,6 +80,7 @@ const mainNav: NavItem[] = [
   { label: "Patients", href: "/super-admin-platform/patients", icon: "patients" },
   { label: "Professionals", href: "/super-admin-platform/professionals", icon: "professionals" },
   { label: "Organizations", href: "/super-admin-platform/organizations", icon: "organizations" },
+  { label: "Approvals", href: "/super-admin-platform/approvals", icon: "verify" },
   { label: "Bookings & Consultations", href: "/super-admin-platform/bookings", icon: "bookings" },
   { label: "AI symptom checker", href: "/super-admin-platform/ai-triage", icon: "ai" },
   { label: "Shift management", href: "/super-admin-platform/shifts", icon: "shifts" },
@@ -230,6 +232,17 @@ function Icon({ type, active }: { type: NavIcon | "logout" | "search"; active?: 
     return (
       <svg viewBox="0 0 24 24" className={common} aria-hidden>
         <path fill={color} d="M6 2h9l3 3v17H6V2Zm2 5v2h8V7H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z" />
+      </svg>
+    );
+  }
+
+  if (type === "verify") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden>
+        <path
+          fill={color}
+          d="M12 2 4 5v6.1c0 4.6 3.1 8.9 8 10.9 4.9-2 8-6.3 8-10.9V5l-8-3Zm-1 13.4-3.2-3.2 1.4-1.4 1.8 1.8 4-4 1.4 1.4-5.4 5.4Z"
+        />
       </svg>
     );
   }

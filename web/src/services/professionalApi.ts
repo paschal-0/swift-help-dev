@@ -542,7 +542,14 @@ export type ProfessionalDashboard = {
   metrics: {
     consultations: number;
     pendingRequests: number;
-    availableHours: number;
+    /** Today's availability window, in the professional's own timezone. */
+    availableToday: {
+      weekday: string;
+      enabled: boolean;
+      from: string | null;
+      to: string | null;
+      hours: number;
+    };
     weeklyEarnings: number;
     currency?: string;
   };

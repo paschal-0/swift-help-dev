@@ -137,6 +137,13 @@ const toCurrencyUnits = (amountCents: number) => amountCents / 100;
 
 const formatNaira = (value: number) => formatDashboardMoney(value, "NGN");
 
+/** "8hrs", "1hr", "7.5hrs" - halves are kept, whole hours stay tidy. */
+function formatHours(hours: number) {
+  const rounded = Math.round(hours * 100) / 100;
+  const value = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${value}${rounded === 1 ? "hr" : "hrs"}`;
+}
+
 const formatDateLabel = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
     month: "2-digit",
@@ -1201,6 +1208,18 @@ export function ProfessionalDashboardPage() {
         )
       : formatNaira(0);
 
+    // Today's real availability window, rather than a fixed placeholder.
+    const availableToday = dashboard?.metrics.availableToday;
+    const hasWindowToday = Boolean(
+      availableToday?.enabled && availableToday.from && availableToday.to,
+    );
+    const availableTodayLabel = hasWindowToday
+      ? `${availableToday!.from}-${availableToday!.to}`
+      : "Not available today";
+    const availableTodaySubtitle = hasWindowToday
+      ? `Available for ${formatHours(availableToday!.hours)} today`
+      : "Set your hours in Manage Schedule";
+
     return [
       {
         ...metricCardMeta[0],
@@ -1216,8 +1235,8 @@ export function ProfessionalDashboardPage() {
       },
       {
         ...metricCardMeta[2],
-        value: "9:00am-5:00pm",
-        subtitle: `Available for ${dashboard?.metrics.availableHours ?? 8}hrs today`,
+        value: availableTodayLabel,
+        subtitle: availableTodaySubtitle,
       },
       {
         ...metricCardMeta[3],
