@@ -478,6 +478,17 @@ export type AdminBookingParty = {
   avatarUrl: string | null;
 };
 
+/** Admin flag on a consultation, for conduct or clinical concerns. */
+export type AdminBookingFlag = {
+  status: "open" | "resolved" | "dismissed" | null;
+  reason: string | null;
+  flaggedAt: string | null;
+  flaggedByUserId: string | null;
+  resolvedAt: string | null;
+  resolvedByUserId: string | null;
+  resolutionNote: string | null;
+};
+
 export type AdminBookingListItem = {
   id: string;
   code: string;
@@ -491,6 +502,7 @@ export type AdminBookingListItem = {
   mode: string;
   status: AdminBookingStatus;
   reason: string | null;
+  flag: AdminBookingFlag;
   createdAt: string;
   updatedAt: string;
 };
@@ -513,6 +525,7 @@ export type AdminBookingsResponse = {
     completedBookings: number;
     liveBookings: number;
     cancelledBookings: number;
+    flaggedBookings: number;
   };
   data: AdminBookingListItem[];
   meta: {
@@ -1407,6 +1420,8 @@ export async function listAdminOrganizations(params: {
 export async function listAdminBookings(params: {
   search?: string;
   status?: string;
+  /** "open" | "resolved" | "dismissed" | "any" - filters by admin flag. */
+  flagged?: string;
   page?: number;
   limit?: number;
 }) {
@@ -1414,6 +1429,9 @@ export async function listAdminBookings(params: {
 
   if (params.search) query.set("search", params.search);
   if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.flagged && params.flagged !== "all") {
+    query.set("flagged", params.flagged);
+  }
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 
@@ -1965,10 +1983,31 @@ export async function flagAdminBooking(
   bookingId: string,
   payload: { reason?: string } = {},
 ) {
-  return apiRequest<MessageResponse>(`/admin/bookings/${bookingId}/flag`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiRequest<MessageResponse & { flag: AdminBookingFlag }>(
+    `/admin/bookings/${bookingId}/flag`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * Closes an open flag. "resolved" means the concern was dealt with, "dismissed"
+ * means there was nothing to answer for. Either way the professional's held
+ * earnings are released.
+ */
+export async function resolveAdminBookingFlag(
+  bookingId: string,
+  payload: { action: "resolved" | "dismissed"; note?: string },
+) {
+  return apiRequest<MessageResponse & { flag: AdminBookingFlag }>(
+    `/admin/bookings/${bookingId}/flag/resolve`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function flagAdminReview(

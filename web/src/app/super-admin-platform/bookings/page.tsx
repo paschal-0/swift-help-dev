@@ -9,6 +9,7 @@ import {
   getAdminBooking,
   listAdminBookings,
   removeAdminBooking,
+  resolveAdminBookingFlag,
   updateAdminBookingStatus,
   type AdminBookingDetail,
   type AdminBookingListItem,
@@ -41,7 +42,18 @@ const defaultSummary: AdminBookingsResponse["summary"] = {
   completedBookings: 0,
   liveBookings: 0,
   cancelledBookings: 0,
+  flaggedBookings: 0,
 };
+
+type FlagFilter = "all" | "open" | "resolved" | "dismissed" | "any";
+
+const flagFilterOptions: DropdownOption<FlagFilter>[] = [
+  { value: "all", label: "Flags: All" },
+  { value: "open", label: "Flags: Open" },
+  { value: "resolved", label: "Flags: Resolved" },
+  { value: "dismissed", label: "Flags: Dismissed" },
+  { value: "any", label: "Flags: Ever flagged" },
+];
 
 const statusFilterOptions: DropdownOption<StatusFilter>[] = [
   { value: "all", label: "Filter: All bookings" },
@@ -186,13 +198,17 @@ function StatCard({
 }
 
 function ActionMenu({
+  flagIsOpen = false,
   onFlag,
   onRemove,
+  onResolveFlag,
   onSuspend,
   onView,
 }: {
+  flagIsOpen?: boolean;
   onFlag: () => void;
   onRemove: () => void;
+  onResolveFlag?: () => void;
   onSuspend: () => void;
   onView: () => void;
 }) {
@@ -235,10 +251,17 @@ function ActionMenu({
             <Icon name="pause" className="h-5 w-5 shrink-0" />
             Suspend
           </button>
-          <button type="button" className={itemClass} onClick={() => { setOpen(false); onFlag(); }}>
-            <Icon name="flag" className="h-5 w-5 shrink-0" />
-            Flag
-          </button>
+          {flagIsOpen && onResolveFlag ? (
+            <button type="button" className={itemClass} onClick={() => { setOpen(false); onResolveFlag(); }}>
+              <Icon name="flag" className="h-5 w-5 shrink-0" />
+              Resolve flag
+            </button>
+          ) : (
+            <button type="button" className={itemClass} onClick={() => { setOpen(false); onFlag(); }}>
+              <Icon name="flag" className="h-5 w-5 shrink-0" />
+              Flag
+            </button>
+          )}
         </div>
       ) : null}
     </div>
@@ -336,12 +359,18 @@ export default function SuperAdminBookingsRoute() {
   const { searchText } = useSuperAdminShell();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [flagFilter, setFlagFilter] = useState<FlagFilter>("all");
   const [rows, setRows] = useState<AdminBookingListItem[]>([]);
   const [summary, setSummary] = useState(defaultSummary);
   const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<AdminBookingDetail | null>(null);
   const [removeTarget, setRemoveTarget] = useState<AdminBookingListItem | AdminBookingDetail | null>(null);
+  const [flagTarget, setFlagTarget] = useState<AdminBookingListItem | AdminBookingDetail | null>(null);
+  const [flagReason, setFlagReason] = useState("");
+  const [resolveTarget, setResolveTarget] = useState<AdminBookingListItem | AdminBookingDetail | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
+  const [flagSaving, setFlagSaving] = useState(false);
 
   const mergedSearch = useMemo(() => query.trim() || searchText.trim(), [query, searchText]);
 
@@ -351,6 +380,7 @@ export default function SuperAdminBookingsRoute() {
       const response = await listAdminBookings({
         search: mergedSearch || undefined,
         status: filter,
+        flagged: flagFilter,
         page: meta.page,
         limit: meta.limit,
       });
@@ -364,7 +394,7 @@ export default function SuperAdminBookingsRoute() {
     } finally {
       setLoading(false);
     }
-  }, [filter, mergedSearch, meta.limit, meta.page]);
+  }, [filter, flagFilter, mergedSearch, meta.limit, meta.page]);
 
   useEffect(() => {
     void loadBookings();
@@ -393,13 +423,44 @@ export default function SuperAdminBookingsRoute() {
     }
   };
 
-  const flagBooking = async (target: AdminBookingListItem | AdminBookingDetail) => {
+  const submitFlag = async () => {
+    if (!flagTarget || !flagReason.trim()) return;
+    setFlagSaving(true);
     try {
-      await flagAdminBooking(target.id, { reason: "Flagged by super admin" });
-      toast.success("Booking flagged for review.");
+      await flagAdminBooking(flagTarget.id, { reason: flagReason.trim() });
+      toast.success(
+        "Consultation flagged. The professional's earnings are held until it is resolved.",
+      );
+      setFlagTarget(null);
+      setFlagReason("");
       await loadBookings();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setFlagSaving(false);
+    }
+  };
+
+  const submitFlagResolution = async (action: "resolved" | "dismissed") => {
+    if (!resolveTarget) return;
+    setFlagSaving(true);
+    try {
+      await resolveAdminBookingFlag(resolveTarget.id, {
+        action,
+        note: resolveNote.trim() || undefined,
+      });
+      toast.success(
+        action === "dismissed"
+          ? "Flag dismissed. The consultation can settle as normal."
+          : "Flag resolved. The consultation can settle as normal.",
+      );
+      setResolveTarget(null);
+      setResolveNote("");
+      await loadBookings();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setFlagSaving(false);
     }
   };
 
@@ -426,6 +487,7 @@ export default function SuperAdminBookingsRoute() {
         <StatCard label="Completed" value={summary.completedBookings} tone="bg-[#D9F8DE]" color="text-[#0D8C24]" />
         <StatCard label="Live now" value={summary.liveBookings} tone="bg-[#DCEBFF]" color="text-[#1565C0]" />
         <StatCard label="Canceled" value={summary.cancelledBookings} tone="bg-[#FFE5E2]" color="text-[#B91C1C]" />
+        <StatCard label="Flagged" value={summary.flaggedBookings} tone="bg-[#FEF3C7]" color="text-[#B45309]" />
       </div>
 
       <article className="mt-8 rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
@@ -449,6 +511,16 @@ export default function SuperAdminBookingsRoute() {
             value={filter}
             onChange={(value) => {
               setFilter(value);
+              setMeta((current) => ({ ...current, page: 1 }));
+            }}
+          />
+          <ThemedDropdown
+            ariaLabel="Filter consultations by admin flag"
+            className="max-w-[220px]"
+            options={flagFilterOptions}
+            value={flagFilter}
+            onChange={(value) => {
+              setFlagFilter(value);
               setMeta((current) => ({ ...current, page: 1 }));
             }}
           />
@@ -500,13 +572,29 @@ export default function SuperAdminBookingsRoute() {
                   <span className="inline-flex w-fit max-w-[130px] items-center justify-center truncate rounded-full bg-[#B9D7F4] px-3 py-1 text-[13px] font-semibold text-[#1565C0]">
                     {booking.mode.toLowerCase().includes("person") ? "In person" : "Video"}
                   </span>
-                  <span className={`font-semibold ${statusClass(booking.status)}`}>{formatStatus(booking.status)}</span>
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className={`font-semibold ${statusClass(booking.status)}`}>{formatStatus(booking.status)}</span>
+                    {booking.flag?.status ? (
+                      <span
+                        title={booking.flag.reason ?? undefined}
+                        className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          booking.flag.status === "open"
+                            ? "bg-[#FEF3C7] text-[#B45309]"
+                            : "bg-[#E2E8F0] text-[#64748B]"
+                        }`}
+                      >
+                        {booking.flag.status === "open" ? "Flagged" : `Flag ${booking.flag.status}`}
+                      </span>
+                    ) : null}
+                  </span>
                   <div className="pr-3">
                     <ActionMenu
                       onView={() => openDetail(booking.id)}
                       onRemove={() => setRemoveTarget(booking)}
                       onSuspend={() => suspendBooking(booking)}
-                      onFlag={() => flagBooking(booking)}
+                      flagIsOpen={booking.flag?.status === "open"}
+                      onFlag={() => { setFlagTarget(booking); setFlagReason(""); }}
+                      onResolveFlag={() => { setResolveTarget(booking); setResolveNote(""); }}
                     />
                   </div>
                 </div>
@@ -548,7 +636,7 @@ export default function SuperAdminBookingsRoute() {
         <BookingDetailModal
           detail={selectedDetail}
           onClose={() => setSelectedDetail(null)}
-          onFlag={() => flagBooking(selectedDetail)}
+          onFlag={() => { setFlagTarget(selectedDetail); setFlagReason(""); }}
           onSuspend={() => suspendBooking(selectedDetail)}
           onRemove={() => setRemoveTarget(selectedDetail)}
         />
@@ -567,6 +655,82 @@ export default function SuperAdminBookingsRoute() {
               </button>
               <button type="button" onClick={removeBooking} className="h-11 min-w-[128px] cursor-pointer rounded-[10px] bg-[#C1121F] px-4 text-[15px] font-semibold text-white">
                 Cancel booking
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {flagTarget ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F172A]/35 px-6">
+          <div className="w-full max-w-[460px] rounded-[16px] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.24)]">
+            <h2 className="text-[22px] font-semibold text-[#334155]">Flag {flagTarget.code}?</h2>
+            <p className="mt-3 text-[15px] leading-6 text-[#64748B]">
+              The professional&apos;s earnings for this consultation are held until the flag is
+              resolved. Say what the concern is so whoever picks it up has the context.
+            </p>
+            <textarea
+              value={flagReason}
+              onChange={(event) => setFlagReason(event.target.value)}
+              placeholder="For example: the patient reported the professional left the call early."
+              className="mt-3 min-h-[96px] w-full rounded-[10px] border border-[#B9CBE0] bg-[#F8FAFC] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+            />
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setFlagTarget(null)} className="h-11 min-w-[104px] cursor-pointer rounded-[10px] border border-[#B9CBE0] px-4 text-[15px] font-semibold text-[#334155]">
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={!flagReason.trim() || flagSaving}
+                onClick={() => void submitFlag()}
+                className="h-11 min-w-[128px] cursor-pointer rounded-[10px] bg-[#B45309] px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {flagSaving ? "Flagging..." : "Flag consultation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {resolveTarget ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F172A]/35 px-6">
+          <div className="w-full max-w-[460px] rounded-[16px] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.24)]">
+            <h2 className="text-[22px] font-semibold text-[#334155]">Resolve the flag on {resolveTarget.code}</h2>
+            {resolveTarget.flag?.reason ? (
+              <p className="mt-3 rounded-[10px] bg-[#F8FAFC] px-3 py-2 text-[14px] leading-6 text-[#64748B]">
+                <span className="font-semibold text-[#334155]">Flagged because:</span> {resolveTarget.flag.reason}
+              </p>
+            ) : null}
+            <p className="mt-3 text-[15px] leading-6 text-[#64748B]">
+              Either way the professional&apos;s held earnings are released. Choose
+              <span className="font-semibold text-[#334155]"> Dismiss </span>
+              if there was nothing to answer for.
+            </p>
+            <textarea
+              value={resolveNote}
+              onChange={(event) => setResolveNote(event.target.value)}
+              placeholder="What did you find, and what was done about it? (optional)"
+              className="mt-3 min-h-[86px] w-full rounded-[10px] border border-[#B9CBE0] bg-[#F8FAFC] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+            />
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setResolveTarget(null)} className="h-11 min-w-[104px] cursor-pointer rounded-[10px] border border-[#B9CBE0] px-4 text-[15px] font-semibold text-[#334155]">
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={flagSaving}
+                onClick={() => void submitFlagResolution("dismissed")}
+                className="h-11 min-w-[110px] cursor-pointer rounded-[10px] border border-[#1565C0] px-4 text-[15px] font-semibold text-[#1565C0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                disabled={flagSaving}
+                onClick={() => void submitFlagResolution("resolved")}
+                className="h-11 min-w-[128px] cursor-pointer rounded-[10px] bg-[#0D8C24] px-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {flagSaving ? "Saving..." : "Mark resolved"}
               </button>
             </div>
           </div>
