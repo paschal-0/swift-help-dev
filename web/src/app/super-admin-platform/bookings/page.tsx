@@ -185,13 +185,13 @@ function StatCard({
   value: number;
 }) {
   return (
-    <article className="flex min-h-[122px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
-        <Icon name="calendar" className="h-8 w-8" />
+    <article className="flex min-h-[98px] min-w-0 items-center gap-3 rounded-[14px] bg-[#F8FAFC] px-4 py-3 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
+        <Icon name="calendar" className="h-6 w-6" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="max-w-[150px] text-[15px] font-light leading-[18px] text-[#94A3B8]">{label}</p>
-        <p className="mt-1 text-[38px] font-semibold leading-none text-[#334155]">{value.toLocaleString()}</p>
+        <p className="truncate whitespace-nowrap text-[13px] font-light leading-4 text-[#94A3B8]" title={label}>{label}</p>
+        <p className="mt-1 text-[32px] font-semibold leading-none text-[#334155]">{value.toLocaleString()}</p>
       </div>
     </article>
   );
@@ -481,7 +481,7 @@ export default function SuperAdminBookingsRoute() {
     <section className="pb-10 pt-[68px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">Bookings & Consultations</h1>
 
-      <div className="mt-8 grid grid-cols-5 gap-4">
+      <div className="mt-8 grid grid-cols-6 gap-4">
         <StatCard label="Total Bookings" value={summary.totalBookings} tone="bg-[#D9DEE2]" color="text-[#334155]" />
         <StatCard label="Upcoming" value={summary.upcomingBookings} tone="bg-[#F5F0C9]" color="text-[#B6920B]" />
         <StatCard label="Completed" value={summary.completedBookings} tone="bg-[#D9F8DE]" color="text-[#0D8C24]" />

@@ -20,7 +20,7 @@ import {
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 import { exportTablePdf } from "@/utils/pdfExport";
 
-type StatusFilter = "all" | "active" | "suspended";
+type StatusFilter = "all" | "active" | "inactive" | "suspended";
 
 type DropdownOption<T extends string> = {
   label: string;
@@ -52,6 +52,7 @@ const defaultSummary: AdminProfessionalsResponse["summary"] = {
 const statusFilterOptions: DropdownOption<StatusFilter>[] = [
   { value: "all", label: "Filter: All professionals" },
   { value: "active", label: "Filter: Active" },
+  { value: "inactive", label: "Filter: Inactive" },
   { value: "suspended", label: "Filter: Suspended" },
 ];
 
@@ -163,6 +164,18 @@ function formatMoney(cents: number | null | undefined, currencyCode = "NGN") {
     currency: currencyCode || "NGN",
     maximumFractionDigits: 0,
   }).format(cents / 100);
+}
+
+function statusLabel(status: AdminProfessionalListItem["status"]) {
+  if (status === "active") return "Active";
+  if (status === "inactive") return "Inactive";
+  return "Suspended";
+}
+
+function statusClass(status: AdminProfessionalListItem["status"]) {
+  if (status === "active") return "font-medium text-[#008000]";
+  if (status === "inactive") return "font-medium text-[#B45309]";
+  return "font-medium text-[#B91C1C]";
 }
 
 function centsToInput(cents: number | null | undefined) {
@@ -702,7 +715,7 @@ export default function SuperAdminProfessionalsRoute() {
     try {
       const response = await listAdminProfessionals({
         search: effectiveSearch,
-        isVerified: statusFilter === "all" ? undefined : statusFilter === "active",
+        status: statusFilter,
         page,
         limit: 10,
       });
@@ -780,7 +793,7 @@ export default function SuperAdminProfessionalsRoute() {
 
   const updateProfessionalStatus = async (
     professional: AdminProfessionalListItem | AdminProfessionalDetail,
-    isActive = professional.status !== "active",
+    isActive = professional.status === "suspended",
   ) => {
     if (!isSuperAdmin) {
       toast.error("Only super admins can suspend or reactivate professional profiles.");
@@ -798,7 +811,11 @@ export default function SuperAdminProfessionalsRoute() {
         setSelectedProfessional({
           ...selectedProfessional,
           isVerified: isActive,
-          status: isActive ? "active" : "suspended",
+          status: isActive
+            ? selectedProfessional.onboardingCompleted
+              ? "active"
+              : "inactive"
+            : "suspended",
         });
       }
 
@@ -945,8 +962,8 @@ export default function SuperAdminProfessionalsRoute() {
                     <td className="truncate px-4 py-2 text-[#334155]">{professional.rating ? `${professional.rating.toFixed(1)} star` : "No rating"}</td>
                     <td className="truncate px-4 py-2 text-[#94A3B8]">{formatDate(professional.joinedAt)}</td>
                     <td className="px-4 py-2">
-                      <span className={professional.status === "active" ? "font-medium text-[#008000]" : "font-medium text-[#B91C1C]"}>
-                        {professional.status === "active" ? "Active" : "Suspended"}
+                      <span className={statusClass(professional.status)}>
+                        {statusLabel(professional.status)}
                       </span>
                     </td>
                     <td className="relative py-2 pl-4 pr-6 text-right">
@@ -974,7 +991,7 @@ export default function SuperAdminProfessionalsRoute() {
                             <>
                               <button type="button" onClick={() => updateProfessionalStatus(professional)} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
                                 <Icon name="pause" className="h-5 w-5 shrink-0" />
-                                {professional.status === "active" ? "Suspend user" : "Reactivate user"}
+                                {professional.status === "suspended" ? "Reactivate user" : "Suspend user"}
                               </button>
                               <button type="button" onClick={() => { setOpenMenuId(null); setDeleteProfessional(professional); }} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
                                 <Icon name="trash" className="h-5 w-5 shrink-0" />

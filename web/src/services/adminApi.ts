@@ -304,7 +304,7 @@ export type AdminProfessionalListItem = {
   fullName: string;
   email: string;
   phoneNumber: string | null;
-  status: "active" | "suspended";
+  status: "active" | "inactive" | "suspended";
   joinedAt: string;
   location: string;
   avatarUrl: string | null;
@@ -312,7 +312,7 @@ export type AdminProfessionalListItem = {
   rating: number;
   consultationType: string;
   onboardingCompleted: boolean;
-  verificationStatus: "pending" | "approved" | "rejected";
+  verificationStatus: "pending" | "under_review" | "approved" | "rejected" | "suspended";
 };
 
 export type AdminProfessionalDocument = {
@@ -328,7 +328,7 @@ export type AdminProfessionalDetail = {
   fullName: string;
   email: string;
   phoneNumber: string | null;
-  status: "active" | "suspended";
+  status: "active" | "inactive" | "suspended";
   isVerified: boolean;
   joinedAt: string;
   avatarUrl: string | null;
@@ -354,7 +354,7 @@ export type AdminProfessionalDetail = {
     consultationType: string | null;
     experienceYears: number | null;
     professionalBio: string | null;
-    verificationStatus: "pending" | "approved" | "rejected";
+    verificationStatus: "pending" | "under_review" | "approved" | "rejected" | "suspended";
   };
   pricing: {
     currencyCode: string;
@@ -1376,6 +1376,7 @@ export async function listAdminPatients(params: {
 export async function listAdminProfessionals(params: {
   search?: string;
   isVerified?: boolean;
+  status?: string;
   page?: number;
   limit?: number;
 }) {
@@ -1385,6 +1386,7 @@ export async function listAdminProfessionals(params: {
   if (params.isVerified !== undefined) {
     query.set("isVerified", String(params.isVerified));
   }
+  if (params.status) query.set("status", params.status);
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 
