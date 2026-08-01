@@ -12,9 +12,11 @@ const API_BASE_URL =
   "http://localhost:5000";
 
 export type ProfessionalDocument = {
+  fileId?: string;
   name: string;
   sizeLabel: string;
   url?: string;
+  mimeType?: string;
 };
 
 export type WeeklyAvailability = Record<
@@ -47,7 +49,12 @@ export type ProfessionalProfile = {
   inPersonVisitRateCents?: number | null;
   uploadedDocuments?: ProfessionalDocument[] | null;
   availability?: WeeklyAvailability | null;
-  verificationStatus?: "pending" | "approved" | "rejected";
+  verificationStatus?:
+    | "pending"
+    | "under_review"
+    | "approved"
+    | "rejected"
+    | "suspended";
   onboardingCompleted?: boolean;
 };
 
@@ -640,6 +647,43 @@ export function uploadProfessionalDocuments(documents: ProfessionalDocument[]) {
       body: JSON.stringify({ documents }),
     },
   );
+}
+
+export async function uploadProfessionalDocumentFiles(files: File[]) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+
+  const response = await fetch(
+    `${API_BASE_URL}/professional/verification/documents/files`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    },
+  );
+  const body = (await response.json().catch(() => null)) as
+    | {
+        data?: ProfessionalProfile;
+        message?: string | { message?: string | string[] };
+      }
+    | null;
+
+  if (!response.ok) {
+    const message = body?.message;
+    const text =
+      typeof message === "string"
+        ? message
+        : Array.isArray(message?.message)
+          ? message.message[0]
+          : message?.message;
+    throw new Error(text || "Document upload failed.");
+  }
+
+  if (!body?.data) {
+    throw new Error("Unexpected document upload response.");
+  }
+
+  return body.data;
 }
 
 export function deleteProfessionalDocument(documentIndex: number) {

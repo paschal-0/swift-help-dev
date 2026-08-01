@@ -12,12 +12,17 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
-import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  uploadProfessionalDocumentFiles,
+  uploadProfessionalDocuments,
+} from "@/services/professionalApi";
 
 type UploadEntry = {
   id: string;
   name: string;
   sizeLabel: string;
+  file?: File;
   url?: string;
 };
 
@@ -264,6 +269,7 @@ export function ProfessionalOnboardingTwoPage() {
         id: crypto.randomUUID(),
         name: file.name,
         sizeLabel: `${formatFileSize(file.size)} / ${formatFileSize(file.size)}`,
+        file,
       }));
 
     if (nextUploads.length > 0) {
@@ -310,13 +316,24 @@ export function ProfessionalOnboardingTwoPage() {
     setIsSubmitting(true);
 
     try {
-      await updateProfessionalProfile({
-        uploadedDocuments: uploads.map(({ name, sizeLabel, url }) => ({
+      const fileUploads = uploads
+        .map((upload) => upload.file)
+        .filter((file): file is File => Boolean(file));
+      const linkedDocuments = uploads
+        .filter((upload) => !upload.file)
+        .map(({ name, sizeLabel, url }) => ({
           name,
           sizeLabel,
           ...(url ? { url } : {}),
-        })),
-      });
+        }));
+
+      if (fileUploads.length) {
+        await uploadProfessionalDocumentFiles(fileUploads);
+      }
+
+      if (linkedDocuments.length) {
+        await uploadProfessionalDocuments(linkedDocuments);
+      }
 
       router.push("/professional/onboarding/three");
     } catch (error) {
@@ -484,7 +501,7 @@ export function ProfessionalOnboardingTwoPage() {
                 disabled={!isFormValid || isSubmitting}
                 className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
               >
-                {isSubmitting ? "Saving..." : "Continue"}
+                {isSubmitting ? "Uploading..." : "Continue"}
               </button>
             </div>
           </motion.form>

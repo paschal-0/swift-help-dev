@@ -111,9 +111,11 @@ export type ProfessionalProfilePayload = {
   consultationType?: string;
   primaryPracticeLocation?: string;
   uploadedDocuments?: Array<{
+    fileId?: string;
     name: string;
     sizeLabel: string;
     url?: string;
+    mimeType?: string;
   }>;
   availability?: ProfessionalAvailability;
   onboardingCompleted?: boolean;

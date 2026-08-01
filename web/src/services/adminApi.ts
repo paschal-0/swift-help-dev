@@ -1744,9 +1744,11 @@ export type AdminVerificationAccount = {
   licenseNumber?: string | null;
   primaryPracticeLocation?: string | null;
   uploadedDocuments?: Array<{
+    fileId?: string;
     name?: string;
     sizeLabel?: string;
     url?: string | null;
+    mimeType?: string | null;
   }> | null;
   // Organisation fields
   organisationName?: string | null;
