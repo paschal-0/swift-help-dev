@@ -16,6 +16,11 @@ import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 type AccountKind = "professional" | "organization";
 
 type Tab = AccountKind;
+type VerificationDocument = NonNullable<AdminVerificationAccount["uploadedDocuments"]>[number];
+type DocumentPreview = {
+  document: VerificationDocument;
+  title: string;
+};
 
 const emptyQueue: AdminPendingVerifications = {
   professionals: [],
@@ -81,6 +86,28 @@ function DetailRow({
   );
 }
 
+function documentName(document: VerificationDocument, index: number) {
+  return document.name?.trim() || `Document ${index + 1}`;
+}
+
+function documentUrl(document: VerificationDocument) {
+  return document.url?.trim() || "";
+}
+
+function documentType(document: VerificationDocument) {
+  const value = `${document.name ?? ""} ${document.url ?? ""}`.toLowerCase();
+  if (value.includes(".pdf") || value.startsWith("data:application/pdf")) {
+    return "pdf";
+  }
+  if (
+    /\.(png|jpe?g|webp|gif|bmp)(\?|#|$)/i.test(value) ||
+    value.startsWith("data:image/")
+  ) {
+    return "image";
+  }
+  return "file";
+}
+
 export default function SuperAdminApprovalsPage() {
   const { searchText } = useSuperAdminShell();
   const [queue, setQueue] = useState<AdminPendingVerifications>(emptyQueue);
@@ -93,6 +120,8 @@ export default function SuperAdminApprovalsPage() {
     kind: AccountKind;
   } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [documentPreview, setDocumentPreview] =
+    useState<DocumentPreview | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -325,18 +354,23 @@ export default function SuperAdminApprovalsPage() {
                             key={`${document.name ?? "document"}-${index}`}
                             className="text-[13px] text-[#334155]"
                           >
-                            {document.url ? (
-                              <a
-                                href={document.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[#1565C0] underline"
-                              >
-                                {document.name ?? `Document ${index + 1}`}
-                              </a>
-                            ) : (
-                              (document.name ?? `Document ${index + 1}`)
-                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDocumentPreview({
+                                  document,
+                                  title: `${name} - ${documentName(document, index)}`,
+                                })
+                              }
+                              className="max-w-full cursor-pointer truncate text-left font-medium text-[#1565C0] underline decoration-[#B9D7F4] underline-offset-2 transition hover:text-[#0F5B93]"
+                            >
+                              {documentName(document, index)}
+                            </button>
+                            {document.sizeLabel ? (
+                              <span className="ml-2 text-[#94A3B8]">
+                                {document.sizeLabel}
+                              </span>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
@@ -393,6 +427,91 @@ export default function SuperAdminApprovalsPage() {
           })}
         </ul>
       )}
+
+      {documentPreview ? (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-[#334155]/50 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={() => setDocumentPreview(null)}
+        >
+          <div
+            onMouseDown={(event) => event.stopPropagation()}
+            className="flex max-h-[92vh] w-full max-w-[920px] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.28)]"
+          >
+            <div className="flex flex-col gap-3 border-b border-[#DDE6F0] px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="truncate text-[18px] font-semibold text-[#334155]">
+                  Document preview
+                </h2>
+                <p className="mt-1 truncate text-[13px] font-medium text-[#64748B]">
+                  {documentPreview.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocumentPreview(null)}
+                className="inline-flex h-9 min-w-[82px] cursor-pointer items-center justify-center rounded-[9px] border border-[#CBD5E1] px-4 text-[13px] font-semibold text-[#334155] transition hover:bg-[#F8FAFC]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 bg-[#EEF3F8] p-4">
+              {documentUrl(documentPreview.document) ? (
+                documentType(documentPreview.document) === "pdf" ||
+                documentType(documentPreview.document) === "image" ? (
+                  <iframe
+                    src={documentUrl(documentPreview.document)}
+                    title={documentPreview.title}
+                    className="h-[62vh] w-full rounded-[12px] border border-[#CBD5E1] bg-white"
+                  />
+                ) : (
+                  <div className="flex h-[320px] flex-col items-center justify-center rounded-[12px] border border-dashed border-[#CBD5E1] bg-white px-6 text-center">
+                    <p className="text-[15px] font-semibold text-[#334155]">
+                      This file type cannot be previewed inline.
+                    </p>
+                    <p className="mt-2 max-w-[440px] text-[13px] leading-5 text-[#64748B]">
+                      Open it in a new tab or download it to review the document.
+                    </p>
+                  </div>
+                )
+              ) : (
+                <div className="flex h-[320px] flex-col items-center justify-center rounded-[12px] border border-dashed border-[#CBD5E1] bg-white px-6 text-center">
+                  <p className="text-[15px] font-semibold text-[#334155]">
+                    No preview URL is available.
+                  </p>
+                  <p className="mt-2 max-w-[440px] text-[13px] leading-5 text-[#64748B]">
+                    This record only contains the document name. Ask the professional to upload or import a document link again.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-[#DDE6F0] px-5 py-4 sm:flex-row sm:justify-end">
+              {documentUrl(documentPreview.document) ? (
+                <>
+                  <a
+                    href={documentUrl(documentPreview.document)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                  >
+                    Open in new tab
+                  </a>
+                  <a
+                    href={documentUrl(documentPreview.document)}
+                    download={documentPreview.document.name}
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-[#1565C0] px-5 text-[14px] font-semibold text-white transition hover:bg-[#0F5B93]"
+                  >
+                    Download
+                  </a>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {rejectFor ? (
         <div
