@@ -28,9 +28,11 @@ type DetailItem = {
 
 function ToggleSwitch({
   checked,
+  disabled = false,
   onChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   onChange: (value: boolean) => void;
 }) {
   return (
@@ -38,8 +40,9 @@ function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-[#93C5FD] focus:ring-offset-2 focus:ring-offset-[#F8FAFC] ${
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-[#93C5FD] focus:ring-offset-2 focus:ring-offset-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60 ${
         checked ? "bg-[#1565C0]" : "bg-[#94A3B8]"
       }`}
     >
@@ -83,6 +86,17 @@ function EditIcon() {
       <path
         fill="currentColor"
         d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.9 9.9-3.5.8.8-3.5 9.6-10.2Zm-8.2 11 .3 1.1 1.1-.3 8-8-1.1-1.1-8.3 8.3ZM4 17h12a1 1 0 1 1 0 2H4a1 1 0 1 1 0-2Z"
+      />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M9.4 4.1 3.5 10l5.9 5.9 1.4-1.4L7.3 11H17V9H7.3l3.5-3.5-1.4-1.4Z"
       />
     </svg>
   );
@@ -533,6 +547,15 @@ export function PatientAppointmentDetailsPage() {
 
   const canEditDetails =
     Boolean(appointmentId) && isEditableAppointmentStatus(appointment?.status);
+  const isReadonlyAppointment =
+    Boolean(appointmentId) && !isEditableAppointmentStatus(appointment?.status);
+  const goBack = () => {
+    router.push(
+      appointmentId
+        ? "/patient-platform/appointments"
+        : "/patient-platform/appointments/schedule",
+    );
+  };
 
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
     if (!draft) return [];
@@ -697,6 +720,10 @@ export function PatientAppointmentDetailsPage() {
 
   const updatePreferences = async () => {
     if (!appointmentId) return;
+    if (isReadonlyAppointment) {
+      toast.error("Only upcoming appointments can be changed.");
+      return;
+    }
     setIsConfirming(true);
     try {
       await updatePatientAppointmentReminders(appointmentId, {
@@ -714,6 +741,10 @@ export function PatientAppointmentDetailsPage() {
 
   const cancelAppointment = async () => {
     if (!appointmentId) return;
+    if (isReadonlyAppointment) {
+      toast.error("Only upcoming appointments can be cancelled.");
+      return;
+    }
     setIsConfirming(true);
     try {
       await cancelPatientAppointment(appointmentId);
@@ -743,9 +774,19 @@ export function PatientAppointmentDetailsPage() {
 
   return (
     <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-5 md:px-8 md:pb-12 md:pt-6 xl:px-10 xl:pb-[40px] xl:pt-[20px]">
-      <h1 className="text-center text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155] xl:text-left">
-        Appointment Details
-      </h1>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <h1 className="text-center text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155] xl:text-left">
+          Appointment Details
+        </h1>
+        <button
+          type="button"
+          onClick={goBack}
+          className="inline-flex h-10 w-fit cursor-pointer items-center justify-center gap-2 rounded-[20px] border border-[#B9D7F4] bg-white px-4 text-[14px] font-medium text-[#334155] transition hover:border-[#1565C0] hover:text-[#1565C0]"
+        >
+          <BackIcon />
+          Back
+        </button>
+      </div>
 
       <div className="mx-auto mt-7 w-full max-w-[860px]">
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 xl:gap-6">
@@ -814,6 +855,7 @@ export function PatientAppointmentDetailsPage() {
               </div>
               <ToggleSwitch
                 checked={shareSummaryWithProvider}
+                disabled={isReadonlyAppointment}
                 onChange={setShareSummaryWithProvider}
               />
             </div>
@@ -862,6 +904,7 @@ export function PatientAppointmentDetailsPage() {
               </span>
               <ToggleSwitch
                 checked={emailReminder}
+                disabled={isReadonlyAppointment}
                 onChange={setEmailReminder}
               />
             </div>
@@ -870,7 +913,11 @@ export function PatientAppointmentDetailsPage() {
               <span className="min-w-0 flex-1 text-[14px] font-normal leading-[18px] tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:font-light sm:leading-5">
                 Send appointment reminder by SMS
               </span>
-              <ToggleSwitch checked={smsReminder} onChange={setSmsReminder} />
+              <ToggleSwitch
+                checked={smsReminder}
+                disabled={isReadonlyAppointment}
+                onChange={setSmsReminder}
+              />
             </div>
           </div>
         </motion.section>
@@ -906,6 +953,22 @@ export function PatientAppointmentDetailsPage() {
           </p>
         </motion.div>
 
+        {isReadonlyAppointment ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: "easeOut", delay: 0.2 }}
+            className="mt-12 flex justify-center pt-2"
+          >
+            <button
+              type="button"
+              onClick={() => router.push("/patient-platform/appointments")}
+              className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155]"
+            >
+              Back to appointments
+            </button>
+          </motion.div>
+        ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -940,6 +1003,7 @@ export function PatientAppointmentDetailsPage() {
                 : "Send request"}
           </motion.button>
         </motion.div>
+        )}
       </div>
 
       {isEditDetailsOpen && draft ? (

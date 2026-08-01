@@ -331,6 +331,17 @@ function StepBadge({ step }: { step: string }) {
   );
 }
 
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M9.4 4.1 3.5 10l5.9 5.9 1.4-1.4L7.3 11H17V9H7.3l3.5-3.5-1.4-1.4Z"
+      />
+    </svg>
+  );
+}
+
 export function PatientBookAppointmentPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -571,13 +582,23 @@ export function PatientBookAppointmentPage() {
 
   return (
     <article className="relative mt-[20px] min-h-screen rounded-[20px] bg-[#F8FAFC] px-4 pb-[180px] pt-5 md:px-6 xl:mt-[26px] xl:min-h-[976px] xl:rounded-[12px] xl:px-10 xl:pb-[26px] xl:pt-[17px]">
-      <div className="space-y-1">
-        <h1 className="text-[28px] font-medium tracking-tight text-[#334155] xl:text-[24px]">
-          Appointments
-        </h1>
-        <p className="text-[14px] font-light text-[#64748B] xl:hidden">
-          Follow the steps to book your professional.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-[28px] font-medium tracking-tight text-[#334155] xl:text-[24px]">
+            Appointments
+          </h1>
+          <p className="text-[14px] font-light text-[#64748B] xl:hidden">
+            Follow the steps to book your professional.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push(routeWithCountry("/patient-platform/appointments"))}
+          className="inline-flex h-10 w-fit cursor-pointer items-center justify-center gap-2 rounded-[20px] border border-[#B9D7F4] bg-white px-4 text-[14px] font-medium text-[#334155] transition hover:border-[#1565C0] hover:text-[#1565C0]"
+        >
+          <BackIcon />
+          Back
+        </button>
       </div>
 
       <div className="mt-6 flex flex-col gap-5 xl:mt-[26px] xl:flex-row xl:items-start xl:gap-5">

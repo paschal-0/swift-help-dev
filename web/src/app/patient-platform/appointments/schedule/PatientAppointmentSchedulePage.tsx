@@ -610,15 +610,33 @@ export function PatientAppointmentSchedulePage() {
     router.push("/patient-platform/appointments/details?mode=new");
   };
 
+  const goBack = () => {
+    router.push(
+      rescheduleAppointmentId
+        ? `/patient-platform/appointments/details?appointmentId=${encodeURIComponent(rescheduleAppointmentId)}`
+        : "/patient-platform/appointments/book",
+    );
+  };
+
   return (
     <article className="mt-[20px] min-h-screen rounded-[20px] bg-[#F8FAFC] px-4 pb-[180px] pt-5 md:px-6 xl:mt-[26px] xl:min-h-[976px] xl:rounded-[12px] xl:px-10 xl:pb-[26px] xl:pt-[17px]">
-      <div className="space-y-1">
-        <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.05em] text-[#334155] xl:text-[24px] xl:leading-[42px]">
-          Schedule
-        </h1>
-        <p className="text-[14px] font-light leading-5 tracking-[-0.04em] text-[#64748B] xl:hidden">
-          Pick how you want to meet, then choose your date and time.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.05em] text-[#334155] xl:text-[24px] xl:leading-[42px]">
+            Schedule
+          </h1>
+          <p className="text-[14px] font-light leading-5 tracking-[-0.04em] text-[#64748B] xl:hidden">
+            Pick how you want to meet, then choose your date and time.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={goBack}
+          className="inline-flex h-10 w-fit cursor-pointer items-center justify-center gap-2 rounded-[20px] border border-[#B9D7F4] bg-white px-4 text-[14px] font-medium text-[#334155] transition hover:border-[#1565C0] hover:text-[#1565C0]"
+        >
+          <ChevronIcon direction="left" />
+          Back
+        </button>
       </div>
 
       <div className="mt-6 flex flex-col gap-5 xl:mt-[26px] xl:flex-row xl:items-start">

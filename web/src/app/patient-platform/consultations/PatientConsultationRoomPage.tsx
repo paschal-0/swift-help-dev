@@ -140,8 +140,17 @@ export function PatientConsultationRoomPage() {
 
         window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, selected.id);
         if (selected.paymentStatus === "payment_pending") {
-          setRoom(null);
-          return;
+          const payment = await initializePaystackConsultationPayment(
+            selected.id,
+          );
+          if (!payment.alreadyPaid) {
+            setRoom(null);
+            if (!payment.authorizationUrl) {
+              throw new Error("Paystack checkout URL was not returned");
+            }
+            window.location.assign(payment.authorizationUrl);
+            return;
+          }
         }
         const nextRoom = await getPatientConsultationRoom(selected.id);
         if (!isMounted) return;
