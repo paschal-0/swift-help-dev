@@ -838,6 +838,7 @@ export type ProviderRoleConfig = {
 export type ProviderRolesConfig = {
   categories: ProviderCategoryConfig[];
   roles: ProviderRoleConfig[];
+  deletedRoleIds?: string[];
 };
 
 export type AdminReferralRate = {

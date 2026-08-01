@@ -202,11 +202,148 @@ function Toggle({
   );
 }
 
+function EditIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M16.9 4.6l2.5 2.5M5 19l4.8-1 9-9a1.8 1.8 0 0 0 0-2.5l-1.3-1.3a1.8 1.8 0 0 0-2.5 0l-9 9L5 19z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section className={`rounded-[14px] border border-[#DDE5EF] bg-[#F8FAFC] p-6 lg:p-7 ${className}`}>
       {children}
     </section>
+  );
+}
+
+function ProviderRoleEditModal({
+  categories,
+  draft,
+  saving,
+  onCancel,
+  onChange,
+  onSave,
+}: {
+  categories: ProviderRolesConfig["categories"];
+  draft: ProviderRoleConfig;
+  saving: boolean;
+  onCancel: () => void;
+  onChange: <Key extends keyof ProviderRoleConfig>(key: Key, value: ProviderRoleConfig[Key]) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 px-4 py-8">
+      <div className="max-h-[90vh] w-full max-w-[860px] overflow-auto rounded-[14px] border border-[#DDE5EF] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#DDE5EF] px-6 py-5">
+          <div className="min-w-0">
+            <h3 className="text-[20px] font-bold tracking-tight text-[#334155]">Edit provider role</h3>
+            <p className="mt-1 truncate text-[13px] font-medium text-[#64748B]">{draft.id}</p>
+          </div>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onCancel}
+            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[10px] border border-[#CBD5E1] bg-white px-4 text-[13px] font-semibold text-[#334155] transition hover:bg-[#F1F5F9] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Close
+          </button>
+        </div>
+        <div className="px-6 py-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SelectField
+              label="Category"
+              value={draft.categoryId}
+              onChange={(value) => onChange("categoryId", value)}
+              options={categories.map((item) => item.id)}
+              optionLabels={Object.fromEntries(categories.map((item) => [item.id, providerCategoryLabel(item)]))}
+            />
+            <Field
+              label="Role name"
+              value={draft.name}
+              onChange={(value) => onChange("name", value)}
+            />
+            <Field
+              label="Booking label"
+              value={draft.bookingLabel}
+              onChange={(value) => onChange("bookingLabel", value)}
+            />
+            <Field
+              label="Required certificates"
+              value={draft.requiredCertificates.join(", ")}
+              onChange={(value) =>
+                onChange(
+                  "requiredCertificates",
+                  value.split(",").map((item) => item.trim()).filter(Boolean),
+                )
+              }
+            />
+            <Field
+              label="Search keywords"
+              value={draft.searchKeywords.join(", ")}
+              onChange={(value) =>
+                onChange(
+                  "searchKeywords",
+                  value.split(",").map((item) => item.trim()).filter(Boolean),
+                )
+              }
+            />
+            <Field
+              label="Patient-facing description"
+              value={draft.description}
+              onChange={(value) => onChange("description", value)}
+            />
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-6">
+              <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold text-[#334155]">
+                <Toggle
+                  checked={draft.verificationRequired}
+                  disabled={saving}
+                  onChange={(checked) => onChange("verificationRequired", checked)}
+                />
+                Verification required
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold text-[#334155]">
+                <Toggle
+                  checked={draft.isActive}
+                  disabled={saving}
+                  onChange={(checked) => onChange("isActive", checked)}
+                />
+                Active
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={onCancel}
+                className={secondaryButtonClass}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={onSave}
+                className={primaryButtonClass}
+              >
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -376,6 +513,7 @@ export default function SuperAdminSettingsRoute() {
     const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     const next: ProviderRolesConfig = {
       ...providerRoles,
+      deletedRoleIds: (providerRoles.deletedRoleIds ?? []).filter((roleId) => roleId !== id),
       roles: [
         ...providerRoles.roles.filter((role) => role.id !== id),
         {
@@ -451,6 +589,22 @@ export default function SuperAdminSettingsRoute() {
     });
 
     if (saved) cancelEditingProviderRole();
+  };
+
+  const deleteProviderRole = async (role: ProviderRoleConfig) => {
+    const confirmed = window.confirm(`Delete ${role.bookingLabel || role.name}?`);
+    if (!confirmed) return;
+
+    const deletedRoleIds = Array.from(
+      new Set([...(providerRoles.deletedRoleIds ?? []), role.id]),
+    );
+    const saved = await saveProviderRoles({
+      ...providerRoles,
+      deletedRoleIds,
+      roles: providerRoles.roles.filter((item) => item.id !== role.id),
+    });
+
+    if (saved && editingRoleId === role.id) cancelEditingProviderRole();
   };
 
   return (
@@ -636,135 +790,51 @@ export default function SuperAdminSettingsRoute() {
               </div>
 
               <div className="mt-6 overflow-hidden rounded-[12px] border border-[#DDE5EF] bg-white">
-                <div className="grid grid-cols-[1.25fr_0.85fr_1fr_96px_110px] gap-4 border-b border-[#DDE5EF] bg-[#E8EEF5] px-4 py-3 text-[13px] font-bold uppercase tracking-wide text-[#64748B]">
+                <div className="grid grid-cols-[1.25fr_0.85fr_1fr_96px_112px] gap-4 border-b border-[#DDE5EF] bg-[#E8EEF5] px-4 py-3 text-[13px] font-bold uppercase tracking-wide text-[#64748B]">
                   <span>Role</span>
                   <span>Category</span>
                   <span>Certificates</span>
                   <span>Status</span>
-                  <span>Action</span>
+                  <span>Actions</span>
                 </div>
                 <div className="max-h-[360px] divide-y divide-[#E2E8F0] overflow-auto">
                   {providerRoles.roles.map((role) => {
                     const category = providerRoles.categories.find((item) => item.id === role.categoryId);
-                    const isEditingRole = editingRoleId === role.id && roleEditDraft;
                     return (
-                      <div key={role.id} className="bg-white">
-                        <div className="grid grid-cols-[1.25fr_0.85fr_1fr_96px_110px] gap-4 px-4 py-3 text-[14px] text-[#334155]">
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold">{role.bookingLabel}</p>
-                            <p className="mt-0.5 truncate text-[12px] text-[#94A3B8]">{role.name}</p>
-                          </div>
-                          <span className="min-w-0 text-[13px] leading-5">{providerCategoryLabel(category)}</span>
-                          <span className="min-w-0 truncate">{role.requiredCertificates.join(", ") || "None"}</span>
-                          <Toggle
-                            checked={role.isActive}
-                            disabled={savingProviderRoles}
-                            onChange={(checked) => toggleProviderRole(role.id, checked)}
-                          />
+                      <div key={role.id} className="grid grid-cols-[1.25fr_0.85fr_1fr_96px_112px] gap-4 px-4 py-3 text-[14px] text-[#334155]">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{role.bookingLabel}</p>
+                          <p className="mt-0.5 truncate text-[12px] text-[#94A3B8]">{role.name}</p>
+                        </div>
+                        <span className="min-w-0 text-[13px] leading-5">{providerCategoryLabel(category)}</span>
+                        <span className="min-w-0 truncate">{role.requiredCertificates.join(", ") || "None"}</span>
+                        <Toggle
+                          checked={role.isActive}
+                          disabled={savingProviderRoles}
+                          onChange={(checked) => toggleProviderRole(role.id, checked)}
+                        />
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             disabled={savingProviderRoles}
-                            onClick={() =>
-                              isEditingRole ? cancelEditingProviderRole() : startEditingProviderRole(role)
-                            }
-                            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-white px-3 text-[13px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => startEditingProviderRole(role)}
+                            aria-label={`Edit ${role.bookingLabel || role.name}`}
+                            title="Edit role"
+                            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] border border-[#B7D7F8] bg-[#E3F2FD] text-[#1565C0] transition hover:bg-[#D7ECFF] disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {isEditingRole ? "Close" : "Edit"}
+                            <EditIcon />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingProviderRoles}
+                            onClick={() => void deleteProviderRole(role)}
+                            aria-label={`Delete ${role.bookingLabel || role.name}`}
+                            title="Delete role"
+                            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] border border-[#FECACA] bg-red-50 text-[#B91C1C] transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <TrashIcon />
                           </button>
                         </div>
-                        {isEditingRole ? (
-                          <div className="border-t border-[#DDE5EF] bg-[#F8FAFC] px-4 py-4">
-                            <div className="grid gap-4 lg:grid-cols-2">
-                              <SelectField
-                                label="Category"
-                                value={roleEditDraft.categoryId}
-                                onChange={(value) => updateRoleEditDraft("categoryId", value)}
-                                options={providerRoles.categories.map((item) => item.id)}
-                                optionLabels={Object.fromEntries(
-                                  providerRoles.categories.map((item) => [
-                                    item.id,
-                                    providerCategoryLabel(item),
-                                  ]),
-                                )}
-                              />
-                              <Field
-                                label="Role name"
-                                value={roleEditDraft.name}
-                                onChange={(value) => updateRoleEditDraft("name", value)}
-                              />
-                              <Field
-                                label="Booking label"
-                                value={roleEditDraft.bookingLabel}
-                                onChange={(value) => updateRoleEditDraft("bookingLabel", value)}
-                              />
-                              <Field
-                                label="Required certificates"
-                                value={roleEditDraft.requiredCertificates.join(", ")}
-                                onChange={(value) =>
-                                  updateRoleEditDraft(
-                                    "requiredCertificates",
-                                    value.split(",").map((item) => item.trim()).filter(Boolean),
-                                  )
-                                }
-                              />
-                              <Field
-                                label="Search keywords"
-                                value={roleEditDraft.searchKeywords.join(", ")}
-                                onChange={(value) =>
-                                  updateRoleEditDraft(
-                                    "searchKeywords",
-                                    value.split(",").map((item) => item.trim()).filter(Boolean),
-                                  )
-                                }
-                              />
-                              <Field
-                                label="Patient-facing description"
-                                value={roleEditDraft.description}
-                                onChange={(value) => updateRoleEditDraft("description", value)}
-                              />
-                            </div>
-                            <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-                              <div className="flex flex-wrap items-center gap-6">
-                                <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold text-[#334155]">
-                                  <Toggle
-                                    checked={roleEditDraft.verificationRequired}
-                                    disabled={savingProviderRoles}
-                                    onChange={(checked) =>
-                                      updateRoleEditDraft("verificationRequired", checked)
-                                    }
-                                  />
-                                  Verification required
-                                </label>
-                                <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold text-[#334155]">
-                                  <Toggle
-                                    checked={roleEditDraft.isActive}
-                                    disabled={savingProviderRoles}
-                                    onChange={(checked) => updateRoleEditDraft("isActive", checked)}
-                                  />
-                                  Active
-                                </label>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <button
-                                  type="button"
-                                  disabled={savingProviderRoles}
-                                  onClick={cancelEditingProviderRole}
-                                  className={secondaryButtonClass}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={savingProviderRoles}
-                                  onClick={() => void saveProviderRoleEdit()}
-                                  className={primaryButtonClass}
-                                >
-                                  {savingProviderRoles ? "Saving..." : "Save changes"}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
                       </div>
                     );
                   })}
@@ -993,6 +1063,16 @@ export default function SuperAdminSettingsRoute() {
           </div>
         ) : null}
       </div>
+      {roleEditDraft ? (
+        <ProviderRoleEditModal
+          categories={providerRoles.categories}
+          draft={roleEditDraft}
+          saving={savingProviderRoles}
+          onCancel={cancelEditingProviderRole}
+          onChange={updateRoleEditDraft}
+          onSave={() => void saveProviderRoleEdit()}
+        />
+      ) : null}
     </section>
   );
 }
