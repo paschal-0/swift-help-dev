@@ -488,12 +488,15 @@ export default function SuperAdminSettingsRoute() {
     }
   };
 
-  const saveProviderRoles = async (next: ProviderRolesConfig) => {
+  const saveProviderRoles = async (
+    next: ProviderRolesConfig,
+    successMessage = "Provider roles saved.",
+  ) => {
     setSavingProviderRoles(true);
     try {
       const saved = await updateAdminProviderRoles(next);
       setProviderRoles(saved);
-      toast.success("Provider roles saved.");
+      toast.success(successMessage);
       return true;
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -598,11 +601,14 @@ export default function SuperAdminSettingsRoute() {
     const deletedRoleIds = Array.from(
       new Set([...(providerRoles.deletedRoleIds ?? []), role.id]),
     );
-    const saved = await saveProviderRoles({
-      ...providerRoles,
-      deletedRoleIds,
-      roles: providerRoles.roles.filter((item) => item.id !== role.id),
-    });
+    const saved = await saveProviderRoles(
+      {
+        ...providerRoles,
+        deletedRoleIds,
+        roles: providerRoles.roles.filter((item) => item.id !== role.id),
+      },
+      "Role deleted.",
+    );
 
     if (saved && editingRoleId === role.id) cancelEditingProviderRole();
   };
