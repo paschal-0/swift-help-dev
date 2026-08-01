@@ -41,6 +41,8 @@ type ProfessionalCard = {
   inPersonRateLabel: string;
 };
 
+type PriceFilterId = "all" | "under-100" | "100-200" | "over-200";
+
 type AiAssistantBookingContext = {
   source?: string;
   sessionId?: string | null;
@@ -109,6 +111,42 @@ function formatRate(cents?: number | null, currencyCode = "NGN") {
     currency: currencyCode || "NGN",
     maximumFractionDigits: 0,
   }).format(cents / 100)}/hr`;
+}
+
+const priceFilterOptions: Array<{
+  id: PriceFilterId;
+  label: string;
+}> = [
+  { id: "all", label: "All prices" },
+  { id: "under-100", label: `Under ${formatRate(10000).replace("/hr", "")}/hr` },
+  {
+    id: "100-200",
+    label: `${formatRate(10000).replace("/hr", "")} - ${formatRate(20000).replace("/hr", "")}/hr`,
+  },
+  { id: "over-200", label: `${formatRate(20000).replace("/hr", "")}+/hr` },
+];
+
+function getLowestProviderRateCents(provider: ProfessionalCard) {
+  const rates = [
+    provider.videoConsultationRateCents,
+    provider.inPersonVisitRateCents,
+  ].filter(
+    (rate): rate is number =>
+      typeof rate === "number" && Number.isFinite(rate) && rate > 0,
+  );
+
+  return rates.length ? Math.min(...rates) : null;
+}
+
+function matchesPriceFilter(provider: ProfessionalCard, filter: PriceFilterId) {
+  if (filter === "all") return true;
+
+  const lowestRate = getLowestProviderRateCents(provider);
+  if (lowestRate === null) return false;
+
+  if (filter === "under-100") return lowestRate < 10000;
+  if (filter === "100-200") return lowestRate >= 10000 && lowestRate <= 20000;
+  return lowestRate > 20000;
 }
 
 function formatAvailabilityLabel(
@@ -382,6 +420,8 @@ export function PatientBookAppointmentPage() {
   );
   const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedPriceFilter, setSelectedPriceFilter] =
+    useState<PriceFilterId>("all");
   const [providerRolesConfig, setProviderRolesConfig] = useState<PatientProviderRolesConfig>(
     fallbackProviderRolesConfig,
   );
@@ -499,11 +539,17 @@ export function PatientBookAppointmentPage() {
 
   const visibleProfessionals = useMemo(
     () =>
-      activeCountry
-        ? providerCards.filter((card) => card.countryName === activeCountry)
-        : providerCards,
-    [activeCountry, providerCards],
+      providerCards.filter((card) => {
+        const matchesCountry = activeCountry
+          ? card.countryName === activeCountry
+          : true;
+        return matchesCountry && matchesPriceFilter(card, selectedPriceFilter);
+      }),
+    [activeCountry, providerCards, selectedPriceFilter],
   );
+  const selectedPriceFilterLabel =
+    priceFilterOptions.find((option) => option.id === selectedPriceFilter)
+      ?.label ?? "All prices";
 
   const selectedCare = useMemo(
     () => configuredCareTypes.find((i) => i.id === activeCareType) || configuredCareTypes[0] || careTypes[0],
@@ -706,25 +752,45 @@ export function PatientBookAppointmentPage() {
                 </h2>
               </div>
 
-              {countryOptions.length ? (
-                <label className="flex items-center gap-2 sm:justify-end">
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                {countryOptions.length ? (
+                  <label className="flex items-center gap-2">
+                    <span className="whitespace-nowrap text-[12px] font-medium text-[#64748B]">
+                      Location
+                    </span>
+                    <select
+                      value={activeCountry}
+                      onChange={(event) => setSelectedCountry(event.target.value)}
+                      className="min-h-[36px] min-w-[150px] cursor-pointer rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[13px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    >
+                      <option value="">All locations</option>
+                      {countryOptions.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="flex items-center gap-2">
                   <span className="whitespace-nowrap text-[12px] font-medium text-[#64748B]">
-                    Location
+                    Price
                   </span>
                   <select
-                    value={activeCountry}
-                    onChange={(event) => setSelectedCountry(event.target.value)}
+                    value={selectedPriceFilter}
+                    onChange={(event) =>
+                      setSelectedPriceFilter(event.target.value as PriceFilterId)
+                    }
                     className="min-h-[36px] min-w-[150px] cursor-pointer rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[13px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
                   >
-                    <option value="">All locations</option>
-                    {countryOptions.map((country) => (
-                      <option key={country} value={country}>
-                        {country}
+                    {priceFilterOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
                 </label>
-              ) : null}
+              </div>
             </div>
 
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3 xl:gap-2">
@@ -839,8 +905,8 @@ export function PatientBookAppointmentPage() {
               </AnimatePresence>
               {visibleProfessionals.length === 0 ? (
                 <div className="min-w-[280px] rounded-[20px] border border-dashed border-[#94A3B8] bg-white p-4 text-sm text-[#64748B] md:min-w-0 xl:rounded-[12px]">
-                  {activeCountry
-                    ? `No professionals based in ${activeCountry} are available yet. Choose another location.`
+                  {activeCountry || selectedPriceFilter !== "all"
+                    ? `No professionals match ${activeCountry || "all locations"} and ${selectedPriceFilterLabel}. Choose another filter.`
                     : "No available professionals found yet."}
                 </div>
               ) : null}
