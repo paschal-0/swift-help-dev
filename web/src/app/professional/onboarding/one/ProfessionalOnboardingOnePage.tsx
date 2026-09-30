@@ -202,6 +202,7 @@ export function ProfessionalOnboardingOnePage() {
           selectedProviderRole?.bookingLabel ||
           selectedProviderRole?.name ||
           formatProviderCategoryLabel(providerCategories.find((category) => category.id === formValues.providerCategory)),
+        providerRoleId: formValues.providerRole,
         experienceYears: Number(formValues.yearsOfExperience),
         consultationType: formValues.consultationType,
         primaryPracticeLocation: formValues.primaryPracticeLocation,

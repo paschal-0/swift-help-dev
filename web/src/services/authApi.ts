@@ -107,6 +107,7 @@ export type ProfessionalProfilePayload = {
   professionalName?: string;
   licenseNumber?: string;
   specialization?: string;
+  providerRoleId?: string;
   experienceYears?: number;
   consultationType?: string;
   primaryPracticeLocation?: string;
