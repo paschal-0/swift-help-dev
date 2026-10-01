@@ -23,6 +23,11 @@ type DayAvailability = {
   to: string;
 };
 
+type RecoveryAction = {
+  label: string;
+  href: string;
+};
+
 const dayLabels: Record<DayKey, string> = {
   monday: "Monday",
   tuesday: "Tuesday",
@@ -44,6 +49,57 @@ const initialAvailability: Record<DayKey, DayAvailability> = {
 };
 
 const orderedDays = Object.keys(initialAvailability) as DayKey[];
+const profileDetailFields = new Set([
+  "professionalName",
+  "experienceYears",
+  "consultationType",
+  "primaryPracticeLocation",
+]);
+
+function parseMissingOnboardingFields(message: string) {
+  const marker = "Missing:";
+  const markerIndex = message.indexOf(marker);
+
+  if (markerIndex === -1) return [];
+
+  return message
+    .slice(markerIndex + marker.length)
+    .split(",")
+    .map((field) => field.trim().replace(/[.。]$/, ""))
+    .filter(Boolean);
+}
+
+function getRecoveryActionsForMissingFields(fields: string[]) {
+  const actions: RecoveryAction[] = [];
+  const addAction = (action: RecoveryAction) => {
+    if (!actions.some((item) => item.href === action.href)) {
+      actions.push(action);
+    }
+  };
+
+  if (fields.some((field) => profileDetailFields.has(field))) {
+    addAction({
+      label: "Go to profile details",
+      href: "/professional/onboarding/one",
+    });
+  }
+
+  if (fields.includes("uploadedDocuments")) {
+    addAction({
+      label: "Upload documents",
+      href: "/professional/onboarding/two",
+    });
+  }
+
+  if (fields.includes("availability")) {
+    addAction({
+      label: "Set availability",
+      href: "/professional/onboarding/three",
+    });
+  }
+
+  return actions;
+}
 
 function formatTimeLabel(timeValue: string) {
   const [hourValue, minuteValue] = timeValue.split(":");
@@ -118,6 +174,10 @@ export function ProfessionalOnboardingThreePage() {
   const router = useRouter();
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recoveryPrompt, setRecoveryPrompt] = useState<{
+    missingFields: string[];
+    actions: RecoveryAction[];
+  } | null>(null);
   const showValidationToast = useBlurValidationToast();
   const [availability, setAvailability] =
     useState<Record<DayKey, DayAvailability>>(initialAvailability);
@@ -144,12 +204,22 @@ export function ProfessionalOnboardingThreePage() {
     }
 
     setIsSubmitting(true);
+    setRecoveryPrompt(null);
 
     try {
       await updateProfessionalProfile({ availability, onboardingCompleted: true });
       router.push("/professional-platform");
     } catch (error) {
-      toast.error(getApiErrorMessage(error));
+      const message = getApiErrorMessage(error);
+      const missingFields = parseMissingOnboardingFields(message);
+      const actions = getRecoveryActionsForMissingFields(missingFields);
+
+      if (actions.length) {
+        setRecoveryPrompt({ missingFields, actions });
+        toast.error("Complete the missing onboarding steps to continue.");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -295,6 +365,38 @@ export function ProfessionalOnboardingThreePage() {
               Your account will be reviewed before you begin accepting
               consultations.
             </p>
+
+            {recoveryPrompt ? (
+              <div
+                role="alert"
+                className="w-full max-w-[760px] rounded-[24px] border border-[#fecaca] bg-[#fff1f2] px-5 py-4 text-left shadow-[0_14px_32px_rgba(185,28,28,0.08)]"
+              >
+                <h3 className="m-0 text-[16px] font-semibold leading-6 text-[#991b1b]">
+                  Finish your professional onboarding
+                </h3>
+                <p className="mt-1 text-[14px] leading-5 text-[#7f1d1d]">
+                  Some required details are still missing. Complete the step
+                  below, then return here to submit for review.
+                </p>
+                {recoveryPrompt.missingFields.length ? (
+                  <p className="mt-2 text-[13px] leading-5 text-[#9f1239]">
+                    Missing: {recoveryPrompt.missingFields.join(", ")}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  {recoveryPrompt.actions.map((action) => (
+                    <button
+                      key={action.href}
+                      type="button"
+                      onClick={() => router.push(action.href)}
+                      className="inline-flex min-h-[42px] items-center justify-center rounded-[14px] bg-[#1565c0] px-4 text-[14px] font-semibold text-white transition hover:brightness-105 focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe]"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="w-full max-w-[444px]">
               <button
