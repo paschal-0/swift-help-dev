@@ -6,6 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import {
+  clearProfessionalOnboardingDraft,
+  readProfessionalOnboardingDraft,
+  type ProfessionalOnboardingDocument,
+  type ProfessionalOnboardingDraft,
+} from "@/lib/professionalOnboardingDraft";
 import { getApiErrorMessage, getProfile, updateProfessionalProfile } from "@/services/authApi";
 
 type DayKey =
@@ -30,6 +36,14 @@ type RecoveryAction = {
 
 type SavedProfessionalProfileResponse = {
   profile?: {
+    professionalName?: string | null;
+    licenseNumber?: string | null;
+    specialization?: string | null;
+    providerRoleId?: string | null;
+    experienceYears?: number | null;
+    consultationType?: string | null;
+    primaryPracticeLocation?: string | null;
+    uploadedDocuments?: ProfessionalOnboardingDocument[] | null;
     availability?: Partial<Record<DayKey, Partial<DayAvailability>>> | null;
   } | null;
 };
@@ -57,6 +71,9 @@ const initialAvailability: Record<DayKey, DayAvailability> = {
 const orderedDays = Object.keys(initialAvailability) as DayKey[];
 const profileDetailFields = new Set([
   "professionalName",
+  "licenseNumber",
+  "specialization",
+  "providerRoleId",
   "experienceYears",
   "consultationType",
   "primaryPracticeLocation",
@@ -134,6 +151,58 @@ function normalizeAvailability(
     };
     return next;
   }, { ...initialAvailability });
+}
+
+function cleanString(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function firstNumber(...values: Array<number | null | undefined>) {
+  return values.find((value): value is number => typeof value === "number");
+}
+
+function firstDocuments(
+  ...values: Array<ProfessionalOnboardingDocument[] | null | undefined>
+) {
+  return values.find(
+    (documents): documents is ProfessionalOnboardingDocument[] =>
+      Array.isArray(documents) && documents.length > 0,
+  );
+}
+
+function buildCompletionProfilePayload(
+  savedProfile: SavedProfessionalProfileResponse["profile"],
+  draft: ProfessionalOnboardingDraft,
+) {
+  return {
+    professionalName:
+      cleanString(savedProfile?.professionalName) ||
+      cleanString(draft.professionalName),
+    licenseNumber:
+      cleanString(savedProfile?.licenseNumber) ||
+      cleanString(draft.licenseNumber),
+    specialization:
+      cleanString(savedProfile?.specialization) ||
+      cleanString(draft.specialization),
+    providerRoleId:
+      cleanString(savedProfile?.providerRoleId) ||
+      cleanString(draft.providerRoleId),
+    experienceYears: firstNumber(
+      savedProfile?.experienceYears,
+      draft.experienceYears,
+    ),
+    consultationType:
+      cleanString(savedProfile?.consultationType) ||
+      cleanString(draft.consultationType),
+    primaryPracticeLocation:
+      cleanString(savedProfile?.primaryPracticeLocation) ||
+      cleanString(draft.primaryPracticeLocation),
+    uploadedDocuments: firstDocuments(
+      savedProfile?.uploadedDocuments,
+      draft.uploadedDocuments,
+    ),
+  };
 }
 
 function formatTimeLabel(timeValue: string) {
@@ -217,6 +286,8 @@ export function ProfessionalOnboardingThreePage() {
   const showValidationToast = useBlurValidationToast();
   const [availability, setAvailability] =
     useState<Record<DayKey, DayAvailability>>(initialAvailability);
+  const [savedProfile, setSavedProfile] =
+    useState<SavedProfessionalProfileResponse["profile"]>(null);
 
   const hasAvailableDay = orderedDays.some((day) => availability[day].enabled);
   const validationError = hasAvailableDay
@@ -239,6 +310,7 @@ export function ProfessionalOnboardingThreePage() {
 
         const savedAvailability = (response as SavedProfessionalProfileResponse)
           .profile?.availability;
+        setSavedProfile((response as SavedProfessionalProfileResponse).profile ?? null);
         if (savedAvailability) {
           setAvailability(normalizeAvailability(savedAvailability));
         }
@@ -263,7 +335,17 @@ export function ProfessionalOnboardingThreePage() {
     setRecoveryPrompt(null);
 
     try {
-      await updateProfessionalProfile({ availability, onboardingCompleted: true });
+      const completionProfilePayload = buildCompletionProfilePayload(
+        savedProfile,
+        readProfessionalOnboardingDraft(),
+      );
+
+      await updateProfessionalProfile({
+        ...completionProfilePayload,
+        availability,
+        onboardingCompleted: true,
+      });
+      clearProfessionalOnboardingDraft();
       router.push("/professional-platform");
     } catch (error) {
       const message = getApiErrorMessage(error);

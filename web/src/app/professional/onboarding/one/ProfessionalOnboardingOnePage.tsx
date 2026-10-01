@@ -7,6 +7,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import { mergeProfessionalOnboardingDraft } from "@/lib/professionalOnboardingDraft";
 import { getApiErrorMessage, getProfile, updateProfessionalProfile } from "@/services/authApi";
 import {
   listPatientProviderRoles,
@@ -235,7 +236,7 @@ export function ProfessionalOnboardingOnePage() {
     setIsSubmitting(true);
 
     try {
-      await updateProfessionalProfile({
+      const professionalProfilePayload = {
         professionalName: formValues.professionalName.trim(),
         licenseNumber: formValues.licenseNumber.trim(),
         specialization:
@@ -246,7 +247,10 @@ export function ProfessionalOnboardingOnePage() {
         experienceYears: Number(formValues.yearsOfExperience),
         consultationType: formValues.consultationType,
         primaryPracticeLocation: formValues.primaryPracticeLocation,
-      });
+      };
+
+      await updateProfessionalProfile(professionalProfilePayload);
+      mergeProfessionalOnboardingDraft(professionalProfilePayload);
 
       router.push(withCurrentLocale(pathname, "/professional/onboarding/two"));
     } catch (error) {

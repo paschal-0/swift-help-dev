@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import { mergeProfessionalOnboardingDraft } from "@/lib/professionalOnboardingDraft";
 import { getApiErrorMessage, getProfile } from "@/services/authApi";
 import {
   uploadProfessionalDocumentFiles,
@@ -20,10 +21,12 @@ import {
 
 type UploadEntry = {
   id: string;
+  fileId?: string;
   name: string;
   sizeLabel: string;
   file?: File;
   url?: string;
+  mimeType?: string;
   persisted?: boolean;
 };
 
@@ -293,9 +296,11 @@ export function ProfessionalOnboardingTwoPage() {
               document.fileId ||
               document.url ||
               `${document.name || "document"}-${index}`,
+            fileId: document.fileId,
             name: document.name || `Document ${index + 1}`,
             sizeLabel: document.sizeLabel || "Uploaded",
             url: document.url || undefined,
+            mimeType: document.mimeType || undefined,
             persisted: true,
           })),
         );
@@ -385,13 +390,32 @@ export function ProfessionalOnboardingTwoPage() {
           sizeLabel,
           ...(url ? { url } : {}),
         }));
+      let uploadedDocuments = uploads
+        .filter((upload) => upload.persisted)
+        .map(({ fileId, name, sizeLabel, url, mimeType }) => ({
+          ...(fileId ? { fileId } : {}),
+          name,
+          sizeLabel,
+          ...(url ? { url } : {}),
+          ...(mimeType ? { mimeType } : {}),
+        }));
 
       if (fileUploads.length) {
-        await uploadProfessionalDocumentFiles(fileUploads);
+        const profile = await uploadProfessionalDocumentFiles(fileUploads);
+        uploadedDocuments = profile.uploadedDocuments?.length
+          ? profile.uploadedDocuments
+          : uploadedDocuments;
       }
 
       if (linkedDocuments.length) {
-        await uploadProfessionalDocuments(linkedDocuments);
+        const profile = await uploadProfessionalDocuments(linkedDocuments);
+        uploadedDocuments = profile.uploadedDocuments?.length
+          ? profile.uploadedDocuments
+          : [...uploadedDocuments, ...linkedDocuments];
+      }
+
+      if (uploadedDocuments.length) {
+        mergeProfessionalOnboardingDraft({ uploadedDocuments });
       }
 
       router.push(withCurrentLocale(pathname, "/professional/onboarding/three"));
