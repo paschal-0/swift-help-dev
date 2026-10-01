@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { API_BASE_URL, getApiErrorMessage } from "@/services/authApi";
 import {
   listAdminPendingVerifications,
   reviewAdminOrganizationVerification,
@@ -91,11 +91,20 @@ function documentName(document: VerificationDocument, index: number) {
 }
 
 function documentUrl(document: VerificationDocument) {
-  return document.url?.trim() || "";
+  const explicitUrl = document.url?.trim();
+  if (explicitUrl) {
+    if (/^(https?:|data:|blob:)/i.test(explicitUrl)) return explicitUrl;
+    return `${API_BASE_URL}${explicitUrl.startsWith("/") ? "" : "/"}${explicitUrl}`;
+  }
+
+  const fileId = document.fileId?.trim();
+  return fileId
+    ? `${API_BASE_URL}/storage/files/${encodeURIComponent(fileId)}/raw`
+    : "";
 }
 
 function documentType(document: VerificationDocument) {
-  const value = `${document.name ?? ""} ${document.url ?? ""}`.toLowerCase();
+  const value = `${document.name ?? ""} ${document.mimeType ?? ""} ${documentUrl(document)}`.toLowerCase();
   if (value.includes(".pdf") || value.startsWith("data:application/pdf")) {
     return "pdf";
   }

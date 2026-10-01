@@ -376,9 +376,11 @@ export type AdminProfessionalListItem = {
 
 export type AdminProfessionalDocument = {
   id: string;
+  fileId: string | null;
   name: string;
   sizeLabel: string;
   url: string | null;
+  mimeType?: string | null;
   status: string;
 };
 

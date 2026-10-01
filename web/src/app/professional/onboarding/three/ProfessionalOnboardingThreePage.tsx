@@ -2,11 +2,11 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
-import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
+import { getApiErrorMessage, getProfile, updateProfessionalProfile } from "@/services/authApi";
 
 type DayKey =
   | "monday"
@@ -26,6 +26,12 @@ type DayAvailability = {
 type RecoveryAction = {
   label: string;
   href: string;
+};
+
+type SavedProfessionalProfileResponse = {
+  profile?: {
+    availability?: Partial<Record<DayKey, Partial<DayAvailability>>> | null;
+  } | null;
 };
 
 const dayLabels: Record<DayKey, string> = {
@@ -101,6 +107,35 @@ function getRecoveryActionsForMissingFields(fields: string[]) {
   return actions;
 }
 
+function withCurrentLocale(pathname: string | null, href: string) {
+  const firstSegment = pathname?.split("/").filter(Boolean)[0];
+  const hasLocalePrefix =
+    firstSegment &&
+    firstSegment.length <= 5 &&
+    !["professional", "patient", "organisation", "super-admin-platform"].includes(firstSegment);
+
+  return hasLocalePrefix ? `/${firstSegment}${href}` : href;
+}
+
+function normalizeAvailability(
+  savedAvailability?: Partial<Record<DayKey, Partial<DayAvailability>>> | null,
+) {
+  if (!savedAvailability) return initialAvailability;
+
+  return orderedDays.reduce<Record<DayKey, DayAvailability>>((next, day) => {
+    const savedDay = savedAvailability[day];
+    next[day] = {
+      enabled:
+        typeof savedDay?.enabled === "boolean"
+          ? savedDay.enabled
+          : initialAvailability[day].enabled,
+      from: savedDay?.from || initialAvailability[day].from,
+      to: savedDay?.to || initialAvailability[day].to,
+    };
+    return next;
+  }, { ...initialAvailability });
+}
+
 function formatTimeLabel(timeValue: string) {
   const [hourValue, minuteValue] = timeValue.split(":");
   const hourNumber = Number(hourValue);
@@ -172,6 +207,7 @@ function TimeInput({
 
 export function ProfessionalOnboardingThreePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recoveryPrompt, setRecoveryPrompt] = useState<{
@@ -193,6 +229,26 @@ export function ProfessionalOnboardingThreePage() {
     }
     showValidationToast("professional-onboarding-three", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getProfile()
+      .then((response) => {
+        if (!isMounted) return;
+
+        const savedAvailability = (response as SavedProfessionalProfileResponse)
+          .profile?.availability;
+        if (savedAvailability) {
+          setAvailability(normalizeAvailability(savedAvailability));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -388,7 +444,9 @@ export function ProfessionalOnboardingThreePage() {
                     <button
                       key={action.href}
                       type="button"
-                      onClick={() => router.push(action.href)}
+                      onClick={() =>
+                        router.push(withCurrentLocale(pathname, action.href))
+                      }
                       className="inline-flex min-h-[42px] items-center justify-center rounded-[14px] bg-[#1565c0] px-4 text-[14px] font-semibold text-white transition hover:brightness-105 focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe]"
                     >
                       {action.label}

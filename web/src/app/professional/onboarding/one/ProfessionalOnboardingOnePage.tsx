@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { defaultCountries } from "react-international-phone";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
-import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
+import { getApiErrorMessage, getProfile, updateProfessionalProfile } from "@/services/authApi";
 import {
   listPatientProviderRoles,
   type PatientProviderCategory,
@@ -48,10 +48,33 @@ const locationOptions = Array.from(
 ).sort((left, right) => left.localeCompare(right));
 const licenseNumberPattern = /^[A-Za-z0-9][A-Za-z0-9 ./-]*$/;
 
+type SavedProfessionalProfile = {
+  professionalName?: string | null;
+  licenseNumber?: string | null;
+  providerRoleId?: string | null;
+  experienceYears?: number | null;
+  consultationType?: string | null;
+  primaryPracticeLocation?: string | null;
+};
+
+type SavedProfessionalProfileResponse = {
+  profile?: SavedProfessionalProfile | null;
+};
+
 function formatProviderCategoryLabel(category: PatientProviderCategory | undefined) {
   if (category?.id === "general") return "General Consultation";
   if (category?.id === "specialist") return "Speciality";
   return category?.name || "General Consultation";
+}
+
+function withCurrentLocale(pathname: string | null, href: string) {
+  const firstSegment = pathname?.split("/").filter(Boolean)[0];
+  const hasLocalePrefix =
+    firstSegment &&
+    firstSegment.length <= 5 &&
+    !["professional", "patient", "organisation", "super-admin-platform"].includes(firstSegment);
+
+  return hasLocalePrefix ? `/${firstSegment}${href}` : href;
 }
 
 function SelectedRadio() {
@@ -71,6 +94,7 @@ function UnselectedRadio() {
 
 export function ProfessionalOnboardingOnePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
@@ -88,9 +112,10 @@ export function ProfessionalOnboardingOnePage() {
 
   useEffect(() => {
     let isMounted = true;
-    listPatientProviderRoles()
-      .then((config) => {
+    Promise.all([listPatientProviderRoles(), getProfile().catch(() => null)])
+      .then(([config, savedProfileResponse]) => {
         if (!isMounted) return;
+        const savedProfile = (savedProfileResponse as SavedProfessionalProfileResponse | null)?.profile;
         const activeCategories = config.categories.filter((category) => category.isActive !== false);
         const activeRoles = config.roles.filter((role) => role.isActive !== false);
         const categories = activeCategories.length ? activeCategories : fallbackProviderCategories;
@@ -98,16 +123,31 @@ export function ProfessionalOnboardingOnePage() {
         setProviderCategories(categories);
         setProviderRoles(roles);
         setFormValues((current) => {
+          const savedRoleId = savedProfile?.providerRoleId?.trim();
+          const savedRole = savedRoleId ? roles.find((role) => role.id === savedRoleId) : undefined;
           const categoryStillAvailable = categories.some((category) => category.id === current.providerCategory);
-          const nextCategoryId = categoryStillAvailable ? current.providerCategory : categories[0]?.id ?? "general";
+          const nextCategoryId =
+            savedRole?.categoryId ??
+            (categoryStillAvailable ? current.providerCategory : categories[0]?.id ?? "general");
           const rolesForCategory = roles.filter((role) => role.categoryId === nextCategoryId);
-          const nextRoleId = rolesForCategory.some((role) => role.id === current.providerRole)
-            ? current.providerRole
-            : rolesForCategory[0]?.id ?? roles[0]?.id ?? "";
+          const nextRoleId =
+            savedRole?.id ??
+            (rolesForCategory.some((role) => role.id === current.providerRole)
+              ? current.providerRole
+              : rolesForCategory[0]?.id ?? roles[0]?.id ?? "");
           return {
             ...current,
+            professionalName: savedProfile?.professionalName ?? current.professionalName,
+            licenseNumber: savedProfile?.licenseNumber ?? current.licenseNumber,
             providerCategory: nextCategoryId,
             providerRole: nextRoleId,
+            yearsOfExperience:
+              typeof savedProfile?.experienceYears === "number"
+                ? String(savedProfile.experienceYears)
+                : current.yearsOfExperience,
+            consultationType: savedProfile?.consultationType ?? current.consultationType,
+            primaryPracticeLocation:
+              savedProfile?.primaryPracticeLocation ?? current.primaryPracticeLocation,
           };
         });
       })
@@ -208,7 +248,7 @@ export function ProfessionalOnboardingOnePage() {
         primaryPracticeLocation: formValues.primaryPracticeLocation,
       });
 
-      router.push("/professional/onboarding/two");
+      router.push(withCurrentLocale(pathname, "/professional/onboarding/two"));
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {

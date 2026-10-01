@@ -3,7 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { getApiErrorMessage } from "@/services/authApi";
+import { API_BASE_URL, getApiErrorMessage } from "@/services/authApi";
 import {
   deleteAdminProfessional,
   getAdminProfessional,
@@ -185,6 +185,19 @@ function centsToInput(cents: number | null | undefined) {
 function parseRateToCents(value: string) {
   const parsed = Number(value.replace(/,/g, ""));
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+}
+
+function documentUrl(document: AdminProfessionalDetail["medicalLicense"][number]) {
+  const explicitUrl = document.url?.trim();
+  if (explicitUrl) {
+    if (/^(https?:|data:|blob:)/i.test(explicitUrl)) return explicitUrl;
+    return `${API_BASE_URL}${explicitUrl.startsWith("/") ? "" : "/"}${explicitUrl}`;
+  }
+
+  const fileId = document.fileId?.trim();
+  return fileId
+    ? `${API_BASE_URL}/storage/files/${encodeURIComponent(fileId)}/raw`
+    : "";
 }
 
 function ThemedDropdown<T extends string>({
@@ -418,23 +431,31 @@ function ProfessionalProfileModal({
                 <h3 className="mb-3 text-[17px] font-semibold leading-6 text-[#334155]">Medical license</h3>
                 <div className="max-h-[132px] space-y-2 overflow-y-auto pr-1">
                   {professional.medicalLicense.length ? (
-                    professional.medicalLicense.map((document) => (
-                      <a
-                        key={document.id}
-                        href={document.url ?? undefined}
-                        target={document.url ? "_blank" : undefined}
-                        rel="noreferrer"
-                        className="flex min-h-[48px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155]"
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] text-[#1565C0]">
-                          <Icon name="file" className="h-5 w-5" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[14px] font-semibold">{document.name}</span>
-                          <span className="block text-[12px] text-[#64748B]">{document.sizeLabel} - Completed</span>
-                        </span>
-                      </a>
-                    ))
+                    professional.medicalLicense.map((document) => {
+                      const href = documentUrl(document);
+                      return (
+                        <a
+                          key={document.id}
+                          href={href || undefined}
+                          target={href ? "_blank" : undefined}
+                          rel="noreferrer"
+                          aria-disabled={!href}
+                          className={`flex min-h-[48px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155] ${
+                            href ? "transition hover:border-[#1565C0] hover:bg-[#E3F2FD]" : "pointer-events-none opacity-70"
+                          }`}
+                        >
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] text-[#1565C0]">
+                            <Icon name="file" className="h-5 w-5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[14px] font-semibold">{document.name}</span>
+                            <span className="block text-[12px] text-[#64748B]">
+                              {document.sizeLabel} - {href ? "Click to view" : "No file URL"}
+                            </span>
+                          </span>
+                        </a>
+                      );
+                    })
                   ) : (
                     <div className="rounded-[12px] border border-dashed border-[#B9CBE0] px-4 py-6 text-center text-[14px] text-[#94A3B8]">
                       No license documents uploaded.

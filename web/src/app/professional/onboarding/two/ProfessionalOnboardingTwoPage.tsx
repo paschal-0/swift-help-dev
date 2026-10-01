@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -12,7 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
-import { getApiErrorMessage } from "@/services/authApi";
+import { getApiErrorMessage, getProfile } from "@/services/authApi";
 import {
   uploadProfessionalDocumentFiles,
   uploadProfessionalDocuments,
@@ -24,11 +24,36 @@ type UploadEntry = {
   sizeLabel: string;
   file?: File;
   url?: string;
+  persisted?: boolean;
 };
 
 const maxFileSizeInMb = 10;
 
 const initialUploads: UploadEntry[] = [];
+
+type SavedProfessionalDocument = {
+  fileId?: string;
+  name?: string | null;
+  sizeLabel?: string | null;
+  url?: string | null;
+  mimeType?: string | null;
+};
+
+type SavedProfessionalProfileResponse = {
+  profile?: {
+    uploadedDocuments?: SavedProfessionalDocument[] | null;
+  } | null;
+};
+
+function withCurrentLocale(pathname: string | null, href: string) {
+  const firstSegment = pathname?.split("/").filter(Boolean)[0];
+  const hasLocalePrefix =
+    firstSegment &&
+    firstSegment.length <= 5 &&
+    !["professional", "patient", "organisation", "super-admin-platform"].includes(firstSegment);
+
+  return hasLocalePrefix ? `/${firstSegment}${href}` : href;
+}
 
 function formatFileSize(bytes: number) {
   const megabytes = bytes / (1024 * 1024);
@@ -228,6 +253,7 @@ function UploadCard({
 
 export function ProfessionalOnboardingTwoPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -247,6 +273,39 @@ export function ProfessionalOnboardingTwoPage() {
     }
     showValidationToast("professional-onboarding-two", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getProfile()
+      .then((response) => {
+        if (!isMounted) return;
+
+        const documents =
+          (response as SavedProfessionalProfileResponse).profile
+            ?.uploadedDocuments ?? [];
+
+        if (!documents.length) return;
+
+        setUploads(
+          documents.map((document, index) => ({
+            id:
+              document.fileId ||
+              document.url ||
+              `${document.name || "document"}-${index}`,
+            name: document.name || `Document ${index + 1}`,
+            sizeLabel: document.sizeLabel || "Uploaded",
+            url: document.url || undefined,
+            persisted: true,
+          })),
+        );
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
@@ -320,7 +379,7 @@ export function ProfessionalOnboardingTwoPage() {
         .map((upload) => upload.file)
         .filter((file): file is File => Boolean(file));
       const linkedDocuments = uploads
-        .filter((upload) => !upload.file)
+        .filter((upload) => !upload.file && !upload.persisted)
         .map(({ name, sizeLabel, url }) => ({
           name,
           sizeLabel,
@@ -335,7 +394,7 @@ export function ProfessionalOnboardingTwoPage() {
         await uploadProfessionalDocuments(linkedDocuments);
       }
 
-      router.push("/professional/onboarding/three");
+      router.push(withCurrentLocale(pathname, "/professional/onboarding/three"));
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
