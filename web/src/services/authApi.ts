@@ -429,7 +429,7 @@ export async function completeOrganizationTeamOnboarding() {
  * read this cookie, so returning it in a header proves the request came from
  * our own pages rather than someone else's.
  */
-function csrfHeader(): Record<string, string> {
+export function csrfHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
 
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
@@ -501,6 +501,10 @@ async function apiFormRequest<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
+    headers: {
+      ...csrfHeader(),
+      ...init.headers,
+    },
   });
 
   const body = (await response.json().catch(() => null)) as

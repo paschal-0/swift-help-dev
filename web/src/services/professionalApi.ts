@@ -1,6 +1,11 @@
 "use client";
 
-import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
+import {
+  apiRequest,
+  csrfHeader,
+  type AuthUser,
+  type BackendRole,
+} from "./authApi";
 import type {
   CommunicationRecording,
   CommunicationRoomAccess,
@@ -658,6 +663,9 @@ export async function uploadProfessionalDocumentFiles(files: File[]) {
     {
       method: "POST",
       credentials: "include",
+      headers: {
+        ...csrfHeader(),
+      },
       body: formData,
     },
   );
