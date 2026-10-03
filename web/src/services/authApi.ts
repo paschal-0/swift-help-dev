@@ -184,6 +184,18 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:5000";
 
+export function buildApiUrl(pathOrUrl: string) {
+  const value = pathOrUrl.trim();
+  if (!value) return "";
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+
+  const path = value.startsWith("/") ? value : `/${value}`;
+  if (path.startsWith("/api/")) return path;
+
+  const base = API_BASE_URL || "/api/v1";
+  return `${base}${path}`;
+}
+
 export function toBackendRole(role: FrontendRole): BackendRole {
   return role === "organisation" ? "organization" : role;
 }

@@ -3,7 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { API_BASE_URL, getApiErrorMessage } from "@/services/authApi";
+import { buildApiUrl, getApiErrorMessage } from "@/services/authApi";
 import {
   deleteAdminProfessional,
   getAdminProfessional,
@@ -25,6 +25,13 @@ type StatusFilter = "all" | "active" | "inactive" | "suspended";
 type DropdownOption<T extends string> = {
   label: string;
   value: T;
+};
+
+type ProfessionalDocument = AdminProfessionalDetail["medicalLicense"][number];
+
+type ProfessionalDocumentPreview = {
+  document: ProfessionalDocument;
+  title: string;
 };
 
 type IconName =
@@ -187,17 +194,28 @@ function parseRateToCents(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
 }
 
-function documentUrl(document: AdminProfessionalDetail["medicalLicense"][number]) {
+function documentUrl(document: ProfessionalDocument) {
   const explicitUrl = document.url?.trim();
-  if (explicitUrl) {
-    if (/^(https?:|data:|blob:)/i.test(explicitUrl)) return explicitUrl;
-    return `${API_BASE_URL}${explicitUrl.startsWith("/") ? "" : "/"}${explicitUrl}`;
-  }
+  if (explicitUrl) return buildApiUrl(explicitUrl);
 
   const fileId = document.fileId?.trim();
   return fileId
-    ? `${API_BASE_URL}/storage/files/${encodeURIComponent(fileId)}/raw`
+    ? buildApiUrl(`/storage/files/${encodeURIComponent(fileId)}/raw`)
     : "";
+}
+
+function documentType(document: ProfessionalDocument) {
+  const value = `${document.name ?? ""} ${document.mimeType ?? ""} ${documentUrl(document)}`.toLowerCase();
+  if (value.includes(".pdf") || value.startsWith("data:application/pdf")) {
+    return "pdf";
+  }
+  if (
+    /\.(png|jpe?g|webp|gif|bmp)(\?|#|$)/i.test(value) ||
+    value.startsWith("data:image/")
+  ) {
+    return "image";
+  }
+  return "file";
 }
 
 function ThemedDropdown<T extends string>({
@@ -327,6 +345,8 @@ function ProfessionalProfileModal({
   professional: AdminProfessionalDetail | null;
 }) {
   const currencyCode = professional?.pricing.currencyCode ?? "NGN";
+  const [documentPreview, setDocumentPreview] =
+    useState<ProfessionalDocumentPreview | null>(null);
 
   return (
     <div
@@ -434,14 +454,18 @@ function ProfessionalProfileModal({
                     professional.medicalLicense.map((document) => {
                       const href = documentUrl(document);
                       return (
-                        <a
+                        <button
                           key={document.id}
-                          href={href || undefined}
-                          target={href ? "_blank" : undefined}
-                          rel="noreferrer"
-                          aria-disabled={!href}
-                          className={`flex min-h-[48px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155] ${
-                            href ? "transition hover:border-[#1565C0] hover:bg-[#E3F2FD]" : "pointer-events-none opacity-70"
+                          type="button"
+                          disabled={!href}
+                          onClick={() =>
+                            setDocumentPreview({
+                              document,
+                              title: document.name || "Medical license",
+                            })
+                          }
+                          className={`flex min-h-[48px] w-full cursor-pointer items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-left text-[#334155] ${
+                            href ? "transition hover:border-[#1565C0] hover:bg-[#E3F2FD]" : "cursor-not-allowed opacity-70"
                           }`}
                         >
                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] text-[#1565C0]">
@@ -450,10 +474,10 @@ function ProfessionalProfileModal({
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[14px] font-semibold">{document.name}</span>
                             <span className="block text-[12px] text-[#64748B]">
-                              {document.sizeLabel} - {href ? "Click to view" : "No file URL"}
+                              {document.sizeLabel} - {href ? "Click to preview" : "No file URL"}
                             </span>
                           </span>
-                        </a>
+                        </button>
                       );
                     })
                   ) : (
@@ -490,6 +514,94 @@ function ProfessionalProfileModal({
           </div>
         )}
       </div>
+
+      {documentPreview ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[#334155]/55 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+            setDocumentPreview(null);
+          }}
+        >
+          <div
+            onMouseDown={(event) => event.stopPropagation()}
+            className="flex max-h-[92vh] w-full max-w-[920px] flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.28)]"
+          >
+            <div className="flex flex-col gap-3 border-b border-[#DDE6F0] px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="truncate text-[18px] font-semibold text-[#334155]">
+                  Medical license preview
+                </h2>
+                <p className="mt-1 truncate text-[13px] font-medium text-[#64748B]">
+                  {documentPreview.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocumentPreview(null)}
+                className="inline-flex h-9 min-w-[82px] cursor-pointer items-center justify-center rounded-[9px] border border-[#CBD5E1] px-4 text-[13px] font-semibold text-[#334155] transition hover:bg-[#F8FAFC]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 bg-[#EEF3F8] p-4">
+              {documentUrl(documentPreview.document) ? (
+                documentType(documentPreview.document) === "pdf" ||
+                documentType(documentPreview.document) === "image" ? (
+                  <iframe
+                    src={documentUrl(documentPreview.document)}
+                    title={documentPreview.title}
+                    className="h-[62vh] w-full rounded-[12px] border border-[#CBD5E1] bg-white"
+                  />
+                ) : (
+                  <div className="flex h-[320px] flex-col items-center justify-center rounded-[12px] border border-dashed border-[#CBD5E1] bg-white px-6 text-center">
+                    <p className="text-[15px] font-semibold text-[#334155]">
+                      This file type cannot be previewed inline.
+                    </p>
+                    <p className="mt-2 max-w-[440px] text-[13px] leading-5 text-[#64748B]">
+                      Open it in a new tab or download it to review the license.
+                    </p>
+                  </div>
+                )
+              ) : (
+                <div className="flex h-[320px] flex-col items-center justify-center rounded-[12px] border border-dashed border-[#CBD5E1] bg-white px-6 text-center">
+                  <p className="text-[15px] font-semibold text-[#334155]">
+                    No preview URL is available.
+                  </p>
+                  <p className="mt-2 max-w-[440px] text-[13px] leading-5 text-[#64748B]">
+                    This record only contains the document name. Ask the professional to upload or import the document link again.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-[#DDE6F0] px-5 py-4 sm:flex-row sm:justify-end">
+              {documentUrl(documentPreview.document) ? (
+                <>
+                  <a
+                    href={documentUrl(documentPreview.document)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                  >
+                    Open in new tab
+                  </a>
+                  <a
+                    href={documentUrl(documentPreview.document)}
+                    download={documentPreview.document.name}
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-[#1565C0] px-5 text-[14px] font-semibold text-white transition hover:bg-[#0F5B93]"
+                  >
+                    Download
+                  </a>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
