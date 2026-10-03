@@ -187,16 +187,44 @@ export const API_BASE_URL =
 export function buildApiUrl(pathOrUrl: string) {
   const value = pathOrUrl.trim();
   if (!value) return "";
-  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (/^(data:|blob:)/i.test(value)) return value;
+  if (/^https?:/i.test(value)) {
+    const normalized = normalizeSameOriginStorageUrl(value);
+    return normalized ?? value;
+  }
 
   const path = value.startsWith("/") ? value : `/${value}`;
+  const normalizedPath = normalizeStoragePath(path);
+  if (normalizedPath) return normalizedPath;
   if (path.startsWith("/api/")) return path;
-  if (path.startsWith("/storage/") && isSameOriginApiBase(API_BASE_URL)) {
-    return `/api/v1${path}`;
-  }
 
   const base = API_BASE_URL || "/api/v1";
   return `${base}${path}`;
+}
+
+function normalizeSameOriginStorageUrl(value: string) {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const url = new URL(value);
+    if (url.origin !== window.location.origin) return null;
+    return normalizeStoragePath(`${url.pathname}${url.search}${url.hash}`);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStoragePath(path: string) {
+  const storagePath = path.match(/^\/(?:[a-z]{2}\/)?storage\/.+$/i)?.[0];
+  if (!storagePath) return null;
+
+  const withoutCountry = storagePath.replace(/^\/[a-z]{2}(?=\/storage\/)/i, "");
+  if (isSameOriginApiBase(API_BASE_URL)) {
+    return `/api/v1${withoutCountry}`;
+  }
+
+  const base = API_BASE_URL || "/api/v1";
+  return `${base}${withoutCountry}`;
 }
 
 function isSameOriginApiBase(base: string) {
