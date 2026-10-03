@@ -191,9 +191,23 @@ export function buildApiUrl(pathOrUrl: string) {
 
   const path = value.startsWith("/") ? value : `/${value}`;
   if (path.startsWith("/api/")) return path;
+  if (path.startsWith("/storage/") && isSameOriginApiBase(API_BASE_URL)) {
+    return `/api/v1${path}`;
+  }
 
   const base = API_BASE_URL || "/api/v1";
   return `${base}${path}`;
+}
+
+function isSameOriginApiBase(base: string) {
+  if (!base || base.startsWith("/")) return true;
+  if (typeof window === "undefined") return false;
+
+  try {
+    return new URL(base, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
 export function toBackendRole(role: FrontendRole): BackendRole {

@@ -205,13 +205,17 @@ function documentUrl(document: ProfessionalDocument) {
 }
 
 function documentType(document: ProfessionalDocument) {
-  const value = `${document.name ?? ""} ${document.mimeType ?? ""} ${documentUrl(document)}`.toLowerCase();
-  if (value.includes(".pdf") || value.startsWith("data:application/pdf")) {
+  const name = document.name?.toLowerCase() ?? "";
+  const mimeType = document.mimeType?.toLowerCase() ?? "";
+  const url = documentUrl(document).toLowerCase();
+
+  if (mimeType === "application/pdf" || name.endsWith(".pdf") || url.startsWith("data:application/pdf")) {
     return "pdf";
   }
   if (
-    /\.(png|jpe?g|webp|gif|bmp)(\?|#|$)/i.test(value) ||
-    value.startsWith("data:image/")
+    mimeType.startsWith("image/") ||
+    /\.(png|jpe?g|webp|gif|bmp)$/i.test(name) ||
+    url.startsWith("data:image/")
   ) {
     return "image";
   }
