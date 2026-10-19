@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import { getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
@@ -44,6 +44,16 @@ type PricingDraft = {
   inPersonVisitRate: string;
   currencyCode: string;
 };
+
+function withCurrentLocale(pathname: string | null, href: string) {
+  const firstSegment = pathname?.split("/").filter(Boolean)[0];
+  const hasLocalePrefix =
+    firstSegment &&
+    firstSegment.length <= 5 &&
+    !["professional", "patient", "organisation", "super-admin-platform"].includes(firstSegment);
+
+  return hasLocalePrefix ? `/${firstSegment}${href}` : href;
+}
 
 const fallbackActivities: ActivityItem[] = [];
 const PAGE_SIZE = 5;
@@ -172,6 +182,7 @@ function ProfileInfoRows({ rows }: { rows: InfoRow[] }) {
 }
 
 export function ProfessionalMyProfilePage() {
+  const pathname = usePathname();
   const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
   const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
@@ -294,6 +305,8 @@ export function ProfessionalMyProfilePage() {
   }, [backendLicenseFiles, query]);
 
   const handleEdit = () => router.push("/professional-platform/settings");
+  const verificationStatus = profileData?.profile.verificationStatus;
+  const verificationReason = profileData?.profile.verificationNotes?.trim();
   const currencyCode = profileData?.profile.currencyCode || "NGN";
   const formatHourlyRate = (amountCents?: number | null) =>
     typeof amountCents === "number" && amountCents > 0
@@ -419,6 +432,49 @@ export function ProfessionalMyProfilePage() {
   return (
     <div className="mt-[22px] w-full">
       <h1 className="text-[24px] font-medium leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Profile</h1>
+
+      {verificationStatus === "rejected" ? (
+        <section className="mt-5 rounded-[14px] border border-[#FECACA] bg-[#FFF1F2] px-5 py-5 text-[#7F1D1D]">
+          <h2 className="text-[18px] font-semibold tracking-[-0.04em]">
+            Verification needs updates
+          </h2>
+          <p className="mt-2 text-[14px] leading-6">
+            Your account was not approved yet. Correct the issue below, then
+            submit your onboarding again for review.
+          </p>
+          {verificationReason ? (
+            <p className="mt-3 rounded-[10px] bg-white/70 px-3 py-2 text-[14px] leading-6">
+              <span className="font-semibold">Admin&apos;s reason:</span>{" "}
+              {verificationReason}
+            </p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => router.push(withCurrentLocale(pathname, "/professional/onboarding/one"))}
+              className="inline-flex h-10 items-center justify-center rounded-[9px] bg-[#1565C0] px-4 text-[13px] font-semibold text-white transition hover:bg-[#0F5BAE]"
+            >
+              Update profile details
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(withCurrentLocale(pathname, "/professional/onboarding/two"))}
+              className="inline-flex h-10 items-center justify-center rounded-[9px] border border-[#B91C1C] bg-white px-4 text-[13px] font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+            >
+              Re-upload documents
+            </button>
+          </div>
+        </section>
+      ) : verificationStatus === "approved" ? (
+        <section className="mt-5 rounded-[14px] border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 text-[#166534]">
+          <h2 className="text-[18px] font-semibold tracking-[-0.04em]">
+            Verification approved
+          </h2>
+          <p className="mt-1 text-[14px] leading-6">
+            Your professional account is approved and ready to use.
+          </p>
+        </section>
+      ) : null}
 
       <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_286px]">
         <div className="space-y-4">

@@ -15,6 +15,7 @@ import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 import { mergeProfessionalOnboardingDraft } from "@/lib/professionalOnboardingDraft";
 import { getApiErrorMessage, getProfile } from "@/services/authApi";
 import {
+  deleteProfessionalDocument,
   uploadProfessionalDocumentFiles,
   uploadProfessionalDocuments,
 } from "@/services/professionalApi";
@@ -28,6 +29,7 @@ type UploadEntry = {
   url?: string;
   mimeType?: string;
   persisted?: boolean;
+  documentIndex?: number;
 };
 
 const maxFileSizeInMb = 10;
@@ -47,6 +49,22 @@ type SavedProfessionalProfileResponse = {
     uploadedDocuments?: SavedProfessionalDocument[] | null;
   } | null;
 };
+
+function mapSavedDocuments(documents: SavedProfessionalDocument[]) {
+  return documents.map((document, index) => ({
+    id:
+      document.fileId ||
+      document.url ||
+      `${document.name || "document"}-${index}`,
+    fileId: document.fileId,
+    name: document.name || `Document ${index + 1}`,
+    sizeLabel: document.sizeLabel || "Uploaded",
+    url: document.url || undefined,
+    mimeType: document.mimeType || undefined,
+    persisted: true,
+    documentIndex: index,
+  }));
+}
 
 function withCurrentLocale(pathname: string | null, href: string) {
   const firstSegment = pathname?.split("/").filter(Boolean)[0];
@@ -222,9 +240,11 @@ function TrashIcon() {
 function UploadCard({
   upload,
   onRemove,
+  disabled,
 }: {
   upload: UploadEntry;
   onRemove: (id: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center gap-4 rounded-[26px] border border-[#9eb1cf] bg-white px-4 py-4 md:px-[20px] md:py-[16px]">
@@ -245,7 +265,8 @@ function UploadCard({
       <button
         type="button"
         onClick={() => onRemove(upload.id)}
-        className="inline-flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-full bg-[#f8fafc]"
+        disabled={disabled}
+        className="inline-flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-full bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={`Remove ${upload.name}`}
       >
         <TrashIcon />
@@ -260,6 +281,7 @@ export function ProfessionalOnboardingTwoPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [removingUploadId, setRemovingUploadId] = useState<string | null>(null);
   const showValidationToast = useBlurValidationToast();
   const [uploads, setUploads] = useState<UploadEntry[]>(initialUploads);
   const [urlInput, setUrlInput] = useState("");
@@ -290,20 +312,7 @@ export function ProfessionalOnboardingTwoPage() {
 
         if (!documents.length) return;
 
-        setUploads(
-          documents.map((document, index) => ({
-            id:
-              document.fileId ||
-              document.url ||
-              `${document.name || "document"}-${index}`,
-            fileId: document.fileId,
-            name: document.name || `Document ${index + 1}`,
-            sizeLabel: document.sizeLabel || "Uploaded",
-            url: document.url || undefined,
-            mimeType: document.mimeType || undefined,
-            persisted: true,
-          })),
-        );
+        setUploads(mapSavedDocuments(documents));
       })
       .catch(() => undefined);
 
@@ -311,6 +320,37 @@ export function ProfessionalOnboardingTwoPage() {
       isMounted = false;
     };
   }, []);
+
+  const handleRemoveUpload = async (uploadId: string) => {
+    const upload = uploads.find((entry) => entry.id === uploadId);
+
+    if (!upload) {
+      return;
+    }
+
+    if (!upload.persisted || upload.documentIndex === undefined) {
+      setUploads((current) =>
+        current.filter((entry) => entry.id !== uploadId),
+      );
+      return;
+    }
+
+    setRemovingUploadId(uploadId);
+
+    try {
+      const profile = await deleteProfessionalDocument(upload.documentIndex);
+      setUploads(
+        mapSavedDocuments(
+          (profile.uploadedDocuments ?? []) as SavedProfessionalDocument[],
+        ),
+      );
+      toast.success("Document removed. You can upload a replacement.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setRemovingUploadId(null);
+    }
+  };
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
@@ -531,11 +571,8 @@ export function ProfessionalOnboardingTwoPage() {
                       <UploadCard
                         key={upload.id}
                         upload={upload}
-                        onRemove={(id) =>
-                          setUploads((current) =>
-                            current.filter((entry) => entry.id !== id),
-                          )
-                        }
+                        onRemove={handleRemoveUpload}
+                        disabled={removingUploadId !== null}
                       />
                     ))}
                   </div>

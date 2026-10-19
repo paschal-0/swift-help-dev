@@ -60,6 +60,7 @@ export type ProfessionalProfile = {
     | "approved"
     | "rejected"
     | "suspended";
+  verificationNotes?: string | null;
   onboardingCompleted?: boolean;
 };
 

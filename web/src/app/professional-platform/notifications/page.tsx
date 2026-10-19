@@ -12,6 +12,7 @@ import {
 
 const tabs: NotificationTab[] = [
   { id: "all", label: "All" },
+  { id: "verification", label: "Verification" },
   { id: "requests", label: "Requests" },
   { id: "shiftOffers", label: "Shift offers" },
   { id: "earnings", label: "Earnings" },
@@ -20,6 +21,10 @@ const tabs: NotificationTab[] = [
 
 function getProfessionalNotificationCategory(notification: ProfessionalNotification) {
   const type = notification.type.toLowerCase();
+
+  if (notification.metadata?.kind === "verification") {
+    return "verification";
+  }
 
   if (type.includes("earning") || type.includes("payment") || type.includes("payout")) {
     return "earnings";
@@ -46,6 +51,13 @@ function getProfessionalNotificationCategory(notification: ProfessionalNotificat
 }
 
 function getProfessionalNotificationTarget(notification: ProfessionalNotification, countryPrefix: string) {
+  if (
+    typeof notification.metadata?.actionUrl === "string" &&
+    notification.metadata.actionUrl.startsWith("/")
+  ) {
+    return `${countryPrefix}${notification.metadata.actionUrl}`;
+  }
+
   if (typeof notification.metadata?.roomId === "string") {
     return `${countryPrefix}/communication/rooms/${notification.metadata.roomId}`;
   }
