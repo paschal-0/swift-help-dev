@@ -16,6 +16,7 @@ import {
   updatePatientSecurityPreferences,
   updatePatientSubscriptionAutoRenew,
   verifyPaystackSubscriptionPayment,
+  verifyStripePayment,
   type PatientBilling,
 } from "@/services/patientApi";
 import { exportTablePdf } from "@/utils/pdfExport";
@@ -665,14 +666,19 @@ export function PatientSettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const reference = params.get("reference");
-    const isSubscriptionReturn = params.get("payment") === "paystack-subscription";
+    const paymentProvider = params.get("payment");
+    const isSubscriptionReturn =
+      paymentProvider === "paystack-subscription" ||
+      paymentProvider === "stripe-subscription";
 
     if (!isSubscriptionReturn || !reference) {
       return;
     }
 
     let cancelled = false;
-    verifyPaystackSubscriptionPayment(reference)
+    (paymentProvider === "stripe-subscription"
+      ? verifyStripePayment(reference)
+      : verifyPaystackSubscriptionPayment(reference))
       .then((payment) => {
         if (cancelled) {
           return;
@@ -896,7 +902,7 @@ export function PatientSettingsPage() {
 
       if (!payment.authorizationUrl) {
         throw new Error(
-          "Paystack did not return a checkout link. Please try again in a moment.",
+          "The payment provider did not return a checkout link. Please try again in a moment.",
         );
       }
 
@@ -1363,10 +1369,10 @@ export function PatientSettingsPage() {
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[12px] font-medium leading-5 text-[#64748B]">
-                    Card details are entered on Paystack secure checkout before activation.
+                    Card details are entered on the secure payment checkout before activation.
                     {selectedSubscriptionPlan?.currency &&
                     subscriptionPaymentForm.currency !== selectedSubscriptionPlan.currency.toUpperCase()
-                      ? ` The plan price is converted from ${selectedSubscriptionPlan.currency.toUpperCase()} to ${subscriptionPaymentForm.currency} at today's rate, and Paystack shows the exact amount before you pay.`
+                      ? ` The plan price is converted from ${selectedSubscriptionPlan.currency.toUpperCase()} to ${subscriptionPaymentForm.currency} at today's rate, and the payment provider shows the exact amount before you pay.`
                       : ""}
                   </p>
                   <button
@@ -1375,7 +1381,7 @@ export function PatientSettingsPage() {
                     disabled={submittingSubscription}
                     className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-6 text-[14px] font-semibold text-white transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {submittingSubscription ? "Opening Paystack..." : "Continue to Paystack"}
+                    {submittingSubscription ? "Opening secure checkout..." : "Continue to payment"}
                   </button>
                 </div>
               </section>
@@ -1407,7 +1413,7 @@ export function PatientSettingsPage() {
                   ))
                 ) : (
                   <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
-                    No saved payment method yet. Subscription card details are entered securely on Paystack checkout.
+                    No saved payment method yet. Subscription card details are entered securely on the payment provider checkout.
                   </div>
                 )}
               </div>

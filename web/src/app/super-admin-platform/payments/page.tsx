@@ -13,11 +13,13 @@ import {
   removeAdminPaymentTransaction,
   resolveAdminConsultationEscrow,
   testAdminPaymentGateway,
+  updateAdminPaymentRoutingPolicy,
   updateAdminPaymentSettlementPolicy,
   type AdminConsultationEscrowRow,
   type AdminPaymentGatewayRow,
   type AdminPaymentReferralPayoutRow,
   type AdminPaymentSettlementPolicy,
+  type AdminPaymentRoutingPolicy,
   type AdminPaymentStatus,
   type AdminPaymentSubscriptionRow,
   type AdminPaymentTransaction,
@@ -78,6 +80,11 @@ const defaultOverview: AdminPaymentsOverview = {
       unusedTimeRefundEnabled: true,
       disputeWindowHours: 48,
       autoSettlementDelayHours: 24,
+    },
+    routingPolicy: {
+      paystackCountries: ["NG", "GH", "ZA", "KE"],
+      paystackCurrencies: ["NGN", "GHS", "ZAR", "KES"],
+      internationalProvider: "stripe",
     },
   },
 };
@@ -318,6 +325,7 @@ export default function SuperAdminPaymentsRoute() {
   const [configuringGateway, setConfiguringGateway] = useState<AdminPaymentGatewayRow | null>(null);
   const [savingGateway, setSavingGateway] = useState(false);
   const [savingSettlementPolicy, setSavingSettlementPolicy] = useState(false);
+  const [savingRoutingPolicy, setSavingRoutingPolicy] = useState(false);
   const [resolvingEscrow, setResolvingEscrow] = useState<{
     row: AdminConsultationEscrowRow;
     action: EscrowAction;
@@ -567,6 +575,22 @@ export default function SuperAdminPaymentsRoute() {
     }
   };
 
+  const handleSaveRoutingPolicy = async (payload: AdminPaymentRoutingPolicy) => {
+    setSavingRoutingPolicy(true);
+    try {
+      const updated = await updateAdminPaymentRoutingPolicy(payload);
+      setOverview((current) => ({
+        ...current,
+        configuration: { ...current.configuration, routingPolicy: updated },
+      }));
+      toast.success("Payment routing policy saved.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingRoutingPolicy(false);
+    }
+  };
+
   const handleResolveEscrow = async (
     row: AdminConsultationEscrowRow,
     action: EscrowAction,
@@ -730,10 +754,12 @@ export default function SuperAdminPaymentsRoute() {
           {activeTab === "configuration" ? (
             <ConfigurationPanel
               overview={overview}
+              savingRoutingPolicy={savingRoutingPolicy}
               savingSettlementPolicy={savingSettlementPolicy}
               onConfigure={setConfiguringGateway}
               onDisconnect={handleDisconnectGateway}
               onSaveSettlementPolicy={handleSaveSettlementPolicy}
+              onSaveRoutingPolicy={handleSaveRoutingPolicy}
               onTest={handleTestGateway}
             />
           ) : null}
@@ -1009,19 +1035,99 @@ function EscrowReviewTable({
   );
 }
 
+function PaymentRoutingPanel({
+  onSave,
+  policy,
+  saving,
+}: {
+  onSave: (policy: AdminPaymentRoutingPolicy) => void;
+  policy: AdminPaymentRoutingPolicy;
+  saving: boolean;
+}) {
+  const [draft, setDraft] = useState<AdminPaymentRoutingPolicy>(policy);
+
+  useEffect(() => {
+    setDraft(policy);
+  }, [policy]);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave({
+      ...draft,
+      paystackCountries: draft.paystackCountries
+        .map((value) => value.trim().toUpperCase())
+        .filter(Boolean),
+      paystackCurrencies: draft.paystackCurrencies
+        .map((value) => value.trim().toUpperCase())
+        .filter(Boolean),
+    });
+  };
+
+  return (
+    <form onSubmit={submit} className="mb-8 rounded-[8px] border border-[#D6E0EA] bg-white px-4 py-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-[18px] font-semibold text-[#334155]">Payment provider routing</h2>
+          <p className="mt-1 max-w-[760px] text-[13px] leading-5 text-[#64748B]">
+            Paystack is selected when the currency is listed and the payer is in a configured local country. Missing country data falls back to the currency rule; all other payments use the international provider.
+          </p>
+        </div>
+        <button type="submit" disabled={saving} className="h-10 rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-5 text-[13px] font-semibold text-white disabled:opacity-60">
+          {saving ? "Saving..." : "Save routing"}
+        </button>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Paystack countries</span>
+          <input
+            value={draft.paystackCountries.join(", ")}
+            onChange={(event) => setDraft((current) => ({ ...current, paystackCountries: event.target.value.split(",") }))}
+            placeholder="NG, GH, ZA, KE"
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Paystack currencies</span>
+          <input
+            value={draft.paystackCurrencies.join(", ")}
+            onChange={(event) => setDraft((current) => ({ ...current, paystackCurrencies: event.target.value.split(",") }))}
+            placeholder="NGN, GHS, ZAR, KES"
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">International provider</span>
+          <select
+            value={draft.internationalProvider}
+            onChange={(event) => setDraft((current) => ({ ...current, internationalProvider: event.target.value as AdminPaymentRoutingPolicy["internationalProvider"] }))}
+            className="mt-2 h-11 w-full cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          >
+            <option value="stripe">Stripe</option>
+            <option value="paystack">Paystack</option>
+          </select>
+        </label>
+      </div>
+    </form>
+  );
+}
+
 function ConfigurationPanel({
   overview,
+  savingRoutingPolicy,
   savingSettlementPolicy,
   onConfigure,
   onDisconnect,
   onSaveSettlementPolicy,
+  onSaveRoutingPolicy,
   onTest,
 }: {
   overview: AdminPaymentsOverview;
+  savingRoutingPolicy: boolean;
   savingSettlementPolicy: boolean;
   onConfigure: (gateway: AdminPaymentGatewayRow) => void;
   onDisconnect: (gateway: AdminPaymentGatewayRow) => void;
   onSaveSettlementPolicy: (policy: AdminPaymentSettlementPolicy) => void;
+  onSaveRoutingPolicy: (policy: AdminPaymentRoutingPolicy) => void;
   onTest: (gateway: AdminPaymentGatewayRow) => void;
 }) {
   const plans = overview.configuration.plans;
@@ -1040,6 +1146,12 @@ function ConfigurationPanel({
         policy={overview.configuration.settlementPolicy}
         saving={savingSettlementPolicy}
         onSave={onSaveSettlementPolicy}
+      />
+
+      <PaymentRoutingPanel
+        policy={overview.configuration.routingPolicy}
+        saving={savingRoutingPolicy}
+        onSave={onSaveRoutingPolicy}
       />
 
       <h2 className="text-[18px] font-semibold text-[#334155]">Subscription plan pricing</h2>

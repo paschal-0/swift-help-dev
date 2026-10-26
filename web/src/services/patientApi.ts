@@ -145,6 +145,7 @@ export type PatientUpdate = {
 };
 
 export type PaystackConsultationPayment = {
+  provider?: "paystack" | "stripe";
   alreadyPaid?: boolean;
   authorizationUrl?: string | null;
   accessCode?: string | null;
@@ -1234,6 +1235,13 @@ export function verifyPaystackConsultationPayment(reference: string) {
   return apiRequest<PaystackConsultationPayment>("/payments/paystack/verify", {
     method: "POST",
     body: JSON.stringify({ reference }),
+  });
+}
+
+export function verifyStripePayment(sessionId: string) {
+  return apiRequest<PaystackConsultationPayment>("/payments/stripe/verify", {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
   });
 }
 

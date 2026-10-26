@@ -14,6 +14,7 @@ import {
   initializePaystackConsultationPayment,
   type PatientDashboard,
   verifyPaystackConsultationPayment,
+  verifyStripePayment,
 } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -270,14 +271,21 @@ export function PatientDashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const reference = params.get("reference");
-    const isPaystackReturn = params.get("payment") === "paystack";
-    if (!isPaystackReturn || !reference) return;
+    const paymentProvider = params.get("payment");
+    const isPaymentReturn =
+      (paymentProvider === "paystack" || paymentProvider === "stripe") &&
+      Boolean(reference);
+    if (!isPaymentReturn || !reference) return;
     const paymentReference = reference;
 
     let isMounted = true;
     async function verifyPaymentReturn() {
       try {
-        await verifyPaystackConsultationPayment(paymentReference);
+        if (paymentProvider === "stripe") {
+          await verifyStripePayment(paymentReference);
+        } else {
+          await verifyPaystackConsultationPayment(paymentReference);
+        }
         const response = await getPatientDashboard();
         if (!isMounted) return;
         setDashboard(response);
@@ -412,7 +420,7 @@ export function PatientDashboardPage() {
         return;
       }
       if (!payment.authorizationUrl) {
-        throw new Error("Paystack checkout URL was not returned");
+        throw new Error("Secure payment checkout URL was not returned");
       }
       window.location.assign(payment.authorizationUrl);
     } catch (error) {

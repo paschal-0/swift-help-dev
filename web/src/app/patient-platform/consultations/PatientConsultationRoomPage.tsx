@@ -146,7 +146,7 @@ export function PatientConsultationRoomPage() {
           if (!payment.alreadyPaid) {
             setRoom(null);
             if (!payment.authorizationUrl) {
-              throw new Error("Paystack checkout URL was not returned");
+              throw new Error("Secure payment checkout URL was not returned");
             }
             window.location.assign(payment.authorizationUrl);
             return;

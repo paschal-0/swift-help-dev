@@ -1133,6 +1133,12 @@ export type AdminPaymentGatewayRow = {
   }>;
 };
 
+export type AdminPaymentRoutingPolicy = {
+  paystackCountries: string[];
+  paystackCurrencies: string[];
+  internationalProvider: "paystack" | "stripe";
+};
+
 export type AdminPaymentsOverview = {
   summary: {
     revenueThisMonth: number;
@@ -1184,6 +1190,7 @@ export type AdminPaymentsOverview = {
     plans: AdminPaymentPlanRow[];
     gateways: AdminPaymentGatewayRow[];
     settlementPolicy: AdminPaymentSettlementPolicy;
+    routingPolicy: AdminPaymentRoutingPolicy;
   };
 };
 
@@ -1935,6 +1942,15 @@ export async function updateAdminPaymentSettlementPolicy(
   payload: Partial<AdminPaymentSettlementPolicy>,
 ) {
   return apiRequest<AdminPaymentSettlementPolicy>("/admin/payments/settlement-policy", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminPaymentRoutingPolicy(
+  payload: Partial<AdminPaymentRoutingPolicy>,
+) {
+  return apiRequest<AdminPaymentRoutingPolicy>("/admin/payments/routing-policy", {
     method: "PUT",
     body: JSON.stringify(payload),
   });

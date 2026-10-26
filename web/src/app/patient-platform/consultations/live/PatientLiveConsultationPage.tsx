@@ -20,6 +20,7 @@ import {
   sendPatientConsultationMessage,
   updatePatientConsultationPresence,
   verifyPaystackConsultationPayment,
+  verifyStripePayment,
   type PatientConsultation,
   type PatientConsultationMessage,
   type PatientNotification,
@@ -154,13 +155,14 @@ export function PatientLiveConsultationPage() {
         let requestedId = attemptedConsultationId;
         const shouldRejoin = searchParams.get("rejoin") === "1";
         const paymentReference = searchParams.get("reference");
-        const isPaystackReturn =
-          searchParams.get("payment") === "paystack" &&
+        const paymentProvider = searchParams.get("payment");
+        const isPaymentReturn =
+          (paymentProvider === "paystack" || paymentProvider === "stripe") &&
           Boolean(paymentReference);
-        if (isPaystackReturn && paymentReference) {
-          const verified = await verifyPaystackConsultationPayment(
-            paymentReference,
-          );
+        if (isPaymentReturn && paymentReference) {
+          const verified = paymentProvider === "stripe"
+            ? await verifyStripePayment(paymentReference)
+            : await verifyPaystackConsultationPayment(paymentReference);
           requestedId = verified.consultationId ?? requestedId;
         }
         const storedId = window.sessionStorage.getItem(
@@ -194,7 +196,7 @@ export function PatientLiveConsultationPage() {
           );
           if (!payment.alreadyPaid) {
             if (!payment.authorizationUrl) {
-              throw new Error("Paystack checkout URL was not returned");
+              throw new Error("Secure payment checkout URL was not returned");
             }
             window.location.assign(payment.authorizationUrl);
             return;
@@ -217,7 +219,7 @@ export function PatientLiveConsultationPage() {
           canJoin: access.canJoin,
           waitingRoomStatus: access.waitingRoomStatus,
         });
-        if (isPaystackReturn) {
+        if (isPaymentReturn) {
           router.replace(
             `/patient-platform/consultations/live?consultationId=${encodeURIComponent(consultationId)}`,
             { scroll: false },
