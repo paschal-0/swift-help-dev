@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
@@ -94,7 +95,11 @@ function InputField({
           error ? "border-[#DC2626]" : "border-[#CBD5E1] focus:border-[#1565C0]"
         }`}
       />
-      {error ? <p className="mt-2 text-[12px] tracking-[-0.05em] text-[#DC2626]">{error}</p> : null}
+      {error ? (
+        <p className="mt-2 text-[12px] tracking-[-0.05em] text-[#DC2626]">
+          {error}
+        </p>
+      ) : null}
     </label>
   );
 }
@@ -169,25 +174,39 @@ function AddBankModal({
                 error={errors.accountName}
               />
               <label className="block">
-                <span className="mb-2 block text-[13px] font-medium text-[#334155] sm:text-[14px]">Bank</span>
+                <span className="mb-2 block text-[13px] font-medium text-[#334155] sm:text-[14px]">
+                  Bank
+                </span>
                 <select
                   value={form.bankCode}
                   onChange={(event) => {
-                    const bank = banks.find((item) => item.code === event.target.value);
+                    const bank = banks.find(
+                      (item) => item.code === event.target.value,
+                    );
                     onChange("bankCode", bank?.code ?? "");
                     onChange("bankName", bank?.name ?? "");
                   }}
                   className={`h-[46px] w-full rounded-[10px] border bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none sm:h-[48px] ${errors.bankCode ? "border-[#DC2626]" : "border-[#CBD5E1] focus:border-[#1565C0]"}`}
                 >
                   <option value="">Select bank</option>
-                  {banks.map((bank) => <option key={bank.code} value={bank.code}>{bank.name}</option>)}
+                  {banks.map((bank) => (
+                    <option key={bank.code} value={bank.code}>
+                      {bank.name}
+                    </option>
+                  ))}
                 </select>
-                {errors.bankCode ? <p className="mt-2 text-[12px] text-[#DC2626]">{errors.bankCode}</p> : null}
+                {errors.bankCode ? (
+                  <p className="mt-2 text-[12px] text-[#DC2626]">
+                    {errors.bankCode}
+                  </p>
+                ) : null}
               </label>
               <InputField
                 label="Account number"
                 value={form.accountNumber}
-                onChange={(value) => onChange("accountNumber", value.replace(/[^\d]/g, ""))}
+                onChange={(value) =>
+                  onChange("accountNumber", value.replace(/[^\d]/g, ""))
+                }
                 placeholder="0123456789"
                 inputMode="numeric"
                 error={errors.accountNumber}
@@ -218,23 +237,35 @@ function AddBankModal({
 }
 
 export function ReferralWithdrawPanel() {
-  const [bankAccounts, setBankAccounts] = useState<PatientReferralPayoutMethod[]>([]);
+  const pathname = usePathname();
+  const country = pathname.match(/^\/([a-z]{2})(?=\/)/i)?.[1]?.toUpperCase();
+  const [bankAccounts, setBankAccounts] = useState<
+    PatientReferralPayoutMethod[]
+  >([]);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [availableBalanceCents, setAvailableBalanceCents] = useState(0);
   const [currency, setCurrency] = useState("NGN");
   const [amountInput, setAmountInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddBankOpen, setIsAddBankOpen] = useState(false);
-  const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
-  const [addBankErrors, setAddBankErrors] = useState<Partial<Record<keyof AddBankFormState, string>>>({});
-  const [banks, setBanks] = useState<Array<{ name: string; code: string; currency: string }>>([]);
+  const [addBankForm, setAddBankForm] =
+    useState<AddBankFormState>(emptyAddBankForm);
+  const [addBankErrors, setAddBankErrors] = useState<
+    Partial<Record<keyof AddBankFormState, string>>
+  >({});
+  const [banks, setBanks] = useState<
+    Array<{ name: string; code: string; currency: string }>
+  >([]);
   const [password, setPassword] = useState("");
 
-  const selectedBank = bankAccounts.find((bank) => bank.id === selectedBankId) ?? bankAccounts[0];
-  const parsedAmountCents = Math.round(Number(amountInput.replace(/[^\d.]/g, "")) * 100);
+  const selectedBank =
+    bankAccounts.find((bank) => bank.id === selectedBankId) ?? bankAccounts[0];
+  const parsedAmountCents = Math.round(
+    Number(amountInput.replace(/[^\d.]/g, "")) * 100,
+  );
 
   useEffect(() => {
-    getPatientReferralWallet()
+    getPatientReferralWallet(country)
       .then((wallet) => {
         setBankAccounts(wallet.payoutMethods);
         setSelectedBankId(
@@ -246,7 +277,7 @@ export function ReferralWithdrawPanel() {
         setCurrency(wallet.summary.currency);
       })
       .catch((error) => toast.error(getApiErrorMessage(error)));
-  }, []);
+  }, [country]);
 
   useEffect(() => {
     let cancelled = false;
@@ -278,12 +309,12 @@ export function ReferralWithdrawPanel() {
 
   const canWithdraw = Boolean(
     selectedBank &&
-      amountInput &&
-      !amountError &&
-      password.length >= 8 &&
-      Number.isFinite(parsedAmountCents) &&
-      parsedAmountCents > 0 &&
-      !isSubmitting
+    amountInput &&
+    !amountError &&
+    password.length >= 8 &&
+    Number.isFinite(parsedAmountCents) &&
+    parsedAmountCents > 0 &&
+    !isSubmitting,
   );
 
   const closeAddBankModal = () => {
@@ -358,7 +389,9 @@ export function ReferralWithdrawPanel() {
         amountCents: parsedAmountCents,
         password,
       });
-      setAvailableBalanceCents((current) => Math.max(0, current - parsedAmountCents));
+      setAvailableBalanceCents((current) =>
+        Math.max(0, current - parsedAmountCents),
+      );
       toast.success(
         `Withdrawal request for ${formatMoney(parsedAmountCents, currency)} submitted to ${selectedBank.bankName}`,
       );
@@ -394,7 +427,9 @@ export function ReferralWithdrawPanel() {
           </div>
 
           <section className="mt-8 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-            <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Payment method</h2>
+            <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">
+              Payment method
+            </h2>
 
             <div className="mt-4 space-y-3">
               {bankAccounts.map((bank) => {
@@ -419,7 +454,9 @@ export function ReferralWithdrawPanel() {
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[14px] tracking-[-0.05em] text-[#94A3B8]">
                         <span>{bank.bankName}</span>
                         <span className="h-[6px] w-[6px] rounded-full bg-[#94A3B8]" />
-                        <span>{formatMaskedNumber(bank.accountNumberLast4)}</span>
+                        <span>
+                          {formatMaskedNumber(bank.accountNumberLast4)}
+                        </span>
                       </div>
                     </div>
                     {active ? <SuccessMark /> : null}
@@ -434,21 +471,30 @@ export function ReferralWithdrawPanel() {
               className="mt-4 inline-flex items-center gap-2 text-[16px] font-medium tracking-[-0.07em] text-[#1565C0] underline underline-offset-2"
             >
               <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                <path fill="currentColor" d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6z" />
+                <path
+                  fill="currentColor"
+                  d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6z"
+                />
               </svg>
               Add new bank
             </button>
           </section>
 
           <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-            <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Amount</h2>
+            <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">
+              Amount
+            </h2>
             <div className="mt-4 rounded-[6px] bg-[#E2E8F0] px-4 py-3">
               <div className="flex items-center gap-3">
-                <span className="text-[16px] tracking-[-0.07em] text-[#94A3B8]">{currency}</span>
+                <span className="text-[16px] tracking-[-0.07em] text-[#94A3B8]">
+                  {currency}
+                </span>
                 <span className="h-[20px] w-[2px] rounded-full bg-[#94A3B8]" />
                 <input
                   value={amountInput}
-                  onChange={(event) => setAmountInput(event.target.value.replace(/[^\d]/g, ""))}
+                  onChange={(event) =>
+                    setAmountInput(event.target.value.replace(/[^\d]/g, ""))
+                  }
                   inputMode="numeric"
                   placeholder="0"
                   className="w-full bg-transparent text-[18px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
@@ -460,12 +506,17 @@ export function ReferralWithdrawPanel() {
               Available balance: {formatMoney(availableBalanceCents, currency)}
             </p>
             {amountError ? (
-              <p className="mt-2 text-[13px] tracking-[-0.05em] text-[#C2410C]">{amountError}</p>
+              <p className="mt-2 text-[13px] tracking-[-0.05em] text-[#C2410C]">
+                {amountError}
+              </p>
             ) : null}
           </section>
 
           <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-            <label className="block text-[14px] font-medium text-[#334155]" htmlFor="withdrawal-password">
+            <label
+              className="block text-[14px] font-medium text-[#334155]"
+              htmlFor="withdrawal-password"
+            >
               Confirm account password
             </label>
             <input

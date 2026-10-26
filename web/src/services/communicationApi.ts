@@ -3,11 +3,7 @@
 import { apiRequest } from "./authApi";
 
 export type CommunicationParticipantStatus =
-  | "waiting"
-  | "admitted"
-  | "denied"
-  | "joined"
-  | "left";
+  "waiting" | "admitted" | "denied" | "joined" | "left";
 
 export type CommunicationParticipant = {
   id: string;
@@ -29,7 +25,8 @@ export type CommunicationRecording = {
   consultationId: string | null;
   provider: string;
   providerRecordingId: string | null;
-  status: "requested" | "recording" | "stopped" | "ready" | "failed" | "archived";
+  status:
+    "requested" | "recording" | "stopped" | "ready" | "failed" | "archived";
   archiveUrl: string | null;
   startedAt: string | null;
   stoppedAt: string | null;
@@ -62,10 +59,7 @@ export type CommunicationRoom = {
 };
 
 export type CommunicationHandoverStatus =
-  | "pending"
-  | "accepted"
-  | "declined"
-  | "completed";
+  "pending" | "accepted" | "declined" | "completed";
 
 export type CommunicationHandoverTask = {
   id: string;
@@ -138,6 +132,8 @@ export type ShiftHandoverProfessionalOption = {
   name: string;
   email: string | null;
   specialization: string | null;
+  roleId: string | null;
+  role: string | null;
   primaryPracticeLocation: string | null;
   verificationStatus: string | null;
   source: "same_shift" | "verified" | "available";
@@ -231,28 +227,36 @@ export type AiTriageHandoff = {
   source?: string;
 };
 
-export function createCommunicationRoom(payload: CreateCommunicationRoomPayload) {
+export function createCommunicationRoom(
+  payload: CreateCommunicationRoomPayload,
+) {
   return apiRequest<CommunicationRoomState>("/communication/rooms", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function createAiTriageRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
+export function createAiTriageRoom(
+  payload: Omit<CreateCommunicationRoomPayload, "type">,
+) {
   return apiRequest<CommunicationRoomState>("/communication/rooms/ai-triage", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function createEmergencyRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
+export function createEmergencyRoom(
+  payload: Omit<CreateCommunicationRoomPayload, "type">,
+) {
   return apiRequest<CommunicationRoomState>("/communication/rooms/emergency", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function createTeamRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
+export function createTeamRoom(
+  payload: Omit<CreateCommunicationRoomPayload, "type">,
+) {
   return apiRequest<CommunicationRoomState>("/communication/rooms/team", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -262,16 +266,22 @@ export function createTeamRoom(payload: Omit<CreateCommunicationRoomPayload, "ty
 export function createShiftHandoverRoom(
   payload: Omit<CreateCommunicationRoomPayload, "type">,
 ) {
-  return apiRequest<CommunicationRoomState>("/communication/rooms/shift-handover", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiRequest<CommunicationRoomState>(
+    "/communication/rooms/shift-handover",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function listShiftHandoverOptions() {
-  return apiRequest<ShiftHandoverOptions>("/communication/shift-handover/options", {
-    method: "GET",
-  });
+  return apiRequest<ShiftHandoverOptions>(
+    "/communication/shift-handover/options",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getCommunicationRoom(roomId: string) {
@@ -398,17 +408,22 @@ export function startAiVoiceBot(
     instructions?: string;
   } = {},
 ) {
-  return apiRequest<{ room: CommunicationRoom; aiVoiceBot: Record<string, unknown> }>(
-    `/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/start`,
-    { method: "POST", body: JSON.stringify(payload) },
-  );
+  return apiRequest<{
+    room: CommunicationRoom;
+    aiVoiceBot: Record<string, unknown>;
+  }>(`/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/start`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function stopAiVoiceBot(roomId: string) {
-  return apiRequest<{ room: CommunicationRoom; aiVoiceBot: Record<string, unknown> }>(
-    `/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/stop`,
-    { method: "POST" },
-  );
+  return apiRequest<{
+    room: CommunicationRoom;
+    aiVoiceBot: Record<string, unknown>;
+  }>(`/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/stop`, {
+    method: "POST",
+  });
 }
 
 export function startCommunicationRecording(
@@ -518,11 +533,8 @@ export function translateCommunicationText(payload: {
     sourceLanguage: string;
     roomId: string | null;
     transcriptId: string | null;
-  }>(
-    "/communication/translate",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  }>("/communication/translate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

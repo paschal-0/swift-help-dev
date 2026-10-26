@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../../components/PatientPlatformShell";
@@ -71,6 +72,8 @@ function ReferralTableRow({ record }: { record: ReferralRecord }) {
 }
 
 export function PatientReferralPeoplePage() {
+  const pathname = usePathname();
+  const country = pathname.match(/^\/([a-z]{2})(?=\/)/i)?.[1]?.toUpperCase();
   const { searchText } = usePatientPlatformShell();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("All");
   const [liveRecords, setLiveRecords] = useState<ReferralRecord[]>([]);
@@ -80,7 +83,7 @@ export function PatientReferralPeoplePage() {
 
     async function loadReferralPeople() {
       try {
-        const response = await listPatientReferralPeople();
+        const response = await listPatientReferralPeople({ country });
         if (!isMounted) return;
         setLiveRecords(
           response.map((record) => ({
@@ -116,14 +119,16 @@ export function PatientReferralPeoplePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [country]);
 
   const filteredRecords = useMemo(() => {
     const query = searchText.trim().toLowerCase();
     const sourceRecords = liveRecords;
 
     const visibleRecords =
-      activeFilter === "All" ? sourceRecords : sourceRecords.filter((record) => record.type === activeFilter);
+      activeFilter === "All"
+        ? sourceRecords
+        : sourceRecords.filter((record) => record.type === activeFilter);
 
     if (!query) {
       return visibleRecords;
@@ -133,7 +138,7 @@ export function PatientReferralPeoplePage() {
       [record.name, record.type, record.joined, record.earned, record.status]
         .join(" ")
         .toLowerCase()
-        .includes(query)
+        .includes(query),
     );
   }, [activeFilter, liveRecords, searchText]);
 
@@ -184,7 +189,10 @@ export function PatientReferralPeoplePage() {
           <>
             <div className="hidden max-h-[640px] min-w-0 overflow-x-hidden overflow-y-auto md:block md:[scrollbar-width:thin] md:[scrollbar-color:#1565C0_#DBEAFE] md:[&::-webkit-scrollbar]:h-0 md:[&::-webkit-scrollbar]:w-2 md:[&::-webkit-scrollbar-track]:bg-[#E3F2FD] md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-[#1565C0] md:[&::-webkit-scrollbar-thumb:hover]:bg-[#114B7F]">
               {filteredRecords.map((record) => (
-                <ReferralTableRow key={`${record.name}-${record.joined}-${record.type}`} record={record} />
+                <ReferralTableRow
+                  key={`${record.name}-${record.joined}-${record.type}`}
+                  record={record}
+                />
               ))}
             </div>
 
@@ -193,7 +201,10 @@ export function PatientReferralPeoplePage() {
                 <motion.div
                   key={`${record.name}-${record.joined}-${record.type}`}
                   className="flex flex-col rounded-[12px] border border-[#E2E8F0] bg-white p-4 shadow-sm"
-                  whileHover={{ y: -2, boxShadow: "0 10px 24px rgba(148,163,184,0.14)" }}
+                  whileHover={{
+                    y: -2,
+                    boxShadow: "0 10px 24px rgba(148,163,184,0.14)",
+                  }}
                   whileTap={{ scale: 0.99 }}
                   transition={{ duration: 0.18, ease: "easeOut" }}
                 >
@@ -206,7 +217,9 @@ export function PatientReferralPeoplePage() {
                         <p className="text-[15px] font-semibold leading-[18px] text-[#334155]">
                           {record.name}
                         </p>
-                        <p className="text-[13px] text-[#94A3B8]">{record.type}</p>
+                        <p className="text-[13px] text-[#94A3B8]">
+                          {record.type}
+                        </p>
                       </div>
                     </div>
                     <motion.span
@@ -225,12 +238,20 @@ export function PatientReferralPeoplePage() {
                   <div className="mt-auto pt-4">
                     <div className="grid grid-cols-2 gap-3 border-t border-[#F1F5F9] pt-3">
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Joined</p>
-                        <p className="mt-1 text-[13px] text-[#475569]">{record.joined}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">
+                          Joined
+                        </p>
+                        <p className="mt-1 text-[13px] text-[#475569]">
+                          {record.joined}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Earned</p>
-                        <p className="mt-1 text-[13px] font-medium text-[#475569]">{record.earned}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">
+                          Earned
+                        </p>
+                        <p className="mt-1 text-[13px] font-medium text-[#475569]">
+                          {record.earned}
+                        </p>
                       </div>
                     </div>
                   </div>

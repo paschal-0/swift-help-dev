@@ -15,7 +15,10 @@ import {
   type ProfessionalConsultation,
   type WeeklyAvailability,
 } from "@/services/professionalApi";
-import { formatConsultationAddress, isInPersonConsultation } from "@/components/InPersonConsultationMap";
+import {
+  formatConsultationAddress,
+  isInPersonConsultation,
+} from "@/components/InPersonConsultationMap";
 import {
   createShiftHandoverRoom,
   listShiftHandoverOptions,
@@ -433,7 +436,9 @@ const mapConsultationToUpcoming = (
             : "Upcoming",
 });
 
-const isJoinableConsultationStatus = (status: ProfessionalConsultation["status"]) =>
+const isJoinableConsultationStatus = (
+  status: ProfessionalConsultation["status"],
+) =>
   status === "scheduled" ||
   status === "enroute" ||
   status === "arrived" ||
@@ -461,9 +466,9 @@ const mapConsultationToDetails = (
         ? "Cancelled"
         : consultation.status === "missed"
           ? "Missed"
-        : consultation.status === "completed"
-          ? "Completed"
-          : "Confirmed",
+          : consultation.status === "completed"
+            ? "Completed"
+            : "Confirmed",
   type: consultation.consultationLabel,
   mode: consultation.mode,
   locationName: consultation.locationName,
@@ -610,11 +615,13 @@ export function ProfessionalSchedulePage() {
   const [blockTime, setBlockTime] = useState(blockTimeOptions[0]);
   const [blockRepeat, setBlockRepeat] = useState(repeatOptions[0]);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [isLoadingHandoverOptions, setIsLoadingHandoverOptions] = useState(false);
+  const [isLoadingHandoverOptions, setIsLoadingHandoverOptions] =
+    useState(false);
   const [isStartingHandover, setIsStartingHandover] = useState(false);
   const [handoverOptions, setHandoverOptions] =
     useState<ShiftHandoverOptions | null>(null);
   const [selectedHandoverTarget, setSelectedHandoverTarget] = useState("");
+  const [selectedHandoverRole, setSelectedHandoverRole] = useState("");
   const [handoverScheduleMode, setHandoverScheduleMode] =
     useState<HandoverScheduleMode>("now");
   const [handoverScheduledAt, setHandoverScheduledAt] = useState("");
@@ -680,12 +687,12 @@ export function ProfessionalSchedulePage() {
             : enabledDays.length === nextDaySchedule.length
               ? "Every day"
               : enabledDays.length >= 6
-            ? "Monday - Saturday"
-            : enabledDays.length === 5 &&
-                enabledDays[0]?.id === "monday" &&
-                enabledDays[4]?.id === "friday"
-              ? "Monday - Friday"
-              : enabledDays.map((day) => day.day).join(", ");
+                ? "Monday - Saturday"
+                : enabledDays.length === 5 &&
+                    enabledDays[0]?.id === "monday" &&
+                    enabledDays[4]?.id === "friday"
+                  ? "Monday - Friday"
+                  : enabledDays.map((day) => day.day).join(", ");
         const rulesFromBackend: AvailabilityRuleMap = {
           Available: availableRule,
           "Working hours": representativeDay
@@ -700,7 +707,9 @@ export function ProfessionalSchedulePage() {
         const nextRules = toRuleArray(rulesFromBackend);
         setAvailabilityRules(nextRules);
         setDraftAvailabilityRules(nextRules);
-        setScheduleConsultations(data.consultations.map(mapConsultationToUpcoming));
+        setScheduleConsultations(
+          data.consultations.map(mapConsultationToUpcoming),
+        );
         setConsultationRecords(data.consultations);
         setBlockedTimeItems(data.blockedTimes.map(mapBlockedTime));
       } catch (error) {
@@ -743,13 +752,15 @@ export function ProfessionalSchedulePage() {
     const now = new Date();
     const todayKey = now.toDateString();
     const todayCount = consultationRecords.filter(
-      (consultation) => new Date(consultation.startsAt).toDateString() === todayKey,
+      (consultation) =>
+        new Date(consultation.startsAt).toDateString() === todayKey,
     ).length;
     const nextConsultation = consultationRecords
       .filter((consultation) => new Date(consultation.startsAt) >= now)
       .sort(
         (left, right) =>
-          new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+          new Date(left.startsAt).getTime() -
+          new Date(right.startsAt).getTime(),
       )[0];
     const availableMinutes = daySchedule.reduce((total, day) => {
       if (!day.enabled) return total;
@@ -767,7 +778,9 @@ export function ProfessionalSchedulePage() {
       {
         id: "next-session",
         title: "Next Session",
-        value: nextConsultation ? formatClock(nextConsultation.startsAt) : "No upcoming",
+        value: nextConsultation
+          ? formatClock(nextConsultation.startsAt)
+          : "No upcoming",
       },
       {
         id: "available-hours",
@@ -785,7 +798,8 @@ export function ProfessionalSchedulePage() {
   }, [blockedTimeItems.length, consultationRecords, daySchedule]);
 
   const calendarSessionItems = useMemo(
-    () => scheduleConsultations.slice(0, 8).map(mapConsultationToCalendarSession),
+    () =>
+      scheduleConsultations.slice(0, 8).map(mapConsultationToCalendarSession),
     [scheduleConsultations],
   );
 
@@ -805,6 +819,7 @@ export function ProfessionalSchedulePage() {
               label: shift.organizationName,
               detail: `${shift.shiftCode} - ${shift.facilityName}`,
               organizationUserId: shift.organizationUserId,
+              role: null,
             },
           ]
         : []),
@@ -813,8 +828,9 @@ export function ProfessionalSchedulePage() {
         kind: "professional" as const,
         offerId: shift.offerId,
         label: peer.name,
-        detail: `${shift.shiftCode} - ${peer.specialization ?? shift.role}`,
+        detail: `${shift.shiftCode} - ${peer.role ?? peer.specialization ?? shift.role}`,
         professionalUserId: peer.userId,
+        role: peer.role ?? peer.specialization ?? shift.role,
       })),
     ]);
 
@@ -833,14 +849,51 @@ export function ProfessionalSchedulePage() {
         offerId: null,
         label: professional.name,
         detail:
+          professional.role ??
           professional.specialization ??
           professional.primaryPracticeLocation ??
           "Verified professional",
         professionalUserId: professional.userId,
+        role: professional.role ?? professional.specialization ?? "Other",
       }));
 
     return [...shiftTargets, ...fallbackTargets];
   }, [handoverOptions]);
+
+  const handoverRoleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          handoverTargets
+            .filter((target) => target.kind === "professional")
+            .map((target) => target.role?.trim())
+            .filter((role): role is string => Boolean(role)),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [handoverTargets],
+  );
+
+  const filteredHandoverTargets = useMemo(
+    () =>
+      handoverTargets.filter(
+        (target) =>
+          target.kind === "organization" ||
+          !selectedHandoverRole ||
+          target.role === selectedHandoverRole,
+      ),
+    [handoverTargets, selectedHandoverRole],
+  );
+
+  useEffect(() => {
+    if (
+      selectedHandoverTarget &&
+      !filteredHandoverTargets.some(
+        (target) => target.value === selectedHandoverTarget,
+      )
+    ) {
+      setSelectedHandoverTarget(filteredHandoverTargets[0]?.value ?? "");
+    }
+  }, [filteredHandoverTargets, selectedHandoverTarget]);
 
   const visibleBlocked = useMemo(() => {
     if (!query) {
@@ -924,7 +977,9 @@ export function ProfessionalSchedulePage() {
       toast.success("Weekly hours updated.");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to update weekly hours",
+        error instanceof Error
+          ? error.message
+          : "Unable to update weekly hours",
       );
     }
   };
@@ -972,7 +1027,9 @@ export function ProfessionalSchedulePage() {
       setIsEditingRules(false);
       toast.success("Availability rules updated.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update rules");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update rules",
+      );
     }
   };
 
@@ -1039,10 +1096,16 @@ export function ProfessionalSchedulePage() {
   const removeBlockedTime = async (blockedTimeId: string) => {
     try {
       await deleteProfessionalBlockedTime(blockedTimeId);
-      setBlockedTimeItems((current) => current.filter((item) => item.id !== blockedTimeId));
+      setBlockedTimeItems((current) =>
+        current.filter((item) => item.id !== blockedTimeId),
+      );
       toast.success("Blocked time removed.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to remove blocked time");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove blocked time",
+      );
     }
   };
 
@@ -1056,19 +1119,21 @@ export function ProfessionalSchedulePage() {
     try {
       const options = await listShiftHandoverOptions();
       setHandoverOptions(options);
+      setSelectedHandoverRole("");
       const firstShift = options.activeShifts[0];
-      const firstTarget =
-        firstShift?.organizationUserId
-          ? `organization:${firstShift.offerId}`
-          : firstShift?.peers[0]
-            ? `professional:${firstShift.peers[0].userId}:${firstShift.offerId}`
-            : options.professionals[0]
-              ? `professional:${options.professionals[0].userId}:`
-              : "";
+      const firstTarget = firstShift?.organizationUserId
+        ? `organization:${firstShift.offerId}`
+        : firstShift?.peers[0]
+          ? `professional:${firstShift.peers[0].userId}:${firstShift.offerId}`
+          : options.professionals[0]
+            ? `professional:${options.professionals[0].userId}:`
+            : "";
       setSelectedHandoverTarget(firstTarget);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to load handover options",
+        error instanceof Error
+          ? error.message
+          : "Unable to load handover options",
       );
     } finally {
       setIsLoadingHandoverOptions(false);
@@ -1084,7 +1149,9 @@ export function ProfessionalSchedulePage() {
       return;
     }
     if (!handoverSituation.trim() || !handoverRecommendation.trim()) {
-      toast.error("Add the handover situation and recommendation before sending.");
+      toast.error(
+        "Add the handover situation and recommendation before sending.",
+      );
       return;
     }
 
@@ -1095,7 +1162,9 @@ export function ProfessionalSchedulePage() {
       handoverScheduleMode === "scheduled" && handoverScheduledAt
         ? new Date(handoverScheduledAt).toISOString()
         : undefined;
-    const expiryBase = scheduledFor ? new Date(scheduledFor).getTime() : Date.now();
+    const expiryBase = scheduledFor
+      ? new Date(scheduledFor).getTime()
+      : Date.now();
     const handoverTasks = handoverTaskText
       .split("\n")
       .map((item) => item.trim())
@@ -1109,7 +1178,9 @@ export function ProfessionalSchedulePage() {
         participantUserIds:
           target.kind === "professional" ? [target.professionalUserId] : [],
         organizationUserId:
-          target.kind === "organization" ? target.organizationUserId : undefined,
+          target.kind === "organization"
+            ? target.organizationUserId
+            : undefined,
         shiftOfferId: linkedShift?.offerId ?? undefined,
         expiresAt: new Date(expiryBase + 4 * 60 * 60 * 1000).toISOString(),
         metadata: {
@@ -1117,7 +1188,9 @@ export function ProfessionalSchedulePage() {
           handoverTargetType: target.kind,
           handoverTargetLabel: target.label,
           handoverTargetUserId:
-            target.kind === "professional" ? target.professionalUserId : undefined,
+            target.kind === "professional"
+              ? target.professionalUserId
+              : undefined,
           scheduleDate: selectedDate,
           scheduledFor,
           note: handoverNote.trim() || undefined,
@@ -1146,7 +1219,11 @@ export function ProfessionalSchedulePage() {
           : "Handover room opened and notifications sent.",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to start handover room");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to start handover room",
+      );
     } finally {
       setIsStartingHandover(false);
     }
@@ -1186,6 +1263,31 @@ export function ProfessionalSchedulePage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
+                  <label
+                    htmlFor="handover-role-filter"
+                    className="text-[13px] font-semibold tracking-[-0.03em] text-[#334155]"
+                  >
+                    Filter professionals by role
+                  </label>
+                  <select
+                    id="handover-role-filter"
+                    value={selectedHandoverRole}
+                    onChange={(event) =>
+                      setSelectedHandoverRole(event.target.value)
+                    }
+                    disabled={!handoverRoleOptions.length}
+                    className="mt-2 h-11 w-full rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] disabled:cursor-not-allowed disabled:bg-[#F1F5F9]"
+                  >
+                    <option value="">All professional roles</option>
+                    {handoverRoleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
                   <h2
                     id="handover-modal-title"
                     className="text-[20px] font-semibold tracking-[-0.04em] text-[#334155]"
@@ -1218,7 +1320,7 @@ export function ProfessionalSchedulePage() {
                     <div className="mt-2 rounded-[10px] border border-dashed border-[#CBD5E1] px-4 py-5 text-[13px] text-[#64748B]">
                       Loading eligible recipients...
                     </div>
-                  ) : handoverTargets.length ? (
+                  ) : filteredHandoverTargets.length ? (
                     <select
                       id="handover-target"
                       value={selectedHandoverTarget}
@@ -1227,10 +1329,12 @@ export function ProfessionalSchedulePage() {
                       }
                       className="mt-2 h-11 w-full rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
                     >
-                      {handoverTargets.map((target) => (
+                      {filteredHandoverTargets.map((target) => (
                         <option key={target.value} value={target.value}>
-                          {target.kind === "organization" ? "Organization" : "Professional"}:{" "}
-                          {target.label} - {target.detail}
+                          {target.kind === "organization"
+                            ? "Organization"
+                            : "Professional"}
+                          : {target.label} - {target.detail}
                         </option>
                       ))}
                     </select>
@@ -1286,13 +1390,15 @@ export function ProfessionalSchedulePage() {
                     <input
                       type="datetime-local"
                       value={handoverScheduledAt}
-                      onChange={(event) => setHandoverScheduledAt(event.target.value)}
+                      onChange={(event) =>
+                        setHandoverScheduledAt(event.target.value)
+                      }
                       className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
                     />
                   ) : (
                     <div className="flex min-h-11 items-center rounded-[10px] bg-white px-3 text-[13px] text-[#64748B]">
-                      The recipient is notified immediately and can join as soon as
-                      they are ready.
+                      The recipient is notified immediately and can join as soon
+                      as they are ready.
                     </div>
                   )}
                 </div>
@@ -1306,7 +1412,9 @@ export function ProfessionalSchedulePage() {
                 <div className="grid gap-3 sm:grid-cols-3">
                   <input
                     value={handoverPatientName}
-                    onChange={(event) => setHandoverPatientName(event.target.value)}
+                    onChange={(event) =>
+                      setHandoverPatientName(event.target.value)
+                    }
                     placeholder="Patient name"
                     className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
                   />
@@ -1375,7 +1483,8 @@ export function ProfessionalSchedulePage() {
                     isStartingHandover ||
                     isLoadingHandoverOptions ||
                     !selectedHandoverTarget ||
-                    (handoverScheduleMode === "scheduled" && !handoverScheduledAt)
+                    (handoverScheduleMode === "scheduled" &&
+                      !handoverScheduledAt)
                   }
                   className={`rounded-[10px] bg-[#1565C0] px-5 py-2 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:bg-[#94A3B8] ${microInteractionClass}`}
                 >
@@ -1686,70 +1795,79 @@ export function ProfessionalSchedulePage() {
               <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-4 text-center text-[13px] tracking-[-0.05em] text-[#94A3B8]">
                 No upcoming consultations found.
               </div>
-            ) : visibleUpcoming.map((consultation) => {
-              const canJoinConsultation = isJoinableConsultationStatus(consultation.status);
-              return (
-                <motion.article
-                  key={consultation.id}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.992 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  onClick={() => openAppointmentDetails(consultation.id)}
-                  className="cursor-pointer rounded-lg bg-[#E3F2FD] px-3 pb-[14px] pt-[10px] transition hover:shadow-[0_12px_24px_rgba(21,101,192,0.12)] active:scale-[0.992]"
-                >
-                  <div className="flex items-center gap-2 text-[10px] leading-[10px] tracking-[-0.05em] text-[#334155]">
-                    <span>{consultation.dayLabel}</span>
-                    <span>{consultation.timeLabel}</span>
-                  </div>
-
-                <div className="mt-[10px] flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                  <div className="flex min-w-0 items-center gap-[8px]">
-                    <span className="inline-flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-full bg-[#F8FAFC] text-[11px] font-semibold text-[#1565C0]">
-                      {getInitials(consultation.patient)}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155]">
-                        {consultation.patient}
-                      </p>
-                      <p className="mt-0.5 truncate text-[11px] font-normal leading-[14px] tracking-[-0.05em] text-[#1565C0]">
-                        {consultation.mode}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-col sm:items-end sm:justify-center">
-                    <div className="flex flex-wrap gap-2 sm:flex-col sm:gap-[4px]">
-                      <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
-                        {consultation.duration}
-                      </span>
-                      <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
-                        {consultation.startsIn}
-                      </span>
+            ) : (
+              visibleUpcoming.map((consultation) => {
+                const canJoinConsultation = isJoinableConsultationStatus(
+                  consultation.status,
+                );
+                return (
+                  <motion.article
+                    key={consultation.id}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.992 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    onClick={() => openAppointmentDetails(consultation.id)}
+                    className="cursor-pointer rounded-lg bg-[#E3F2FD] px-3 pb-[14px] pt-[10px] transition hover:shadow-[0_12px_24px_rgba(21,101,192,0.12)] active:scale-[0.992]"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] leading-[10px] tracking-[-0.05em] text-[#334155]">
+                      <span>{consultation.dayLabel}</span>
+                      <span>{consultation.timeLabel}</span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (!canJoinConsultation) {
-                          toast.info("This appointment is not available to join.");
-                          return;
-                        }
-                        openConsultationWorkflow(consultation.id, consultation.mode);
-                      }}
-                      className={`inline-flex h-[30px] min-w-[92px] shrink-0 cursor-pointer self-end items-center justify-center rounded-[20px] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] sm:h-[28px] sm:self-auto ${
-                        canJoinConsultation
-                          ? `bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[#F8FAFC] ${microInteractionClass}`
-                          : "bg-[#E2E8F0] text-[#64748B] hover:bg-[#CBD5E1] active:scale-[0.98]"
-                      }`}
-                    >
-                      {canJoinConsultation ? "Join" : "Not available"}
-                    </button>
-                  </div>
-                </div>
-              </motion.article>
-              );
-            })}
+                    <div className="mt-[10px] flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 items-center gap-[8px]">
+                        <span className="inline-flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-full bg-[#F8FAFC] text-[11px] font-semibold text-[#1565C0]">
+                          {getInitials(consultation.patient)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155]">
+                            {consultation.patient}
+                          </p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal leading-[14px] tracking-[-0.05em] text-[#1565C0]">
+                            {consultation.mode}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-col sm:items-end sm:justify-center">
+                        <div className="flex flex-wrap gap-2 sm:flex-col sm:gap-[4px]">
+                          <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
+                            {consultation.duration}
+                          </span>
+                          <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
+                            {consultation.startsIn}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!canJoinConsultation) {
+                              toast.info(
+                                "This appointment is not available to join.",
+                              );
+                              return;
+                            }
+                            openConsultationWorkflow(
+                              consultation.id,
+                              consultation.mode,
+                            );
+                          }}
+                          className={`inline-flex h-[30px] min-w-[92px] shrink-0 cursor-pointer self-end items-center justify-center rounded-[20px] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] sm:h-[28px] sm:self-auto ${
+                            canJoinConsultation
+                              ? `bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[#F8FAFC] ${microInteractionClass}`
+                              : "bg-[#E2E8F0] text-[#64748B] hover:bg-[#CBD5E1] active:scale-[0.98]"
+                          }`}
+                        >
+                          {canJoinConsultation ? "Join" : "Not available"}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.article>
+                );
+              })
+            )}
           </div>
         </article>
       </div>
@@ -1774,46 +1892,48 @@ export function ProfessionalSchedulePage() {
               <div className="flex h-[160px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-4 text-center text-[13px] tracking-[-0.05em] text-[#94A3B8]">
                 No blocked time has been added.
               </div>
-            ) : visibleBlocked.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-[12px] bg-[#E2E8F0] px-2 py-2 sm:px-[12px] sm:py-[10px]"
-              >
-                <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[84px_44px_minmax(0,1fr)] sm:items-start sm:gap-[10px]">
-                  <div className="flex items-center gap-3 sm:contents">
-                    <span className="inline-flex h-[28px] w-[84px] shrink-0 items-center justify-center rounded-[10px] bg-[#F8FAFC] text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#0F172A] sm:text-[14px] sm:font-normal">
-                      {item.day}
-                    </span>
+            ) : (
+              visibleBlocked.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-[12px] bg-[#E2E8F0] px-2 py-2 sm:px-[12px] sm:py-[10px]"
+                >
+                  <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[84px_44px_minmax(0,1fr)] sm:items-start sm:gap-[10px]">
+                    <div className="flex items-center gap-3 sm:contents">
+                      <span className="inline-flex h-[28px] w-[84px] shrink-0 items-center justify-center rounded-[10px] bg-[#F8FAFC] text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#0F172A] sm:text-[14px] sm:font-normal">
+                        {item.day}
+                      </span>
 
-                    <div className="flex flex-row items-center gap-[6px] text-[13px] font-medium leading-[10px] tracking-[-0.05em] text-[#334155] sm:w-[44px] sm:flex-col sm:gap-[2px] sm:pt-[2px] sm:text-[14px]">
-                      <span>{item.start}</span>
-                      <span className="h-[1px] w-3 border-t border-dashed border-[#334155] sm:h-[18px] sm:w-[1px] sm:border-l sm:border-t-0" />
-                      <span>{item.end}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-1 w-full space-y-[6px] sm:mt-0">
-                    <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
-                          {item.reasonA}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => removeBlockedTime(item.id)}
-                          className="text-[11px] font-medium tracking-[-0.04em] text-[#DC2626]"
-                        >
-                          Remove
-                        </button>
+                      <div className="flex flex-row items-center gap-[6px] text-[13px] font-medium leading-[10px] tracking-[-0.05em] text-[#334155] sm:w-[44px] sm:flex-col sm:gap-[2px] sm:pt-[2px] sm:text-[14px]">
+                        <span>{item.start}</span>
+                        <span className="h-[1px] w-3 border-t border-dashed border-[#334155] sm:h-[18px] sm:w-[1px] sm:border-l sm:border-t-0" />
+                        <span>{item.end}</span>
                       </div>
-                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
-                        {item.start} - {item.end}
-                      </p>
+                    </div>
+
+                    <div className="mt-1 w-full space-y-[6px] sm:mt-0">
+                      <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
+                            {item.reasonA}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeBlockedTime(item.id)}
+                            className="text-[11px] font-medium tracking-[-0.04em] text-[#DC2626]"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
+                          {item.start} - {item.end}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </article>
 
@@ -1833,8 +1953,10 @@ export function ProfessionalSchedulePage() {
 
           <div className="mt-2 rounded-[12px] bg-[#E3F2FD] px-3 py-[16px] sm:mt-3 sm:px-[18px]">
             <div className="space-y-[12px] sm:space-y-[10px]">
-              {(isEditingRules ? draftAvailabilityRules : availabilityRules).map(
-                (rule) => (
+              {(isEditingRules
+                ? draftAvailabilityRules
+                : availabilityRules
+              ).map((rule) => (
                 <div
                   key={rule.label}
                   className="grid grid-cols-1 gap-[4px] sm:grid-cols-[132px_minmax(0,1fr)] sm:items-center sm:gap-[8px]"
@@ -1975,8 +2097,8 @@ export function ProfessionalSchedulePage() {
               ))}
             </div>
             <p className="mt-3 text-[12px] leading-4 text-[#64748B]">
-              Minimum booking notice controls how soon a patient can request
-              an appointment. Times inside that notice period are hidden from
+              Minimum booking notice controls how soon a patient can request an
+              appointment. Times inside that notice period are hidden from
               patients.
             </p>
             {isEditingRules ? (

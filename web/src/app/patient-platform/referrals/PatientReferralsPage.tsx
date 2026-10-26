@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -40,7 +41,10 @@ const tierTheme = {
 function ShieldBadge() {
   return (
     <svg viewBox="0 0 18 22" className="h-[22px] w-[18px] shrink-0" aria-hidden>
-      <path d="M9 0L0 4V10C0 15.55 3.84 20.74 9 22C14.16 20.74 18 15.55 18 10V4L9 0Z" fill="#F8FAFC" />
+      <path
+        d="M9 0L0 4V10C0 15.55 3.84 20.74 9 22C14.16 20.74 18 15.55 18 10V4L9 0Z"
+        fill="#F8FAFC"
+      />
     </svg>
   );
 }
@@ -48,7 +52,10 @@ function ShieldBadge() {
 function CrownBadge() {
   return (
     <svg viewBox="0 0 20 18" className="h-[18px] w-5 shrink-0" aria-hidden>
-      <path d="M3 18V16H17V18H3ZM3 14.5L1.725 6.475C1.69167 6.475 1.654 6.47934 1.612 6.488C1.57 6.49667 1.53267 6.50067 1.5 6.5C1.08334 6.5 0.729336 6.354 0.438002 6.062C0.146669 5.77 0.000668939 5.416 2.27273e-06 5C-0.000664394 4.584 0.145336 4.23 0.438002 3.938C0.730669 3.646 1.08467 3.5 1.5 3.5C1.91534 3.5 2.26967 3.646 2.563 3.938C2.85634 4.23 3.002 4.584 3 5C3 5.11667 2.98734 5.225 2.962 5.325C2.93667 5.425 2.90767 5.51667 2.875 5.6L6 7L9.125 2.725C8.94167 2.59167 8.79167 2.41667 8.675 2.2C8.55834 1.98334 8.5 1.75 8.5 1.5C8.5 1.08334 8.646 0.729002 8.938 0.437002C9.23 0.145002 9.584 -0.000664389 10 2.2779e-06C10.416 0.000668945 10.7703 0.146669 11.063 0.438002C11.3557 0.729336 11.5013 1.08334 11.5 1.5C11.5 1.75 11.4417 1.98334 11.325 2.2C11.2083 2.41667 11.0583 2.59167 10.875 2.725L14 7L17.125 5.6C17.0917 5.51667 17.0623 5.425 17.037 5.325C17.0117 5.225 16.9993 5.11667 17 5C17 4.58334 17.146 4.229 17.438 3.937C17.73 3.645 18.084 3.49934 18.5 3.5C18.916 3.50067 19.2703 3.64667 19.563 3.938C19.8557 4.22934 20.0013 4.58334 20 5C19.9987 5.41667 19.853 5.771 19.563 6.063C19.273 6.355 18.9187 6.50067 18.5 6.5C18.4667 6.5 18.4293 6.496 18.388 6.488C18.3467 6.48 18.309 6.47567 18.275 6.475L17 14.5H3Z" fill="#F8FAFC" />
+      <path
+        d="M3 18V16H17V18H3ZM3 14.5L1.725 6.475C1.69167 6.475 1.654 6.47934 1.612 6.488C1.57 6.49667 1.53267 6.50067 1.5 6.5C1.08334 6.5 0.729336 6.354 0.438002 6.062C0.146669 5.77 0.000668939 5.416 2.27273e-06 5C-0.000664394 4.584 0.145336 4.23 0.438002 3.938C0.730669 3.646 1.08467 3.5 1.5 3.5C1.91534 3.5 2.26967 3.646 2.563 3.938C2.85634 4.23 3.002 4.584 3 5C3 5.11667 2.98734 5.225 2.962 5.325C2.93667 5.425 2.90767 5.51667 2.875 5.6L6 7L9.125 2.725C8.94167 2.59167 8.79167 2.41667 8.675 2.2C8.55834 1.98334 8.5 1.75 8.5 1.5C8.5 1.08334 8.646 0.729002 8.938 0.437002C9.23 0.145002 9.584 -0.000664389 10 2.2779e-06C10.416 0.000668945 10.7703 0.146669 11.063 0.438002C11.3557 0.729336 11.5013 1.08334 11.5 1.5C11.5 1.75 11.4417 1.98334 11.325 2.2C11.2083 2.41667 11.0583 2.59167 10.875 2.725L14 7L17.125 5.6C17.0917 5.51667 17.0623 5.425 17.037 5.325C17.0117 5.225 16.9993 5.11667 17 5C17 4.58334 17.146 4.229 17.438 3.937C17.73 3.645 18.084 3.49934 18.5 3.5C18.916 3.50067 19.2703 3.64667 19.563 3.938C19.8557 4.22934 20.0013 4.58334 20 5C19.9987 5.41667 19.853 5.771 19.563 6.063C19.273 6.355 18.9187 6.50067 18.5 6.5C18.4667 6.5 18.4293 6.496 18.388 6.488C18.3467 6.48 18.309 6.47567 18.275 6.475L17 14.5H3Z"
+        fill="#F8FAFC"
+      />
     </svg>
   );
 }
@@ -83,7 +90,9 @@ function TierCard({ tier }: { tier: ReferralTier }) {
             {tier.badge}
           </span>
           <div>
-            <h3 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">{tier.title}</h3>
+            <h3 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">
+              {tier.title}
+            </h3>
             <p className="mt-1 max-w-[760px] text-[16px] leading-[1.35] tracking-[-0.05em] text-[#94A3B8]">
               {tier.description}
             </p>
@@ -99,17 +108,31 @@ function TierCard({ tier }: { tier: ReferralTier }) {
       <div className="mt-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#F8FAFC]">
-            <div className={`h-full rounded-full ${theme.bar}`} style={{ width: `${tier.progressValue * 100}%` }} />
+            <div
+              className={`h-full rounded-full ${theme.bar}`}
+              style={{ width: `${tier.progressValue * 100}%` }}
+            />
           </div>
-          <p className={`text-right text-[16px] font-medium tracking-[-0.05em] ${theme.label}`}>{tier.progressLabel}</p>
+          <p
+            className={`text-right text-[16px] font-medium tracking-[-0.05em] ${theme.label}`}
+          >
+            {tier.progressLabel}
+          </p>
         </div>
       </div>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {tier.rewards.map((reward) => (
-          <div key={reward.label} className="rounded-[6px] bg-[#F8FAFC] px-4 py-3">
-            <p className="text-[16px] tracking-[-0.05em] text-[#334155]">{reward.label}</p>
-            <p className="mt-1 text-[18px] font-bold tracking-[-0.06em] text-[#334155]">{reward.value}</p>
+          <div
+            key={reward.label}
+            className="rounded-[6px] bg-[#F8FAFC] px-4 py-3"
+          >
+            <p className="text-[16px] tracking-[-0.05em] text-[#334155]">
+              {reward.label}
+            </p>
+            <p className="mt-1 text-[18px] font-bold tracking-[-0.06em] text-[#334155]">
+              {reward.value}
+            </p>
           </div>
         ))}
       </div>
@@ -117,8 +140,12 @@ function TierCard({ tier }: { tier: ReferralTier }) {
   );
 }
 
-function mapReferralTier(tier: PatientReferralTier, currency?: string): ReferralTier {
-  const accent = tier.level === 1 ? "blue" : tier.level === 2 ? "green" : "gold";
+function mapReferralTier(
+  tier: PatientReferralTier,
+  currency?: string,
+): ReferralTier {
+  const accent =
+    tier.level === 1 ? "blue" : tier.level === 2 ? "green" : "gold";
   const tierCurrency = tier.currency || currency;
 
   return {
@@ -133,25 +160,39 @@ function mapReferralTier(tier: PatientReferralTier, currency?: string): Referral
     rewards: [
       {
         label: "Patient signup",
-        value: formatPatientMoney(tier.rewards.patientAmountCents, tierCurrency),
+        value: formatPatientMoney(
+          tier.rewards.patientAmountCents,
+          tierCurrency,
+        ),
       },
       {
         label: "Professional signup",
-        value: formatPatientMoney(tier.rewards.professionalAmountCents, tierCurrency),
+        value: formatPatientMoney(
+          tier.rewards.professionalAmountCents,
+          tierCurrency,
+        ),
       },
       {
         label: "Organization onboarded",
-        value: formatPatientMoney(tier.rewards.organizationAmountCents, tierCurrency),
+        value: formatPatientMoney(
+          tier.rewards.organizationAmountCents,
+          tierCurrency,
+        ),
       },
       {
         label: "Unlock criteria",
-        value: tier.threshold > 0 ? `${tier.threshold} referrals` : "Verified account",
+        value:
+          tier.threshold > 0
+            ? `${tier.threshold} referrals`
+            : "Verified account",
       },
     ],
   };
 }
 
 export function PatientReferralsPage() {
+  const pathname = usePathname();
+  const country = pathname.match(/^\/([a-z]{2})(?=\/)/i)?.[1]?.toUpperCase();
   const [copied, setCopied] = useState(false);
   const [summary, setSummary] = useState<PatientReferralSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,7 +202,7 @@ export function PatientReferralsPage() {
 
     async function loadReferrals() {
       try {
-        const response = await getPatientReferrals();
+        const response = await getPatientReferrals(country);
         if (isMounted) setSummary(response);
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -174,7 +215,7 @@ export function PatientReferralsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [country]);
 
   const liveReferralCode = summary?.referralCode || "Unavailable";
   const liveReferralLink = summary?.referralLink || "";
@@ -204,10 +245,26 @@ export function PatientReferralsPage() {
             },
           ]
         : [
-            { label: "Total referrals", value: isLoading ? "-" : "0", note: "All referred users" },
-            { label: "Organizations", value: isLoading ? "-" : "0", note: "Organization signups" },
-            { label: "Professionals", value: isLoading ? "-" : "0", note: "Professional signups" },
-            { label: "Patients", value: isLoading ? "-" : "0", note: "Patient signups" },
+            {
+              label: "Total referrals",
+              value: isLoading ? "-" : "0",
+              note: "All referred users",
+            },
+            {
+              label: "Organizations",
+              value: isLoading ? "-" : "0",
+              note: "Organization signups",
+            },
+            {
+              label: "Professionals",
+              value: isLoading ? "-" : "0",
+              note: "Professional signups",
+            },
+            {
+              label: "Patients",
+              value: isLoading ? "-" : "0",
+              note: "Patient signups",
+            },
           ],
     [isLoading, summary],
   );
@@ -282,9 +339,12 @@ export function PatientReferralsPage() {
   return (
     <div className="mt-[8px] pb-8 xl:pb-10">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Referrals</h1>
+        <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">
+          Referrals
+        </h1>
         <span className="inline-flex w-fit items-center rounded-[8px] bg-[#1565C0] px-4 py-2 text-[16px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)]">
-          {summary?.tiers?.find((tier) => tier.active)?.badge ?? (isLoading ? "Loading tier" : "No active tier")}
+          {summary?.tiers?.find((tier) => tier.active)?.badge ??
+            (isLoading ? "Loading tier" : "No active tier")}
         </span>
       </div>
 
@@ -294,10 +354,13 @@ export function PatientReferralsPage() {
 
         <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,493px)_1fr] xl:gap-10">
           <div className="min-w-0 pr-0 xl:pr-4">
-            <h2 className="text-[18px] font-semibold tracking-[-0.07em]">Your referral code</h2>
+            <h2 className="text-[18px] font-semibold tracking-[-0.07em]">
+              Your referral code
+            </h2>
             <p className="mt-3 max-w-[360px] text-[15px] leading-[1.2] tracking-[-0.07em] text-[#E2E8F0]">
-              Share this code with other organizations, professionals, or patients. Rewards are credited according to
-              your active referral tier.
+              Share this code with other organizations, professionals, or
+              patients. Rewards are credited according to your active referral
+              tier.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -333,19 +396,28 @@ export function PatientReferralsPage() {
           </div>
 
           <div className="relative z-10 flex min-w-0 flex-col items-start gap-3 pr-0 xl:items-end xl:pt-3 xl:pr-2">
-            <p className="text-[18px] font-semibold tracking-[-0.07em]">Total Earnings</p>
+            <p className="text-[18px] font-semibold tracking-[-0.07em]">
+              Total Earnings
+            </p>
             <p className="text-[40px] font-semibold leading-[1.1] tracking-[-0.07em]">
               {formatPatientMoney(summary?.totalEarned ?? 0, summary?.currency)}
             </p>
             <p className="text-[16px] tracking-[-0.07em] text-[#AF8D11]">
-              Pending: {formatPatientMoney(summary?.pendingBalance ?? 0, summary?.currency)}
+              Pending:{" "}
+              {formatPatientMoney(
+                summary?.pendingBalance ?? 0,
+                summary?.currency,
+              )}
             </p>
-            <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.18, ease: "easeOut" }}>
-              <Link
-              href="/patient-platform/referrals/withdraw"
-              className="mt-1 inline-flex h-9 items-center justify-center rounded-[12px] border border-[#F8FAFC] px-5 text-[16px] font-medium tracking-[-0.05em] text-[#E3F2FD] transition hover:bg-white/10"
+            <motion.div
+              whileHover={{ y: -1 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
             >
-              Withdraw Earnings
+              <Link
+                href="/patient-platform/referrals/withdraw"
+                className="mt-1 inline-flex h-9 items-center justify-center rounded-[12px] border border-[#F8FAFC] px-5 text-[16px] font-medium tracking-[-0.05em] text-[#E3F2FD] transition hover:bg-white/10"
+              >
+                Withdraw Earnings
               </Link>
             </motion.div>
           </div>
@@ -360,17 +432,27 @@ export function PatientReferralsPage() {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="rounded-[6px] bg-[#F8FAFC] px-5 py-[14px] shadow-[0_8px_20px_rgba(148,163,184,0.08)] sm:px-[27px]"
           >
-            <p className="text-[20px] font-semibold leading-6 tracking-[-0.07em] text-[#0F172A]">{metric.value}</p>
-            <p className="mt-2 text-[15px] tracking-[-0.07em] text-[#0F172A]">{metric.label}</p>
-            <p className="mt-1 text-[12px] tracking-[-0.07em] text-[#1565C0]">{metric.note}</p>
+            <p className="text-[20px] font-semibold leading-6 tracking-[-0.07em] text-[#0F172A]">
+              {metric.value}
+            </p>
+            <p className="mt-2 text-[15px] tracking-[-0.07em] text-[#0F172A]">
+              {metric.label}
+            </p>
+            <p className="mt-1 text-[12px] tracking-[-0.07em] text-[#1565C0]">
+              {metric.note}
+            </p>
           </motion.div>
         ))}
       </section>
 
       <section className="mt-7">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-[18px] font-semibold tracking-[-0.07em] text-[#334155]">Your partner Level</h2>
-          <p className="text-[18px] tracking-[-0.07em] text-[#94A3B8]">Progress to unlock higher tiers</p>
+          <h2 className="text-[18px] font-semibold tracking-[-0.07em] text-[#334155]">
+            Your partner Level
+          </h2>
+          <p className="text-[18px] tracking-[-0.07em] text-[#94A3B8]">
+            Progress to unlock higher tiers
+          </p>
         </div>
 
         <div className="mt-4 space-y-4">
@@ -387,8 +469,13 @@ export function PatientReferralsPage() {
 
       <section className="mt-4 overflow-hidden rounded-[12px] bg-[#F8FAFC] shadow-[0_10px_24px_rgba(148,163,184,0.08)]">
         <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-[18px] font-medium tracking-[-0.05em] text-[#334155]">Recent referrals</h2>
-          <Link href="/patient-platform/referrals/people" className="text-[18px] font-semibold tracking-[-0.07em] text-[#1565C0]">
+          <h2 className="text-[18px] font-medium tracking-[-0.05em] text-[#334155]">
+            Recent referrals
+          </h2>
+          <Link
+            href="/patient-platform/referrals/people"
+            className="text-[18px] font-semibold tracking-[-0.07em] text-[#1565C0]"
+          >
             view all
           </Link>
         </div>
@@ -411,14 +498,24 @@ export function PatientReferralsPage() {
                 <span className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full bg-[#E3F2FD] text-[11px] font-semibold tracking-[-0.05em] text-[#1565C0]">
                   {record.initials}
                 </span>
-                <span className="text-[15px] tracking-[-0.07em] text-[#94A3B8]">{record.name}</span>
+                <span className="text-[15px] tracking-[-0.07em] text-[#94A3B8]">
+                  {record.name}
+                </span>
               </div>
-              <div className="mt-3 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">{record.type}</div>
-              <div className="mt-1 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">{record.joined}</div>
-              <div className="mt-1 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">{record.earned}</div>
+              <div className="mt-3 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">
+                {record.type}
+              </div>
+              <div className="mt-1 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">
+                {record.joined}
+              </div>
+              <div className="mt-1 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8] md:mt-0">
+                {record.earned}
+              </div>
               <div
                 className={`mt-2 text-[16px] tracking-[-0.07em] md:mt-0 ${
-                  record.status === "Completed" ? "text-[#19AA4A]" : "text-[#AF8D11]"
+                  record.status === "Completed"
+                    ? "text-[#19AA4A]"
+                    : "text-[#AF8D11]"
                 }`}
               >
                 {record.status}

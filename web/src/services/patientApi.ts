@@ -293,7 +293,8 @@ export type PatientMedicalRecordRecording = {
   consultationId: string | null;
   provider: string;
   providerRecordingId: string | null;
-  status: "requested" | "recording" | "stopped" | "ready" | "failed" | "archived";
+  status:
+    "requested" | "recording" | "stopped" | "ready" | "failed" | "archived";
   archiveUrl: string | null;
   startedAt: string | null;
   stoppedAt: string | null;
@@ -1075,22 +1076,31 @@ export function listPatientSymptomChecks(params?: {
   );
 }
 
-export function getPatientReferrals() {
-  return apiRequest<PatientReferralSummary>("/patient/referrals", {
-    method: "GET",
-  });
+export function getPatientReferrals(country?: string) {
+  return apiRequest<PatientReferralSummary>(
+    `/patient/referrals${buildQuery({ country })}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
-export function getPatientReferralTiers() {
-  return apiRequest<PatientReferralTier[]>("/patient/referrals/tiers", {
-    method: "GET",
-  });
+export function getPatientReferralTiers(country?: string) {
+  return apiRequest<PatientReferralTier[]>(
+    `/patient/referrals/tiers${buildQuery({ country })}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
-export function getPatientReferralWallet() {
-  return apiRequest<PatientReferralWallet>("/patient/referrals/wallet", {
-    method: "GET",
-  });
+export function getPatientReferralWallet(country?: string) {
+  return apiRequest<PatientReferralWallet>(
+    `/patient/referrals/wallet${buildQuery({ country })}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function createPatientReferralPayoutMethod(payload: {
@@ -1125,15 +1135,17 @@ export function requestPatientReferralWithdrawal(payload: {
 }
 
 export function getPatientPaystackBanks(currency = "NGN") {
-  return apiRequest<Array<{ id: number | null; name: string; code: string; currency: string }>>(
-    `/payments/paystack/banks?currency=${encodeURIComponent(currency)}`,
-    { method: "GET" },
-  );
+  return apiRequest<
+    Array<{ id: number | null; name: string; code: string; currency: string }>
+  >(`/payments/paystack/banks?currency=${encodeURIComponent(currency)}`, {
+    method: "GET",
+  });
 }
 
 export function listPatientReferralPeople(params?: {
   role?: BackendRole;
   search?: string;
+  country?: string;
 }) {
   return apiRequest<PatientReferralPerson[]>(
     `/patient/referrals/people${buildQuery(params)}`,
@@ -1188,10 +1200,13 @@ export function rejoinPatientConsultation(consultationId: string) {
 }
 
 export function initializePaystackConsultationPayment(consultationId: string) {
-  return apiRequest<PaystackConsultationPayment>("/payments/paystack/initialize", {
-    method: "POST",
-    body: JSON.stringify({ consultationId }),
-  });
+  return apiRequest<PaystackConsultationPayment>(
+    "/payments/paystack/initialize",
+    {
+      method: "POST",
+      body: JSON.stringify({ consultationId }),
+    },
+  );
 }
 
 export function initializePaystackSubscriptionPayment(payload: {
@@ -1206,10 +1221,13 @@ export function initializePaystackSubscriptionPayment(payload: {
    */
   idempotencyKey?: string;
 }) {
-  return apiRequest<PaystackConsultationPayment>("/payments/paystack/subscriptions/initialize", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiRequest<PaystackConsultationPayment>(
+    "/payments/paystack/subscriptions/initialize",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function verifyPaystackConsultationPayment(reference: string) {
@@ -1220,10 +1238,13 @@ export function verifyPaystackConsultationPayment(reference: string) {
 }
 
 export function verifyPaystackSubscriptionPayment(reference: string) {
-  return apiRequest<PaystackConsultationPayment>("/payments/paystack/subscriptions/verify", {
-    method: "POST",
-    body: JSON.stringify({ reference }),
-  });
+  return apiRequest<PaystackConsultationPayment>(
+    "/payments/paystack/subscriptions/verify",
+    {
+      method: "POST",
+      body: JSON.stringify({ reference }),
+    },
+  );
 }
 
 export function completePatientConsultation(consultationId: string) {
