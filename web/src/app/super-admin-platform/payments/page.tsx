@@ -10,6 +10,7 @@ import {
   getAdminCountries,
   getAdminPaymentTransaction,
   getAdminPaymentsOverview,
+  getAdminStripeOperations,
   removeAdminPaymentTransaction,
   resolveAdminConsultationEscrow,
   testAdminPaymentGateway,
@@ -24,11 +25,12 @@ import {
   type AdminPaymentSubscriptionRow,
   type AdminPaymentTransaction,
   type AdminPaymentsOverview,
+  type AdminStripeOperations,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 import { exportTablePdf } from "@/utils/pdfExport";
 
-type PaymentTab = "transactions" | "subscriptions" | "referrals" | "escrows" | "configuration";
+type PaymentTab = "transactions" | "subscriptions" | "referrals" | "escrows" | "stripe" | "configuration";
 type EscrowAction = "release_to_professional" | "refund_patient" | "partial_refund" | "send_to_review";
 type StatusFilter = "all" | AdminPaymentStatus;
 type IconName =
@@ -74,6 +76,8 @@ const defaultOverview: AdminPaymentsOverview = {
     settlementPolicy: {
       feeType: "percentage",
       feePercentage: 10,
+      starterFeePercentage: 15,
+      proFeePercentage: 7.5,
       fixedFeeCents: 0,
       applyFeeTo: "billable_amount",
       minimumBillableMinutes: 15,
@@ -87,6 +91,14 @@ const defaultOverview: AdminPaymentsOverview = {
       internationalProvider: "stripe",
     },
   },
+};
+
+const defaultStripeOperations: AdminStripeOperations = {
+  events: [],
+  disputes: [],
+  transfers: [],
+  payouts: [],
+  meta: { limit: 50 },
 };
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
@@ -113,11 +125,16 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
 }
 
 function formatCurrency(value: number, currency = "USD") {
+  const normalizedCurrency = (currency || "USD").toUpperCase();
   return new Intl.NumberFormat("en", {
     style: "currency",
-    currency: currency === "NGN" ? "NGN" : currency || "USD",
+    currency: normalizedCurrency,
     maximumFractionDigits: value % 1 ? 2 : 0,
   }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatStripeAmount(value: number, currency: string) {
+  return formatCurrency(Number(value || 0) / 100, currency);
 }
 
 function formatDate(value: string | null | undefined) {
@@ -312,6 +329,8 @@ function EmptyRows({ columns, message }: { columns: number; message: string }) {
 export default function SuperAdminPaymentsRoute() {
   const [activeTab, setActiveTab] = useState<PaymentTab>("transactions");
   const [overview, setOverview] = useState<AdminPaymentsOverview>(defaultOverview);
+  const [stripeOperations, setStripeOperations] = useState<AdminStripeOperations>(defaultStripeOperations);
+  const [loadingStripeOperations, setLoadingStripeOperations] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -358,6 +377,21 @@ export default function SuperAdminPaymentsRoute() {
   useEffect(() => {
     loadPayments();
   }, [loadPayments]);
+
+  const loadStripeOperations = useCallback(async () => {
+    setLoadingStripeOperations(true);
+    try {
+      setStripeOperations(await getAdminStripeOperations());
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setLoadingStripeOperations(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "stripe") loadStripeOperations();
+  }, [activeTab, loadStripeOperations]);
 
   // The country list is independent of the filters, so it is fetched once.
   useEffect(() => {
@@ -449,6 +483,7 @@ export default function SuperAdminPaymentsRoute() {
       referrals: ["Referrer", "Level", "Trigger", "Amount", "Bank/wallet", "Date", "Status"],
       escrows: ["Patient", "Professional", "Consultation", "Amount", "Escrow status", "Payment", "Updated"],
       configuration: ["Name", "Type", "Monthly", "Yearly", "Status"],
+      stripe: ["Record", "Source", "Status", "Amount", "Account", "Date"],
     };
     const rowsByTab: Record<PaymentTab, string[][]> = {
       transactions: tableRows.transactions.data.map((row) => [
@@ -494,6 +529,32 @@ export default function SuperAdminPaymentsRoute() {
         formatCurrency(row.yearlyPrice, row.currency),
         row.isActive ? "Active" : "Inactive",
       ]),
+      stripe: [
+        ...stripeOperations.events.map((row) => [
+          row.type,
+          row.source,
+          row.status,
+          "",
+          row.stripeAccountId ?? "",
+          formatDate(row.createdAt),
+        ]),
+        ...stripeOperations.transfers.map((row) => [
+          `Transfer ${row.stripeTransferId}`,
+          "connect",
+          row.status,
+          formatStripeAmount(row.amount, row.currency),
+          row.stripeAccountId,
+          formatDate(row.updatedAt),
+        ]),
+        ...stripeOperations.payouts.map((row) => [
+          `Payout ${row.stripePayoutId}`,
+          "connect",
+          row.status,
+          formatStripeAmount(row.amount, row.currency),
+          row.stripeAccountId,
+          formatDate(row.updatedAt),
+        ]),
+      ],
     };
     const rows = rowsByTab[activeTab];
     if (!rows.length) {
@@ -664,6 +725,7 @@ export default function SuperAdminPaymentsRoute() {
               ["subscriptions", "Subscriptions"],
               ["referrals", "Referral payouts"],
               ["escrows", `Escrow review${overview.summary.escrowReviewCount ? ` (${overview.summary.escrowReviewCount})` : ""}`],
+              ["stripe", "Stripe operations"],
               ["configuration", "Configuration"],
             ].map(([value, label]) => (
               <button
@@ -749,6 +811,13 @@ export default function SuperAdminPaymentsRoute() {
             <EscrowReviewTable
               rows={tableRows.escrows?.data ?? []}
               onResolve={(row, action) => setResolvingEscrow({ row, action })}
+            />
+          ) : null}
+          {activeTab === "stripe" ? (
+            <StripeOperationsPanel
+              operations={stripeOperations}
+              loading={loadingStripeOperations}
+              onRefresh={loadStripeOperations}
             />
           ) : null}
           {activeTab === "configuration" ? (
@@ -1035,6 +1104,150 @@ function EscrowReviewTable({
   );
 }
 
+function StripeOperationsPanel({
+  operations,
+  loading,
+  onRefresh,
+}: {
+  operations: AdminStripeOperations;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="space-y-8 px-4 pb-10 pt-2 sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-[18px] font-semibold text-[#334155]">Stripe operations</h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            Trusted webhook, transfer, payout, and dispute state recorded by the backend.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="h-10 rounded-[8px] border border-[#1565C0] px-4 text-[13px] font-semibold text-[#1565C0] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Refreshing..." : "Refresh activity"}
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["Webhook events", operations.events.length],
+          ["Dispute events", operations.disputes.length],
+          ["Transfers", operations.transfers.length],
+          ["Payouts", operations.payouts.length],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-[8px] border border-[#D6E0EA] bg-white px-4 py-3">
+            <span className="block text-[12px] font-medium text-[#64748B]">{label}</span>
+            <span className="mt-1 block text-[24px] font-semibold text-[#334155]">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-[16px] font-semibold text-[#334155]">Webhook delivery</h3>
+        <div className="overflow-x-auto rounded-[8px] border border-[#D6E0EA] bg-white">
+          <table className="w-full min-w-[980px] table-fixed border-collapse">
+            <thead className="bg-[#E1E8F0] text-left text-[12px] font-semibold text-[#334155]">
+              <tr>
+                <th className="w-[24%] px-4 py-3">Event</th>
+                <th className="w-[12%] px-3 py-3">Source</th>
+                <th className="w-[12%] px-3 py-3">Mode</th>
+                <th className="w-[13%] px-3 py-3">Status</th>
+                <th className="w-[9%] px-3 py-3">Attempts</th>
+                <th className="w-[15%] px-3 py-3">Processed</th>
+                <th className="w-[15%] px-3 py-3">Received</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#64748B]">
+              {!operations.events.length ? <EmptyRows columns={7} message="No Stripe webhook events recorded yet." /> : null}
+              {operations.events.map((event) => (
+                <tr key={event.id} className="h-[58px]">
+                  <td className="px-4 py-2">
+                    <span className="block truncate font-semibold text-[#334155]" title={event.type}>{event.type}</span>
+                    <span className="mt-1 block truncate text-[10px]" title={event.id}>{event.id}</span>
+                  </td>
+                  <td className="px-3 py-2">{labelize(event.source)}</td>
+                  <td className="px-3 py-2">{event.livemode ? "Live" : "Sandbox"}</td>
+                  <td className="px-3 py-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(event.status)}`}>{labelize(event.status)}</span></td>
+                  <td className="px-3 py-2">{event.attempts}</td>
+                  <td className="px-3 py-2">{formatDate(event.processedAt)}</td>
+                  <td className="px-3 py-2">{formatDate(event.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid gap-8 xl:grid-cols-2">
+        <StripeMoneyTable title="Transfers" rows={operations.transfers} kind="transfer" />
+        <StripeMoneyTable title="Payouts" rows={operations.payouts} kind="payout" />
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-[16px] font-semibold text-[#334155]">Disputes and chargebacks</h3>
+        <div className="overflow-x-auto rounded-[8px] border border-[#D6E0EA] bg-white">
+          <table className="w-full min-w-[760px] table-fixed border-collapse">
+            <thead className="bg-[#E1E8F0] text-left text-[12px] font-semibold text-[#334155]">
+              <tr><th className="w-[30%] px-4 py-3">Event</th><th className="w-[18%] px-3 py-3">Source</th><th className="w-[18%] px-3 py-3">Status</th><th className="w-[17%] px-3 py-3">Received</th><th className="w-[17%] px-3 py-3">Error</th></tr>
+            </thead>
+            <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#64748B]">
+              {!operations.disputes.length ? <EmptyRows columns={5} message="No dispute or chargeback events recorded yet." /> : null}
+              {operations.disputes.map((event) => (
+                <tr key={event.id} className="h-[56px]">
+                  <td className="px-4 py-2"><span className="block truncate font-semibold text-[#334155]">{event.type}</span><span className="mt-1 block truncate text-[10px]">{event.id}</span></td>
+                  <td className="px-3 py-2">{labelize(event.source)}</td>
+                  <td className="px-3 py-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(event.status)}`}>{labelize(event.status)}</span></td>
+                  <td className="px-3 py-2">{formatDate(event.createdAt)}</td>
+                  <td className="px-3 py-2"><span className="block truncate" title={event.error ?? ""}>{event.error ?? "None"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StripeMoneyTable({
+  title,
+  rows,
+  kind,
+}: {
+  title: string;
+  rows: AdminStripeOperations["transfers"] | AdminStripeOperations["payouts"];
+  kind: "transfer" | "payout";
+}) {
+  return (
+    <div>
+      <h3 className="mb-3 text-[16px] font-semibold text-[#334155]">{title}</h3>
+      <div className="overflow-x-auto rounded-[8px] border border-[#D6E0EA] bg-white">
+        <table className="w-full min-w-[650px] table-fixed border-collapse">
+          <thead className="bg-[#E1E8F0] text-left text-[12px] font-semibold text-[#334155]">
+            <tr><th className="w-[29%] px-4 py-3">Stripe ID</th><th className="w-[24%] px-3 py-3">Account</th><th className="w-[20%] px-3 py-3">Amount</th><th className="w-[15%] px-3 py-3">Status</th><th className="w-[12%] px-3 py-3">Updated</th></tr>
+          </thead>
+          <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#64748B]">
+            {!rows.length ? <EmptyRows columns={5} message={`No Stripe ${kind}s recorded yet.`} /> : null}
+            {rows.map((row) => (
+              <tr key={row.id} className="h-[56px]">
+                <td className="px-4 py-2"><span className="block truncate font-semibold text-[#334155]" title={"stripeTransferId" in row ? row.stripeTransferId : row.stripePayoutId}>{"stripeTransferId" in row ? row.stripeTransferId : row.stripePayoutId}</span></td>
+                <td className="px-3 py-2"><span className="block truncate" title={row.stripeAccountId}>{row.stripeAccountId}</span></td>
+                <td className="px-3 py-2 font-semibold text-[#334155]">{formatStripeAmount(row.amount, row.currency)}</td>
+                <td className="px-3 py-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+                <td className="px-3 py-2">{formatDate(row.updatedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function PaymentRoutingPanel({
   onSave,
   policy,
@@ -1249,6 +1462,8 @@ function SettlementPolicyPanel({
     onSave({
       ...draft,
       feePercentage: Math.max(Number(draft.feePercentage) || 0, 0),
+      starterFeePercentage: Math.max(Number(draft.starterFeePercentage) || 0, 0),
+      proFeePercentage: Math.max(Number(draft.proFeePercentage) || 0, 0),
       fixedFeeCents: Math.max(Math.round(Number(draft.fixedFeeCents) || 0), 0),
       minimumBillableMinutes: Math.max(Number(draft.minimumBillableMinutes) || 0, 0),
       disputeWindowHours: Math.max(Number(draft.disputeWindowHours) || 0, 0),
@@ -1300,6 +1515,30 @@ function SettlementPolicyPanel({
             step="0.1"
             value={draft.feePercentage}
             onChange={(event) => update("feePercentage", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Starter consultation fee</span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={draft.starterFeePercentage}
+            onChange={(event) => update("starterFeePercentage", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Pro consultation fee</span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={draft.proFeePercentage}
+            onChange={(event) => update("proFeePercentage", Number(event.target.value))}
             className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
           />
         </label>

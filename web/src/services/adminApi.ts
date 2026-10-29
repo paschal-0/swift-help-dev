@@ -370,6 +370,7 @@ export type AdminProfessionalListItem = {
   specialization: string;
   rating: number;
   consultationType: string;
+  subscriptionTier: "starter" | "pro";
   onboardingCompleted: boolean;
   verificationStatus: "pending" | "under_review" | "approved" | "rejected" | "suspended";
 };
@@ -413,6 +414,7 @@ export type AdminProfessionalDetail = {
     countryCode: string | null;
     countryName: string | null;
     consultationType: string | null;
+    subscriptionTier: "starter" | "pro";
     experienceYears: number | null;
     professionalBio: string | null;
     verificationStatus: "pending" | "under_review" | "approved" | "rejected" | "suspended";
@@ -1095,6 +1097,8 @@ export type AdminConsultationEscrowRow = {
 export type AdminPaymentSettlementPolicy = {
   feeType: "none" | "percentage" | "fixed" | "percentage_plus_fixed";
   feePercentage: number;
+  starterFeePercentage: number;
+  proFeePercentage: number;
   fixedFeeCents: number;
   applyFeeTo: "billable_amount" | "full_payment";
   minimumBillableMinutes: number;
@@ -1194,6 +1198,58 @@ export type AdminPaymentsOverview = {
   };
 };
 
+export type AdminStripeWebhookEvent = {
+  id: string;
+  type: string;
+  source: "platform" | "connect" | string;
+  stripeAccountId: string | null;
+  livemode: boolean;
+  status: "processing" | "processed" | "failed" | string;
+  attempts: number;
+  error: string | null;
+  processingStartedAt: string;
+  processedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminStripeTransfer = {
+  id: string;
+  stripeTransferId: string;
+  stripeAccountId: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "reversed" | string;
+  destinationPaymentId: string | null;
+  failureMessage: string | null;
+  lastEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminStripePayout = {
+  id: string;
+  stripePayoutId: string;
+  stripeAccountId: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "canceled" | string;
+  arrivalDate: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  lastEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminStripeOperations = {
+  events: AdminStripeWebhookEvent[];
+  disputes: AdminStripeWebhookEvent[];
+  transfers: AdminStripeTransfer[];
+  payouts: AdminStripePayout[];
+  meta: { limit: number };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -1227,6 +1283,7 @@ export type UpdateAdminProfessionalPayload = {
   providerRoleId?: string;
   experienceYears?: number;
   consultationType?: string;
+  subscriptionTier?: "starter" | "pro";
   currencyCode?: string;
   videoConsultationRateCents?: number;
   inPersonVisitRateCents?: number;
@@ -1773,6 +1830,13 @@ export async function getAdminPaymentsOverview(params: {
   return apiRequest<AdminPaymentsOverview>(`/admin/payments/overview${suffix}`, {
     method: "GET",
   });
+}
+
+export async function getAdminStripeOperations(limit = 50) {
+  return apiRequest<AdminStripeOperations>(
+    `/admin/payments/stripe-operations?limit=${encodeURIComponent(String(limit))}`,
+    { method: "GET" },
+  );
 }
 
 /** Countries that currently have accounts, for filter menus. */

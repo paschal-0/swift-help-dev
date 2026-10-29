@@ -8,6 +8,8 @@ import {
   changeProfessionalPassword,
   getProfessionalProfile,
   getProfessionalSettings,
+  getProfessionalStripeConnectStatus,
+  startProfessionalStripeConnectOnboarding,
   formatApiMoney,
   updateProfessionalAccountSettings,
   updateProfessionalAvailability,
@@ -17,6 +19,7 @@ import {
   type ProfessionalAvailabilitySetting,
   type ProfessionalSettings,
   type WeeklyAvailability,
+  type ProfessionalStripeConnectStatus,
 } from "@/services/professionalApi";
 import { exportTablePdf } from "@/utils/pdfExport";
 
@@ -363,6 +366,7 @@ export function ProfessionalSettingsPage() {
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [settings, setSettings] = useState<ProfessionalSettings | null>(null);
+  const [stripeConnect, setStripeConnect] = useState<ProfessionalStripeConnectStatus | null>(null);
   const [availability, setAvailability] = useState<ProfessionalAvailabilitySetting | null>(null);
   const [generalForm, setGeneralForm] = useState<GeneralForm>(emptyGeneralForm);
   const [lastLoadedGeneral, setLastLoadedGeneral] = useState<GeneralForm>(emptyGeneralForm);
@@ -381,7 +385,11 @@ export function ProfessionalSettingsPage() {
     async function loadSettings() {
       setLoading(true);
       try {
-        const [profile, settingsData] = await Promise.all([getProfessionalProfile(), getProfessionalSettings()]);
+        const [profile, settingsData, stripeStatus] = await Promise.all([
+          getProfessionalProfile(),
+          getProfessionalSettings(),
+          getProfessionalStripeConnectStatus().catch(() => null),
+        ]);
         if (cancelled) return;
 
         const nextGeneral: GeneralForm = {
@@ -396,6 +404,7 @@ export function ProfessionalSettingsPage() {
         const nextAvailability = buildAvailabilityForm(profile.availability);
 
         setSettings(settingsData);
+        setStripeConnect(stripeStatus);
         setAvailability(profile.availability);
         setGeneralForm(nextGeneral);
         setLastLoadedGeneral(nextGeneral);
@@ -418,6 +427,15 @@ export function ProfessionalSettingsPage() {
       cancelled = true;
     };
   }, []);
+
+  const startStripeOnboarding = async () => {
+    try {
+      const result = await startProfessionalStripeConnectOnboarding();
+      window.location.assign(result.url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start Stripe onboarding");
+    }
+  };
 
   const notificationEntries = useMemo(() => Object.entries(settings?.notificationPreferences ?? {}), [settings]);
   const securityEntries = useMemo(() => Object.entries(settings?.securityPreferences ?? {}), [settings]);
@@ -863,6 +881,26 @@ export function ProfessionalSettingsPage() {
                   <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
                     No payout method has been added yet.
                   </div>
+                )}
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Stripe payouts">
+              <div className="flex flex-col gap-4 rounded-[14px] border border-[#DDE6F0] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[15px] font-semibold text-[#334155]">
+                    {stripeConnect?.status === "active" ? "Stripe payouts are enabled" : "Connect Stripe to receive international payouts"}
+                  </p>
+                  <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+                    Complete Stripe identity and bank verification separately from SwiftHelp licence review.
+                  </p>
+                </div>
+                {stripeConnect?.status === "active" ? (
+                  <span className="rounded-[8px] bg-[#E9F8EE] px-4 py-2 text-[13px] font-semibold text-[#0D8C24]">Connected</span>
+                ) : (
+                  <PrimaryButton onClick={startStripeOnboarding}>
+                    {stripeConnect?.stripeAccountId ? "Continue Stripe setup" : "Connect Stripe"}
+                  </PrimaryButton>
                 )}
               </div>
             </SettingsCard>

@@ -8,6 +8,7 @@ import {
   changeOrganizationPassword,
   formatOrganizationMoney,
   getOrganizationSettings,
+  initializeOrganizationStripeSubscription,
   updateOrganizationNotificationPreferences,
   updateOrganizationOperatingPreference,
   updateOrganizationPreferences,
@@ -463,6 +464,15 @@ export function OrganisationSettingsPage() {
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods);
   const [billingHistory, setBillingHistory] = useState(initialBillingHistory);
   const [billingPage, setBillingPage] = useState(1);
+
+  const startOrganizationSubscription = async (plan: "starter" | "growth") => {
+    try {
+      const result = await initializeOrganizationStripeSubscription(plan);
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start subscription checkout.");
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -1038,6 +1048,20 @@ export function OrganisationSettingsPage() {
             >
               Review pricing
             </motion.button>
+            <button
+              type="button"
+              onClick={() => void startOrganizationSubscription("starter")}
+              className="mt-3 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1E88E5] text-[16px] text-white transition hover:bg-[#1565C0]"
+            >
+              Subscribe to Starter
+            </button>
+            <button
+              type="button"
+              onClick={() => void startOrganizationSubscription("growth")}
+              className="mt-3 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] border border-[#1E88E5] bg-transparent text-[16px] text-[#1E88E5] transition hover:bg-[#eff6ff]"
+            >
+              Subscribe to Growth
+            </button>
           </motion.article>
         </div>
       </section>

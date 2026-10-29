@@ -629,6 +629,13 @@ export async function getOrganizationBillingCredit() {
   });
 }
 
+export async function initializeOrganizationStripeSubscription(plan: "starter" | "growth") {
+  return apiRequest<{ authorizationUrl: string; reference: string; plan: string }>(
+    "/organization/billing/subscription/initialize",
+    { method: "POST", body: JSON.stringify({ plan }) },
+  );
+}
+
 export async function inviteProfessionalsToOrganizationShift(
   shiftId: string,
   professionalUserIds: string[],

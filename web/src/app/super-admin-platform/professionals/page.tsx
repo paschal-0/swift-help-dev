@@ -446,6 +446,10 @@ function ProfessionalProfileModal({
                     }
                   />
                   <DetailRow label="Consultation type:" value={professional.professionalInformation.consultationType ?? "Not provided"} />
+                  <DetailRow
+                    label="Professional plan:"
+                    value={professional.professionalInformation.subscriptionTier === "pro" ? "Pro (7.5% commission)" : "Starter (15% commission)"}
+                  />
                   <DetailRow label="Years of experience:" value={professional.professionalInformation.experienceYears !== null ? `${professional.professionalInformation.experienceYears} years` : "Not provided"} />
                   <DetailRow label="Rating:" value={professional.rating ? `${professional.rating.toFixed(1)} / 5` : "No ratings yet"} />
                 </dl>
@@ -637,6 +641,7 @@ function ProfessionalEditModal({
     specialization: professional.professionalInformation.specialization ?? "",
     providerRoleId: professional.professionalInformation.providerRoleId ?? "",
     consultationType: professional.professionalInformation.consultationType ?? "",
+    subscriptionTier: professional.professionalInformation.subscriptionTier ?? "starter",
     experienceYears: professional.professionalInformation.experienceYears?.toString() ?? "",
     professionalBio: professional.professionalInformation.professionalBio ?? "",
     currencyCode: professional.pricing.currencyCode || "NGN",
@@ -662,6 +667,7 @@ function ProfessionalEditModal({
       specialization: form.specialization.trim(),
       providerRoleId: form.providerRoleId,
       consultationType: form.consultationType.trim(),
+      subscriptionTier: form.subscriptionTier as "starter" | "pro",
       experienceYears: Number(form.experienceYears) || 0,
       professionalBio: form.professionalBio.trim(),
       currencyCode: form.currencyCode.trim().toUpperCase() || "NGN",
@@ -747,6 +753,17 @@ function ProfessionalEditModal({
             </span>
           </label>
           <label className={labelClass}>Consultation type<input className={inputClass} value={form.consultationType} onChange={(event) => updateField("consultationType", event.target.value)} /></label>
+          <label className={labelClass}>
+            Professional plan
+            <select
+              className={inputClass}
+              value={form.subscriptionTier}
+              onChange={(event) => updateField("subscriptionTier", event.target.value)}
+            >
+              <option value="starter">Starter - 15% commission</option>
+              <option value="pro">Pro - 7.5% commission</option>
+            </select>
+          </label>
           <label className={labelClass}>Years of experience<input className={inputClass} inputMode="numeric" value={form.experienceYears} onChange={(event) => updateField("experienceYears", event.target.value)} /></label>
           <label className={labelClass}>Currency<input className={inputClass} value={form.currencyCode} onChange={(event) => updateField("currencyCode", event.target.value.toUpperCase())} /></label>
           <label className={labelClass}>Video rate per hour<input className={inputClass} inputMode="decimal" value={form.videoRate} onChange={(event) => updateField("videoRate", event.target.value)} /></label>

@@ -49,6 +49,11 @@ export type ProfessionalProfile = {
   primaryPracticeLocation?: string | null;
   countryCode?: string | null;
   currencyCode?: string | null;
+  subscriptionTier?: "starter" | "pro";
+  stripeAccountId?: string | null;
+  stripeAccountStatus?: "not_connected" | "pending" | "active" | "restricted" | "deauthorized";
+  stripeDetailsSubmitted?: boolean;
+  stripePayoutsEnabled?: boolean;
   locale?: string | null;
   videoConsultationRateCents?: number | null;
   inPersonVisitRateCents?: number | null;
@@ -1279,6 +1284,27 @@ export function getProfessionalSettings() {
   return apiRequest<ProfessionalSettings>("/professional/settings", {
     method: "GET",
   });
+}
+
+export type ProfessionalStripeConnectStatus = {
+  stripeAccountId: string | null;
+  status: "not_connected" | "pending" | "active" | "restricted" | "deauthorized";
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+  requirements: Record<string, unknown> | null;
+};
+
+export function getProfessionalStripeConnectStatus() {
+  return apiRequest<ProfessionalStripeConnectStatus>("/stripe/connect/status", {
+    method: "GET",
+  });
+}
+
+export function startProfessionalStripeConnectOnboarding() {
+  return apiRequest<{ url: string; stripeAccountId: string; status: string }>(
+    "/stripe/connect/onboarding",
+    { method: "POST", body: JSON.stringify({}) },
+  );
 }
 
 export function updateProfessionalAccountSettings(
