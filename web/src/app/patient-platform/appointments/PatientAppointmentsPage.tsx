@@ -7,6 +7,7 @@ import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/a
 import {
   cancelPatientConsultationRequest,
   getPatientLiveUrl,
+  initializePaystackConsultationPayment,
   listPatientAppointments,
   listPatientConsultationRequests,
   type PatientAppointment,
@@ -37,6 +38,7 @@ type AppointmentItem = {
   id: string;
   source: "appointment" | "request";
   requestId?: string;
+  consultationId?: string | null;
   professional: string;
   specialty: string;
   consultationType: string;
@@ -152,6 +154,7 @@ function mapRequest(request: PatientConsultationRequest): AppointmentItem {
     id: `request-${request.id}`,
     source: "request",
     requestId: request.id,
+    consultationId: request.consultationId,
     professional: request.professionalName ?? "Selected professional",
     specialty: "Healthcare professional",
     consultationType: request.consultationLabel,
@@ -267,6 +270,7 @@ export function PatientAppointmentsPage() {
   const [displayMonth, setDisplayMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(null);
+  const [payingConsultationId, setPayingConsultationId] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLDivElement | null>(null);
 
   const appointments = useMemo(
@@ -406,6 +410,36 @@ export function PatientAppointmentsPage() {
       toast.error(getApiErrorMessage(error));
     } finally {
       setCancellingRequestId(null);
+    }
+  };
+
+  const payRequest = async (appointment: AppointmentItem) => {
+    if (
+      appointment.source !== "request" ||
+      appointment.status !== "Pending" ||
+      !appointment.consultationId
+    ) {
+      return;
+    }
+
+    setPayingConsultationId(appointment.consultationId);
+    try {
+      const payment = await initializePaystackConsultationPayment(
+        appointment.consultationId,
+      );
+      if (payment.alreadyPaid) {
+        await refreshAppointments();
+        toast.success("Payment verified. Your appointment is confirmed.");
+        return;
+      }
+      if (!payment.authorizationUrl) {
+        throw new Error("Secure payment checkout URL was not returned");
+      }
+      window.location.assign(payment.authorizationUrl);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setPayingConsultationId(null);
     }
   };
 
@@ -574,34 +608,48 @@ export function PatientAppointmentsPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    appointment.source === "request"
-                      ? cancelRequest(appointment)
-                      : openAppointment(appointment)
-                  }
-                  disabled={
-                    appointment.source === "request" &&
-                    (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
-                  }
-                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center transition duration-200 ${
-                    appointment.source === "request"
-                      ? "h-8 rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
-                      : "h-8 w-8 rounded-full hover:bg-[#E3F2FD]"
-                  }`}
-                  aria-label={
-                    appointment.source === "request"
-                      ? `Cancel request for ${appointment.professional}`
-                      : `Open details for ${appointment.professional}`
-                  }
-                >
-                  {appointment.source === "request" ? (
-                    cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
-                  ) : (
-                    <MoreVerticalIcon />
-                  )}
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {appointment.source === "request" &&
+                  appointment.status === "Pending" &&
+                  appointment.consultationId ? (
+                    <button
+                      type="button"
+                      onClick={() => payRequest(appointment)}
+                      disabled={payingConsultationId === appointment.consultationId}
+                      className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-medium text-white hover:bg-[#0F4FA8] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {payingConsultationId === appointment.consultationId ? "Opening" : "Pay now"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      appointment.source === "request"
+                        ? cancelRequest(appointment)
+                        : openAppointment(appointment)
+                    }
+                    disabled={
+                      appointment.source === "request" &&
+                      (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
+                    }
+                    className={`inline-flex shrink-0 cursor-pointer items-center justify-center transition duration-200 ${
+                      appointment.source === "request"
+                        ? "h-8 rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
+                        : "h-8 w-8 rounded-full hover:bg-[#E3F2FD]"
+                    }`}
+                    aria-label={
+                      appointment.source === "request"
+                        ? `Cancel request for ${appointment.professional}`
+                        : `Open details for ${appointment.professional}`
+                    }
+                  >
+                    {appointment.source === "request" ? (
+                      cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
+                    ) : (
+                      <MoreVerticalIcon />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3 rounded-[12px] bg-[#f5faff] px-3 py-3">
@@ -686,34 +734,48 @@ export function PatientAppointmentsPage() {
                   {appointment.status}
                 </span>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    appointment.source === "request"
-                      ? cancelRequest(appointment)
-                      : openAppointment(appointment)
-                  }
-                  disabled={
-                    appointment.source === "request" &&
-                    (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
-                  }
-                  className={`inline-flex h-8 cursor-pointer items-center justify-center justify-self-center transition duration-200 ${
-                    appointment.source === "request"
-                      ? "rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
-                      : "w-8 rounded-full hover:scale-110 hover:bg-[#E3F2FD]"
-                  }`}
-                  aria-label={
-                    appointment.source === "request"
-                      ? `Cancel request for ${appointment.professional}`
-                      : `Open details for ${appointment.professional}`
-                  }
-                >
-                  {appointment.source === "request" ? (
-                    cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
-                  ) : (
-                    <MoreVerticalIcon />
-                  )}
-                </button>
+                <div className="flex items-center justify-self-center gap-2">
+                  {appointment.source === "request" &&
+                  appointment.status === "Pending" &&
+                  appointment.consultationId ? (
+                    <button
+                      type="button"
+                      onClick={() => payRequest(appointment)}
+                      disabled={payingConsultationId === appointment.consultationId}
+                      className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-medium text-white hover:bg-[#0F4FA8] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {payingConsultationId === appointment.consultationId ? "Opening" : "Pay now"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      appointment.source === "request"
+                        ? cancelRequest(appointment)
+                        : openAppointment(appointment)
+                    }
+                    disabled={
+                      appointment.source === "request" &&
+                      (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
+                    }
+                    className={`inline-flex h-8 cursor-pointer items-center justify-center transition duration-200 ${
+                      appointment.source === "request"
+                        ? "rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
+                        : "w-8 rounded-full hover:scale-110 hover:bg-[#E3F2FD]"
+                    }`}
+                    aria-label={
+                      appointment.source === "request"
+                        ? `Cancel request for ${appointment.professional}`
+                        : `Open details for ${appointment.professional}`
+                    }
+                  >
+                    {appointment.source === "request" ? (
+                      cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
+                    ) : (
+                      <MoreVerticalIcon />
+                    )}
+                  </button>
+                </div>
               </div>
               ))
             ) : (

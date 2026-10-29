@@ -1,7 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import {
+  verifyPaystackConsultationPayment,
+  verifyStripePayment,
+} from "@/services/patientApi";
 
 function SuccessBadgeIcon() {
   return (
@@ -26,6 +32,47 @@ function SuccessBadgeIcon() {
 
 export function PatientAppointmentConfirmedPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [paymentState, setPaymentState] = useState<"idle" | "verifying" | "confirmed" | "pending">("idle");
+  const provider = searchParams.get("payment");
+  const reference = searchParams.get("reference");
+  const paymentCancelled = searchParams.get("payment_cancelled") === "1";
+
+  useEffect(() => {
+    if (
+      !reference ||
+      (provider !== "paystack" && provider !== "stripe")
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    setPaymentState("verifying");
+    void (async () => {
+      try {
+        if (provider === "stripe") {
+          await verifyStripePayment(reference);
+        } else {
+          await verifyPaystackConsultationPayment(reference);
+        }
+        if (cancelled) return;
+        window.sessionStorage.removeItem("patientAppointmentDraft");
+        setPaymentState("confirmed");
+        toast.success("Payment verified. Your appointment is confirmed.");
+      } catch (error) {
+        if (cancelled) return;
+        setPaymentState("pending");
+        toast.error("Payment was not completed. Your appointment remains pending.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider, reference]);
+
+  const isPendingPayment = paymentState === "pending" || paymentCancelled;
+  const isVerifying = paymentState === "verifying";
 
   return (
     <article className="mt-[26px] min-h-[800px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-4 md:px-6 xl:px-10 xl:pb-[34px] xl:pt-[17px]">
@@ -49,7 +96,7 @@ export function PatientAppointmentConfirmedPage() {
           transition={{ duration: 0.28, ease: "easeOut", delay: 0.08 }}
           className="mt-4 text-center text-[34px] font-normal leading-[38px] tracking-[-0.05em] text-[#334155] sm:text-[40px] sm:leading-[44px] xl:mt-3 xl:text-[48px] xl:leading-[52px]"
         >
-          Request Sent
+          {isPendingPayment ? "Appointment Pending" : "Appointment Confirmed"}
         </motion.h1>
 
         <motion.p
@@ -58,9 +105,19 @@ export function PatientAppointmentConfirmedPage() {
           transition={{ duration: 0.28, ease: "easeOut", delay: 0.14 }}
           className="mt-4 max-w-[564px] px-2 text-center text-[18px] font-light leading-[26px] tracking-[-0.04em] text-black sm:text-[20px] sm:leading-[28px] xl:mt-[14px] xl:text-[24px] xl:leading-[30px] xl:tracking-[-0.05em]"
         >
-          Your appointment request has been sent for review.
-          <br />
-          You will receive a notification when the professional responds.
+          {isVerifying
+            ? "Verifying your payment securely."
+            : isPendingPayment
+              ? "Payment was not completed, so this appointment remains pending."
+              : "Your payment was verified and your appointment is now confirmed."}
+          {!isVerifying && (
+            <>
+              <br />
+              {isPendingPayment
+                ? "You can retry payment or cancel it from your appointments."
+                : "The professional has been notified."}
+            </>
+          )}
         </motion.p>
 
         <motion.div

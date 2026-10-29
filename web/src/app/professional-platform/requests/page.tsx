@@ -4,7 +4,7 @@ import { ProfessionalRequestsPage } from "./ProfessionalRequestsPage";
 export const dynamic = "force-dynamic";
 
 type ProfessionalRequestsRouteProps = {
-  searchParams?: Promise<{ requestId?: string | string[] }> | { requestId?: string | string[] };
+  searchParams?: Promise<{ requestId?: string | string[] }>;
 };
 
 export default async function ProfessionalRequestsRoute({

@@ -9,6 +9,7 @@ import {
   cancelPatientAppointment,
   createPatientConsultationRequest,
   getPatientAppointment,
+  initializePaystackConsultationPayment,
   type PatientAppointment,
   updatePatientAppointmentReminders,
 } from "@/services/patientApi";
@@ -708,8 +709,21 @@ export function PatientAppointmentDetailsPage() {
         shareSummaryWithProvider,
       });
       window.sessionStorage.setItem("patientSubmittedRequestId", request.id);
+      if (request.consultationId) {
+        const payment = await initializePaystackConsultationPayment(
+          request.consultationId,
+        );
+        if (!payment.alreadyPaid) {
+          if (!payment.authorizationUrl) {
+            throw new Error("Secure payment checkout URL was not returned");
+          }
+          window.sessionStorage.removeItem("patientAppointmentDraft");
+          window.location.assign(payment.authorizationUrl);
+          return;
+        }
+      }
       window.sessionStorage.removeItem("patientAppointmentDraft");
-      toast.success("Appointment request sent.");
+      toast.success("Appointment confirmed.");
       router.push("/patient-platform/appointments/confirmed");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -747,8 +761,28 @@ export function PatientAppointmentDetailsPage() {
     }
     setIsConfirming(true);
     try {
-      await cancelPatientAppointment(appointmentId);
-      toast.success("Appointment cancelled.");
+      const cancelled = await cancelPatientAppointment(appointmentId);
+      if (
+        cancelled.paymentStatus === "refund_pending" ||
+        cancelled.paymentStatus === "partial_refund_pending"
+      ) {
+        toast.success(
+          "Appointment cancelled. Your refund is being processed by the payment provider.",
+        );
+      } else if (
+        cancelled.paymentStatus === "refunded" ||
+        cancelled.paymentStatus === "partially_refunded"
+      ) {
+        toast.success(
+          "Appointment cancelled. The refundable amount was credited to your SwiftHelp refund wallet.",
+        );
+      } else if (cancelled.paymentStatus === "review_required") {
+        toast.success(
+          "Appointment cancelled. The payment settlement requires admin review.",
+        );
+      } else {
+        toast.success("Appointment cancelled.");
+      }
       router.push("/patient-platform/appointments");
     } catch (error) {
       toast.error(getApiErrorMessage(error));

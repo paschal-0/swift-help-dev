@@ -32,6 +32,7 @@ export type PatientAppointment = {
   endsAt?: string | null;
   mode: string;
   status: "upcoming" | "completed" | "cancelled" | string;
+  paymentStatus?: string | null;
   meetingUrl: string | null;
   emailReminderEnabled?: boolean;
   smsReminderEnabled?: boolean;
@@ -99,6 +100,8 @@ export type PatientConsultation = {
 
 export type PatientConsultationRequest = {
   id: string;
+  consultationId?: string | null;
+  paymentRequired?: boolean;
   professionalUserId: string;
   professionalName?: string | null;
   patientUserId: string | null;
