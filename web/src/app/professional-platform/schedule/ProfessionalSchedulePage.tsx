@@ -603,6 +603,8 @@ export function ProfessionalSchedulePage() {
   const pathname = usePathname();
   const { searchText } = useProfessionalPlatformShell();
   const [daySchedule, setDaySchedule] = useState(initialDaySchedule);
+  const [savedDaySchedule, setSavedDaySchedule] =
+    useState(initialDaySchedule);
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date().getDate());
   const [isAddBlockTimeModalOpen, setIsAddBlockTimeModalOpen] = useState(false);
@@ -700,6 +702,7 @@ export function ProfessionalSchedulePage() {
           data.availability.weeklySchedule,
         );
         setDaySchedule(nextDaySchedule);
+        setSavedDaySchedule(nextDaySchedule);
         const enabledDays = nextDaySchedule.filter((day) => day.enabled);
         const representativeDay = enabledDays[0];
         const availableRule =
@@ -821,6 +824,21 @@ export function ProfessionalSchedulePage() {
       },
     ];
   }, [blockedTimeItems.length, consultationRecords, daySchedule]);
+
+  const hasWeeklyHoursChanges = useMemo(
+    () =>
+      daySchedule.some((day, index) => {
+        const savedDay = savedDaySchedule[index];
+        return (
+          !savedDay ||
+          day.id !== savedDay.id ||
+          day.enabled !== savedDay.enabled ||
+          day.from !== savedDay.from ||
+          day.to !== savedDay.to
+        );
+      }),
+    [daySchedule, savedDaySchedule],
+  );
 
   const calendarSessionItems = useMemo(
     () =>
@@ -999,6 +1017,7 @@ export function ProfessionalSchedulePage() {
         acceptingBookings: availabilityEnabled,
         weeklySchedule: mapDayScheduleToWeeklySchedule(daySchedule),
       });
+      setSavedDaySchedule(daySchedule);
       toast.success("Weekly hours updated.");
     } catch (error) {
       toast.error(
@@ -1048,6 +1067,7 @@ export function ProfessionalSchedulePage() {
         weeklySchedule: mapDayScheduleToWeeklySchedule(nextDaySchedule),
       });
       setDaySchedule(nextDaySchedule);
+      setSavedDaySchedule(nextDaySchedule);
       setAvailabilityRules(draftAvailabilityRules);
       setIsEditingRules(false);
       toast.success("Availability rules updated.");
@@ -1649,7 +1669,12 @@ export function ProfessionalSchedulePage() {
             <button
               type="button"
               onClick={handleSaveWeeklyHours}
-              className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-[34px] tracking-[-0.05em] text-[#F8FAFC] sm:mt-7 sm:h-[40px] sm:text-[15px] ${microInteractionClass}`}
+              disabled={!hasWeeklyHoursChanges}
+              className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] text-[14px] font-normal leading-[34px] tracking-[-0.05em] sm:mt-7 sm:h-[40px] sm:text-[15px] ${
+                hasWeeklyHoursChanges
+                  ? `bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[#F8FAFC] ${microInteractionClass}`
+                  : "cursor-not-allowed bg-[#CBD5E1] text-[#64748B]"
+              }`}
             >
               Save weekly hours
             </button>
