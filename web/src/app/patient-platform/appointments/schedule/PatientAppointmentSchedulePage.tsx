@@ -176,6 +176,12 @@ function formatSlotTime(value: string) {
   });
 }
 
+function normalizeProviderTime(value?: string | null) {
+  const match = value?.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+}
+
 function normalizeTimeZone(value: string) {
   return value.trim().toLowerCase();
 }
@@ -242,6 +248,7 @@ export function PatientAppointmentSchedulePage() {
   );
   const rescheduleAppointmentId =
     searchParams.get("appointmentId") ?? draft?.sourceAppointmentId ?? "";
+  const isRescheduling = Boolean(rescheduleAppointmentId);
   const initialSelectedDate =
     parseDateKey(draft?.scheduledDate) ??
     (draft?.startsAt ? new Date(draft.startsAt) : null) ??
@@ -331,8 +338,23 @@ export function PatientAppointmentSchedulePage() {
             endTime: slot.endTime,
           }));
         setAvailableSlots(slots);
+        const matchingDraftSlot = isRescheduling
+          ? slots.find(
+              (slot) =>
+                slot.startDate === draft?.scheduledDate &&
+                normalizeProviderTime(slot.startTime) ===
+                  normalizeProviderTime(draft?.startTime) &&
+                normalizeProviderTime(slot.endTime) ===
+                  normalizeProviderTime(draft?.endTime),
+            )
+          : undefined;
         setSelectedSlot(
-          draft?.startTime && draft?.endTime ? "custom" : slots[0]?.id ?? "custom",
+          matchingDraftSlot?.id ??
+            (isRescheduling
+              ? slots[0]?.id ?? "custom"
+              : draft?.startTime && draft?.endTime
+                ? "custom"
+                : slots[0]?.id ?? "custom"),
         );
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -352,8 +374,10 @@ export function PatientAppointmentSchedulePage() {
     draft?.endTime,
     draft?.inPersonVisitRateCents,
     draft?.professionalId,
+    draft?.scheduledDate,
     draft?.startTime,
     draft?.videoConsultationRateCents,
+    isRescheduling,
     patientTimezone,
     selectedDate,
   ]);
@@ -375,15 +399,18 @@ export function PatientAppointmentSchedulePage() {
   const selectedTime = useMemo(() => {
     if (selectedSlot === "custom") {
       const selectedDateKey = formatLocalDateKey(selectedDate);
+      const customTimeZone = isRescheduling
+        ? providerTimezone
+        : patientTimezone;
       const startsAt = zonedDateTimeToIso(
         selectedDateKey,
         manualStartTime,
-        patientTimezone,
+        customTimeZone,
       );
       const endsAt = zonedDateTimeToIso(
         selectedDateKey,
         manualEndTime,
-        patientTimezone,
+        customTimeZone,
       );
       return {
         startTime: manualStartTime,
@@ -396,7 +423,7 @@ export function PatientAppointmentSchedulePage() {
         providerEndTime: formatTimeInZone(endsAt, providerTimezone),
         providerStartTimeValue: formatTime24InZone(startsAt, providerTimezone),
         providerEndTimeValue: formatTime24InZone(endsAt, providerTimezone),
-        label: `${formatSlotTime(manualStartTime)} - ${formatSlotTime(manualEndTime)} (${timezoneLabel(patientTimezone)})`,
+        label: `${formatSlotTime(manualStartTime)} - ${formatSlotTime(manualEndTime)} (${timezoneLabel(customTimeZone)})`,
       };
     }
 
@@ -440,6 +467,7 @@ export function PatientAppointmentSchedulePage() {
     manualStartTime,
     patientTimezone,
     providerTimezone,
+    isRescheduling,
     selectedDate,
     selectedSlot,
     selectedTimeSlot,
