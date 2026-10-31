@@ -207,8 +207,14 @@ const calendarHeaderOptions = Array.from({ length: 3 }, (_item, index) =>
 );
 
 const ruleOptions: Record<string, string[]> = {
-  Available: ["Monday - Friday", "Monday - Saturday", "Tuesday - Saturday"],
+  Available: [
+    "Monday - Sunday",
+    "Monday - Saturday",
+    "Monday - Friday",
+    "Tuesday - Saturday",
+  ],
   "Working hours": [
+    "24 hours",
     "9:00 AM - 5:00 PM",
     "8:00 AM - 4:00 PM",
     "10:00 AM - 6:00 PM",
@@ -233,6 +239,17 @@ const ruleOptions: Record<string, string[]> = {
 };
 
 const getEnabledDayIdsFromRule = (value: string): string[] => {
+  if (value === "Monday - Sunday" || value === "Every day") {
+    return [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+  }
   if (value === "Monday - Friday") {
     return ["monday", "tuesday", "wednesday", "thursday", "friday"];
   }
@@ -246,6 +263,10 @@ const getEnabledDayIdsFromRule = (value: string): string[] => {
 };
 
 const parseWorkingHoursRule = (value: string): { from: string; to: string } => {
+  if (value === "24 hours") {
+    return { from: "12:00 AM", to: "12:00 AM" };
+  }
+
   const [fromRaw, toRaw] = value.split("-").map((item) => item.trim());
   return {
     from: fromRaw || "9:00 AM",
@@ -685,7 +706,7 @@ export function ProfessionalSchedulePage() {
           enabledDays.length === 0
             ? "No days enabled"
             : enabledDays.length === nextDaySchedule.length
-              ? "Every day"
+              ? "Monday - Sunday"
               : enabledDays.length >= 6
                 ? "Monday - Saturday"
                 : enabledDays.length === 5 &&
@@ -693,11 +714,15 @@ export function ProfessionalSchedulePage() {
                     enabledDays[4]?.id === "friday"
                   ? "Monday - Friday"
                   : enabledDays.map((day) => day.day).join(", ");
+        const representativeHours = representativeDay
+          ? `${representativeDay.from} - ${representativeDay.to}`
+          : "9:00 AM - 5:00 PM";
         const rulesFromBackend: AvailabilityRuleMap = {
           Available: availableRule,
-          "Working hours": representativeDay
-            ? `${representativeDay.from} - ${representativeDay.to}`
-            : "9:00 AM - 5:00 PM",
+          "Working hours":
+            representativeDay?.from === representativeDay?.to
+              ? "24 hours"
+              : representativeHours,
           "Booking window": `Up to ${data.availability.bookingWindowDays} days ahead`,
           "Minimum booking notice": formatMinimumNotice(
             data.availability.minimumNoticeMinutes,
@@ -1626,7 +1651,7 @@ export function ProfessionalSchedulePage() {
               onClick={handleSaveWeeklyHours}
               className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-[34px] tracking-[-0.05em] text-[#F8FAFC] sm:mt-7 sm:h-[40px] sm:text-[15px] ${microInteractionClass}`}
             >
-              Edit weekly hours
+              Save weekly hours
             </button>
             <button
               type="button"
