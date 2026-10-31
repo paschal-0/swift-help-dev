@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { PatientAppointmentConfirmedPage } from "./PatientAppointmentConfirmedPage";
 
 export default function PatientAppointmentConfirmedRoute() {
-  return <PatientAppointmentConfirmedPage />;
+  return (
+    <Suspense fallback={null}>
+      <PatientAppointmentConfirmedPage />
+    </Suspense>
+  );
 }
