@@ -130,7 +130,8 @@ const formatDashboardMoney = (amountCents: number, currency = "NGN") =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amountCents / 100);
 
 const toCurrencyUnits = (amountCents: number) => amountCents / 100;

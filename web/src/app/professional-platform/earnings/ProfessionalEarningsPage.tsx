@@ -99,7 +99,7 @@ const mapEarning = (earning: ProfessionalEarning): TransactionItem => ({
 const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
   id: payout.id,
   transactionId: payout.id.slice(0, 8),
-  consultation: "Withdrawal",
+  consultation: "Payout",
   patient: payout.status,
   date: formatDate(payout.createdAt),
   createdAt: payout.createdAt,
@@ -289,8 +289,8 @@ export function ProfessionalEarningsPage() {
       value: formatApiMoney(walletSummary?.reservedBalance ?? 0, walletSummary?.currency ?? "NGN"),
     },
     {
-      label: "Last Withdrawal",
-      value: lastPayout?.amount ?? "No withdrawals",
+      label: "Last Payout",
+      value: lastPayout?.amount ?? "No payouts",
     },
   ];
 
@@ -367,7 +367,7 @@ export function ProfessionalEarningsPage() {
 
           <div className="flex w-full items-center gap-3 md:w-auto">
             <Link
-              href="/professional-platform/earnings/withdraw#withdrawal"
+              href="/professional-platform/earnings/withdraw#payout-schedule"
               className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium leading-none whitespace-nowrap text-[#F8FAFC] shadow-sm transition hover:brightness-105 md:flex-none"
             >
               Payout setup
@@ -570,10 +570,10 @@ export function ProfessionalEarningsPage() {
                     View Details
                   </button>
                   <Link
-                    href="/professional-platform/earnings/withdraw#withdrawal"
+                    href="/professional-platform/earnings/withdraw#payout-schedule"
                     className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[13px] font-medium leading-4 text-white shadow-sm transition hover:brightness-105"
                   >
-                    Withdraw
+                    Payout Details
                   </Link>
                 </div>
               </article>

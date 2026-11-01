@@ -179,7 +179,7 @@ export function ProfessionalReferralWithdrawPage() {
         <header className="flex flex-col gap-4 border-b border-[#E2E8F0] pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-[24px] font-semibold leading-tight text-[#334155]">
-              Withdraw Funds
+              Payout Details
             </h1>
             <p className="mt-1.5 max-w-[560px] text-[14px] leading-5 text-[#64748B]">
               Connect your payout account and receive eligible earnings in the weekly settlement cycle.
@@ -303,6 +303,14 @@ export function ProfessionalReferralWithdrawPage() {
                   <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
                     Your Stripe account is eligible to receive international payouts. Swift HELP does not store your bank details.
                   </p>
+                  <button
+                    type="button"
+                    onClick={handleStripeSetup}
+                    disabled={isSettingUpStripe}
+                    className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSettingUpStripe ? "Opening Stripe..." : "Manage Payout Method"}
+                  </button>
                 </>
               ) : (
                 <>
@@ -324,7 +332,7 @@ export function ProfessionalReferralWithdrawPage() {
           )}
         </section>
 
-        <section id="withdrawal" className="scroll-mt-24 mt-4 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4 sm:px-5">
+        <section id="payout-schedule" className="scroll-mt-24 mt-4 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4 sm:px-5">
           <h2 className="text-[17px] font-semibold text-[#334155]">Weekly settlement</h2>
           <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
             Eligible earnings are settled automatically once each week. The next payout window is:
