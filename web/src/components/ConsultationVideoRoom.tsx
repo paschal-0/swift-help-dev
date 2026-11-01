@@ -48,7 +48,9 @@ type ConsultationVideoRoomProps = {
   transcriptionDisabled?: boolean;
   recordingDisabledReason?: string;
   transcriptionDisabledReason?: string;
-  onToggleRecording?: (provider?: DailyRecordingConfirmation) => Promise<void> | void;
+  onToggleRecording?: (
+    provider?: DailyRecordingConfirmation,
+  ) => Promise<void> | void;
   onToggleTranscription?: () => Promise<void> | void;
   onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
@@ -89,10 +91,20 @@ type DailyCallObject = {
   leave: () => Promise<unknown>;
   destroy: () => Promise<unknown>;
   participants: () => Record<string, DailyParticipant>;
-  on: (eventName: string, handler: (...args: unknown[]) => void) => DailyCallObject;
-  off: (eventName: string, handler: (...args: unknown[]) => void) => DailyCallObject;
+  on: (
+    eventName: string,
+    handler: (...args: unknown[]) => void,
+  ) => DailyCallObject;
+  off: (
+    eventName: string,
+    handler: (...args: unknown[]) => void,
+  ) => DailyCallObject;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
+  setInputDevicesAsync?: (devices: {
+    audioSource?: MediaStreamTrack | false;
+    videoSource?: MediaStreamTrack | false;
+  }) => Promise<unknown>;
   updateInputSettings?: (
     inputSettings: Record<string, unknown>,
   ) => Promise<unknown>;
@@ -189,9 +201,7 @@ function isParticipantTrackEnabled(
   }
 
   const track =
-    kind === "audio"
-      ? getAudioTrack(participant)
-      : getVideoTrack(participant);
+    kind === "audio" ? getAudioTrack(participant) : getVideoTrack(participant);
   return track ? track.enabled : null;
 }
 
@@ -218,14 +228,16 @@ function getMediaTrack(
 function hasPlayableMedia(participant: DailyParticipant) {
   return Boolean(
     getScreenVideoTrack(participant) ||
-      getVideoTrack(participant) ||
-      getScreenAudioTrack(participant) ||
-      getAudioTrack(participant),
+    getVideoTrack(participant) ||
+    getScreenAudioTrack(participant) ||
+    getAudioTrack(participant),
   );
 }
 
 function hasPlayableVideo(participant: DailyParticipant) {
-  return Boolean(getScreenVideoTrack(participant) || getVideoTrack(participant));
+  return Boolean(
+    getScreenVideoTrack(participant) || getVideoTrack(participant),
+  );
 }
 
 function summarizeParticipant(participant: DailyParticipant) {
@@ -327,10 +339,16 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
 
 function describeDailyError(error: unknown, fallback: string): string {
   if (error instanceof DOMException && error.name) {
-    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+    if (
+      error.name === "NotAllowedError" ||
+      error.name === "PermissionDeniedError"
+    ) {
       return "Camera or microphone permission was blocked. Allow access for swifthelp.net, then try again.";
     }
-    if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+    if (
+      error.name === "NotFoundError" ||
+      error.name === "DevicesNotFoundError"
+    ) {
       return "No usable camera or microphone was found on this device.";
     }
     if (error.name === "NotReadableError" || error.name === "TrackStartError") {
@@ -400,9 +418,7 @@ async function waitForDailyRecordingStarted(
       call.off("recording-error", handleFailed);
     };
 
-    const finish = (
-      callback: () => void,
-    ) => {
+    const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
       cleanup();
@@ -482,15 +498,21 @@ function playMediaElement(
   onPlaybackStarted?: () => void,
 ) {
   const retry = () => {
-    void element.play().then(onPlaybackStarted).catch(() => onPlaybackBlocked?.());
+    void element
+      .play()
+      .then(onPlaybackStarted)
+      .catch(() => onPlaybackBlocked?.());
   };
 
-  void element.play().then(onPlaybackStarted).catch(() => {
-    onPlaybackBlocked?.();
-    window.addEventListener("click", retry, { once: true });
-    window.addEventListener("keydown", retry, { once: true });
-    window.addEventListener("touchstart", retry, { once: true });
-  });
+  void element
+    .play()
+    .then(onPlaybackStarted)
+    .catch(() => {
+      onPlaybackBlocked?.();
+      window.addEventListener("click", retry, { once: true });
+      window.addEventListener("keydown", retry, { once: true });
+      window.addEventListener("touchstart", retry, { once: true });
+    });
 
   return () => {
     window.removeEventListener("click", retry);
@@ -529,7 +551,9 @@ function buildRemoteAudioTracks(
       ];
     })
     .filter(
-      (item): item is {
+      (
+        item,
+      ): item is {
         participant: DailyParticipant;
         id: string;
         track: MediaStreamTrack;
@@ -559,7 +583,8 @@ function buildRemoteAudioTracks(
     ) ??
     participantsWithAudio.find(
       ({ participant }) =>
-        expectedLabel && normalizeLabel(participant.user_name) === expectedLabel,
+        expectedLabel &&
+        normalizeLabel(participant.user_name) === expectedLabel,
     ) ??
     participantsWithAudio.find(({ participant }) =>
       hasPlayableVideo(participant),
@@ -800,6 +825,7 @@ export function ConsultationVideoRoom({
   onPresenceChange,
 }: ConsultationVideoRoomProps) {
   const callRef = useRef<DailyCallObject | null>(null);
+  const mediaRecoveryRef = useRef<(() => Promise<void>) | null>(null);
   const presenceChangeRef = useRef(onPresenceChange);
   const transcriptTextRef = useRef(onTranscriptText);
   const [participants, setParticipants] = useState<
@@ -817,6 +843,7 @@ export function ConsultationVideoRoom({
   const [busyControl, setBusyControl] = useState<
     | "camera"
     | "microphone"
+    | "media"
     | "screen"
     | "recording"
     | "transcription"
@@ -850,12 +877,16 @@ export function ConsultationVideoRoom({
   const localCameraTrack = cameraEnabled
     ? (getVideoTrack(localParticipant) ?? localPreviewTrack)
     : null;
+  const localAudioTrack = microphoneEnabled
+    ? getAudioTrack(localParticipant)
+    : null;
   const localScreenVideoTrack = getScreenVideoTrack(localParticipant);
   const localPreviewDisplayTrack = localScreenVideoTrack ?? localCameraTrack;
   const remoteScreenVideoTrack = getScreenVideoTrack(remoteParticipant);
   const remoteVideoTrack =
     remoteScreenVideoTrack ??
-    (isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") === false
+    (isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") ===
+    false
       ? null
       : getVideoTrack(remoteParticipant));
   const remoteIsSharingScreen = Boolean(remoteScreenVideoTrack);
@@ -937,6 +968,7 @@ export function ConsultationVideoRoom({
     let cancelled = false;
     let activeCall: DailyCallObject | null = null;
     let prewarmedStream: MediaStream | null = null;
+    let recoverLocalMedia: (() => Promise<void>) | null = null;
     let joined = false;
 
     const syncParticipants = () => {
@@ -1158,15 +1190,79 @@ export function ConsultationVideoRoom({
         });
 
         activeCall = DailyIframe.createCallObject({
-          audioSource: audioTrack ?? false,
-          videoSource: videoTrack ?? false,
           dailyConfig: {
             micAudioMode: "speech",
           },
-          inputSettings: BROWSER_CLEAN_AUDIO_INPUT_SETTINGS,
           subscribeToTracksAutomatically: true,
         });
         callRef.current = activeCall;
+
+        recoverLocalMedia = async () => {
+          let nextAudioTrack = audioTrack;
+          let nextVideoTrack = videoTrack;
+
+          if (!nextAudioTrack || !nextVideoTrack) {
+            if (!navigator.mediaDevices?.getUserMedia) {
+              throw new Error(
+                "This browser does not expose camera or microphone access.",
+              );
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: nextAudioTrack ? false : CLEAN_AUDIO_CONSTRAINTS,
+              video: nextVideoTrack ? false : true,
+            });
+            const acquiredAudioTrack = stream.getAudioTracks()[0] ?? null;
+            const acquiredVideoTrack = stream.getVideoTracks()[0] ?? null;
+            nextAudioTrack = nextAudioTrack ?? acquiredAudioTrack;
+            nextVideoTrack = nextVideoTrack ?? acquiredVideoTrack;
+          }
+
+          if (!nextAudioTrack && !nextVideoTrack) {
+            throw new Error(
+              "No camera or microphone was granted to this browser.",
+            );
+          }
+
+          audioTrack = nextAudioTrack;
+          videoTrack = nextVideoTrack;
+          const tracks = [nextAudioTrack, nextVideoTrack].filter(
+            (track): track is MediaStreamTrack => Boolean(track),
+          );
+          prewarmedStream?.getTracks().forEach((track) => {
+            if (!tracks.includes(track)) track.stop();
+          });
+          prewarmedStream = tracks.length ? new MediaStream(tracks) : null;
+          setLocalPreviewTrack(nextVideoTrack);
+
+          if (activeCall?.setInputDevicesAsync) {
+            try {
+              await activeCall.setInputDevicesAsync({
+                audioSource: nextAudioTrack ?? false,
+                videoSource: nextVideoTrack ?? false,
+              });
+            } catch (error) {
+              addCallDiagnostic("direct input installation unavailable", {
+                message: describeDailyError(
+                  error,
+                  "Daily could not install the selected devices",
+                ),
+              });
+            }
+          }
+
+          if (nextAudioTrack)
+            await Promise.resolve(activeCall?.setLocalAudio(true));
+          if (nextVideoTrack)
+            await Promise.resolve(activeCall?.setLocalVideo(true));
+          setMicrophoneEnabled(Boolean(nextAudioTrack));
+          setCameraEnabled(Boolean(nextVideoTrack));
+          syncParticipants();
+          addCallDiagnostic("local media installed", {
+            audio: Boolean(nextAudioTrack),
+            video: Boolean(nextVideoTrack),
+          });
+        };
+        mediaRecoveryRef.current = recoverLocalMedia;
 
         activeCall
           .on("joined-meeting", handleJoined)
@@ -1191,28 +1287,17 @@ export function ConsultationVideoRoom({
           .join({ url: meetingUrl, token })
           .then(async () => {
             const call = activeCall as DailyCallObject;
-            await enableCleanMicrophoneAudio(call, addCallDiagnostic);
             try {
-              await Promise.resolve(call.setLocalAudio(true));
-              setMicrophoneEnabled(true);
+              await recoverLocalMedia?.();
+              await enableCleanMicrophoneAudio(call, addCallDiagnostic);
             } catch (error) {
+              await enableCleanMicrophoneAudio(call, addCallDiagnostic);
               setMicrophoneEnabled(false);
-              setControlNotice(
-                describeDailyError(
-                  error,
-                  "Microphone could not be enabled. Allow microphone access and use the mic button to retry.",
-                ),
-              );
-            }
-            try {
-              await Promise.resolve(call.setLocalVideo(true));
-              setCameraEnabled(true);
-            } catch (error) {
               setCameraEnabled(false);
               setControlNotice(
                 describeDailyError(
                   error,
-                  "Camera could not be enabled. Allow camera access and use the camera button to retry.",
+                  "Allow camera and microphone access, then use Enable camera and microphone to retry.",
                 ),
               );
             }
@@ -1237,7 +1322,7 @@ export function ConsultationVideoRoom({
       .catch((error) => {
         if (!cancelled) {
           setConnectionError(
-            describeDailyError(error, "The video provider could not load.")
+            describeDailyError(error, "The video provider could not load."),
           );
           setConnectionStatus("error");
         }
@@ -1274,6 +1359,9 @@ export function ConsultationVideoRoom({
       setLocalPreviewTrack(null);
       if (callRef.current === call) {
         callRef.current = null;
+      }
+      if (mediaRecoveryRef.current === recoverLocalMedia) {
+        mediaRecoveryRef.current = null;
       }
       presenceChangeRef.current?.({
         inCall: false,
@@ -1525,6 +1613,34 @@ export function ConsultationVideoRoom({
   const controlsDisabled =
     connectionStatus !== "connected" || Boolean(busyControl);
 
+  const retryLocalMedia = async () => {
+    if (
+      connectionStatus !== "connected" ||
+      busyControl ||
+      !mediaRecoveryRef.current
+    ) {
+      return;
+    }
+    setBusyControl("media");
+    setControlNotice(null);
+    try {
+      await mediaRecoveryRef.current();
+      await enableCleanMicrophoneAudio(
+        callRef.current as DailyCallObject,
+        addCallDiagnostic,
+      );
+    } catch (error) {
+      setControlNotice(
+        describeDailyError(
+          error,
+          "Allow camera and microphone access in the browser, then try again.",
+        ),
+      );
+    } finally {
+      setBusyControl(null);
+    }
+  };
+
   return (
     <section className="w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F8FAFC] p-1 text-[#334155] sm:p-[15px]">
       <h1 className="hidden px-1 text-[20px] font-medium leading-8 tracking-[-0.04em] sm:ml-[13px] sm:block sm:px-0 sm:text-[24px] sm:leading-[42px]">
@@ -1544,14 +1660,14 @@ export function ConsultationVideoRoom({
             </div>
           ) : null}
           {remoteAudioTracks.map(({ id, track }) => (
-          <RemoteAudio
-            key={`${id}:${track.id}`}
-            track={track}
-            volume={speakerMuted ? 0 : audioVolume}
-            playbackRequestKey={speakerPlaybackRequest}
-            onPlaybackBlocked={handleSpeakerPlaybackBlocked}
-            onPlaybackStarted={handleSpeakerPlaybackStarted}
-          />
+            <RemoteAudio
+              key={`${id}:${track.id}`}
+              track={track}
+              volume={speakerMuted ? 0 : audioVolume}
+              playbackRequestKey={speakerPlaybackRequest}
+              onPlaybackBlocked={handleSpeakerPlaybackBlocked}
+              onPlaybackStarted={handleSpeakerPlaybackStarted}
+            />
           ))}
 
           <div className="absolute left-2 top-2 flex h-11 max-w-[54%] items-center gap-2 rounded-[10px] bg-[rgba(248,250,252,0.92)] p-1 pr-2 shadow-sm backdrop-blur-sm sm:left-[18px] sm:top-[15px] sm:h-12 sm:max-w-[220px] sm:rounded-[12px] sm:pr-3">
@@ -1606,33 +1722,39 @@ export function ConsultationVideoRoom({
                 type="button"
                 onClick={requestSpeakerPlayback}
                 className={`relative flex h-[48px] w-[48px] items-center justify-center rounded-full transition ${
-                  speakerMuted
-                    ? "bg-[#64748B]"
-                    : "bg-[rgba(255,255,255,0.2)]"
+                  speakerMuted ? "bg-[#64748B]" : "bg-[rgba(255,255,255,0.2)]"
                 }`}
                 aria-pressed={!speakerMuted}
-                aria-label={speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
-                title={speakerPlaybackBlocked ? "Enable consultation audio" : speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
+                aria-label={
+                  speakerMuted ? "Unmute speaker" : "Retry speaker audio"
+                }
+                title={
+                  speakerPlaybackBlocked
+                    ? "Enable consultation audio"
+                    : speakerMuted
+                      ? "Unmute speaker"
+                      : "Retry speaker audio"
+                }
               >
                 <SpeakerIcon />
                 {speakerMuted ? <ControlSlash /> : null}
               </button>
               <div className="absolute bottom-[58px] left-1/2 hidden h-[132px] w-11 -translate-x-1/2 flex-col items-center justify-between rounded-[24px] bg-[rgba(15,23,42,0.78)] py-3 group-hover:flex group-focus-within:flex">
-              <input
-                aria-label="Speaker volume"
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={audioVolume}
-                onChange={(event) => {
-                  const nextVolume = Number(event.target.value);
-                  setAudioVolume(nextVolume);
-                  setSpeakerMuted(nextVolume === 0);
-                }}
-                className="h-[73px] w-2 accent-[#1E88E5] [direction:rtl] [writing-mode:vertical-lr]"
-              />
-              <SpeakerIcon />
+                <input
+                  aria-label="Speaker volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={audioVolume}
+                  onChange={(event) => {
+                    const nextVolume = Number(event.target.value);
+                    setAudioVolume(nextVolume);
+                    setSpeakerMuted(nextVolume === 0);
+                  }}
+                  className="h-[73px] w-2 accent-[#1E88E5] [direction:rtl] [writing-mode:vertical-lr]"
+                />
+                <SpeakerIcon />
               </div>
             </div>
 
@@ -1643,7 +1765,9 @@ export function ConsultationVideoRoom({
                 speakerMuted ? "bg-[#64748B]" : "bg-[rgba(255,255,255,0.2)]"
               }`}
               aria-pressed={!speakerMuted}
-              aria-label={speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
+              aria-label={
+                speakerMuted ? "Unmute speaker" : "Retry speaker audio"
+              }
             >
               <SpeakerIcon />
               {speakerMuted ? <ControlSlash /> : null}
@@ -1654,9 +1778,7 @@ export function ConsultationVideoRoom({
               onClick={() => void toggleCamera()}
               disabled={controlsDisabled}
               className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
-                cameraEnabled
-                  ? "bg-[rgba(255,255,255,0.2)]"
-                  : "bg-[#64748B]"
+                cameraEnabled ? "bg-[rgba(255,255,255,0.2)]" : "bg-[#64748B]"
               }`}
               aria-pressed={cameraEnabled}
               aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
@@ -1684,9 +1806,7 @@ export function ConsultationVideoRoom({
               onClick={() => void toggleScreenShare()}
               disabled={controlsDisabled}
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
-                screenSharing
-                  ? "bg-[#1565C0]"
-                  : "bg-[rgba(255,255,255,0.2)]"
+                screenSharing ? "bg-[#1565C0]" : "bg-[rgba(255,255,255,0.2)]"
               }`}
               aria-pressed={screenSharing}
               aria-label={
@@ -1741,6 +1861,19 @@ export function ConsultationVideoRoom({
               aria-label="Dismiss call control message"
             >
               {controlNotice}
+            </button>
+          ) : null}
+
+          {connectionStatus === "connected" &&
+          !localCameraTrack &&
+          !localAudioTrack ? (
+            <button
+              type="button"
+              onClick={() => void retryLocalMedia()}
+              disabled={Boolean(busyControl)}
+              className="absolute bottom-[136px] left-3 right-3 z-20 rounded-[10px] bg-[rgba(30,136,229,0.92)] px-3 py-2 text-center text-[11px] font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:bottom-[158px] sm:left-1/2 sm:right-auto sm:w-max sm:-translate-x-1/2 sm:text-[12px]"
+            >
+              Enable camera and microphone
             </button>
           ) : null}
 
@@ -1971,9 +2104,7 @@ export function ConsultationVideoRoom({
                     type="button"
                     onClick={() => void toggleTranscription()}
                     disabled={Boolean(
-                      transcriptionDisabled ||
-                        transcriptionBusy ||
-                        busyControl,
+                      transcriptionDisabled || transcriptionBusy || busyControl,
                     )}
                     title={
                       transcriptionDisabled ? transcriptionDisabledReason : ""
