@@ -243,6 +243,7 @@ export function ProfessionalEarningsPage() {
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
 
   const openTransactionDetails = async (transactionId: string) => {
+    setActiveTab("transactions");
     setSelectedTransactionId(transactionId);
     setSelectedTransactionDetails(null);
     setIsLoadingTransactionDetails(true);
