@@ -219,6 +219,12 @@ export function ProfessionalEarningsPage() {
     return payoutItems.filter((transaction) => transaction.status === payoutFilter);
   }, [payoutItems, payoutFilter]);
 
+  useEffect(() => {
+    setSelectedTransactionId(null);
+    setSelectedTransactionDetails(null);
+    setIsLoadingTransactionDetails(false);
+  }, [transactionStatusFilter]);
+
   const overviewTransactions = searchedTransactions.slice(0, 9);
   const completedPeriodTransactions = periodTransactions.filter((transaction) =>
     ["Completed", "Available", "Paid out"].includes(transaction.status),
@@ -239,7 +245,7 @@ export function ProfessionalEarningsPage() {
   const periodCurrency = walletSummary?.currency ?? "NGN";
   const summaryCards = buildSummaryCards(walletSummary, completedPeriodTotal, period);
   const selectedTransaction =
-    transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
+    transactionsForTab.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
 
   const openTransactionDetails = async (transactionId: string) => {
@@ -633,7 +639,10 @@ export function ProfessionalEarningsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedTransactionId(null)}
+                    onClick={() => {
+                      setSelectedTransactionId(null);
+                      setSelectedTransactionDetails(null);
+                    }}
                     className="text-[13px] font-medium text-[#1565C0] underline"
                   >
                     Close
