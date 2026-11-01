@@ -233,7 +233,9 @@ export function ProfessionalReferralWithdrawPage() {
                       {method.accountName}
                     </span>
                     <span className="mt-1 block text-[13px] text-[#64748B]">
-                      {method.bankName} - ****{method.accountNumberLast4}
+                      {method.provider === "stripe"
+                        ? `Stripe connected account - ID ending ${method.accountNumberLast4}`
+                        : `${method.bankName} - ****${method.accountNumberLast4}`}
                     </span>
                   </span>
                   {active ? <span className="text-[#1565C0]">Selected</span> : null}

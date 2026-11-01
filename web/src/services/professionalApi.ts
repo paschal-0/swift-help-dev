@@ -1401,6 +1401,7 @@ export function formatApiMoney(amountCents: number, currency = "NGN") {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amountCents / 100);
 }

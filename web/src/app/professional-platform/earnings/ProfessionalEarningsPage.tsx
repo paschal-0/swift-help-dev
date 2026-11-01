@@ -265,12 +265,20 @@ export function ProfessionalEarningsPage() {
   const lastPayout = payoutItems.find((payout) => payout.status === "Completed") ?? payoutItems[0] ?? null;
   const activePayoutMethodItem =
     payoutMethodItems.find((method) => method.defaultMethod) ?? payoutMethodItems[0] ?? null;
+  const isStripePayoutMethod = activePayoutMethodItem?.provider === "stripe";
   const activePayoutMethod = activePayoutMethodItem
-    ? activePayoutMethodItem.provider === "stripe"
-      ? `Stripe Connect - **** ${activePayoutMethodItem.accountNumberLast4}`
+    ? isStripePayoutMethod
+      ? `Stripe connected account - ID ending ${activePayoutMethodItem.accountNumberLast4}`
       : `${activePayoutMethodItem.bankName} - **** ${activePayoutMethodItem.accountNumberLast4}`
     : "No payout method added";
-  const [activePayoutBank, activePayoutAccount = ""] = activePayoutMethod.split(" - ");
+  const activePayoutBank = isStripePayoutMethod
+    ? "Stripe connected account"
+    : activePayoutMethodItem?.bankName ?? "Not added";
+  const activePayoutAccount = isStripePayoutMethod
+    ? `ID ending ${activePayoutMethodItem?.accountNumberLast4 ?? ""}`
+    : activePayoutMethodItem
+      ? `**** ${activePayoutMethodItem.accountNumberLast4}`
+      : "Not added";
   const payoutSummaryItems = [
     {
       label: "Available for next payout",
@@ -575,12 +583,12 @@ export function ProfessionalEarningsPage() {
                   Payout Method
                 </h3>
                 <p className="mt-3 text-[14px] font-normal leading-[26px] tracking-[-0.05em] text-[#64748B] md:mt-[10px] md:text-[12px] md:font-light md:leading-[22px] md:text-[#334155]">
-                  Bank name:{" "}
+                  {isStripePayoutMethod ? "Provider:" : "Bank name:"}{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutBank}</span>
                   <br />
                   Account holder: <span className="font-semibold text-[#334155]">{activePayoutMethodItem?.accountName ?? "Not added"}</span>
                   <br />
-                  Account number:{" "}
+                  {isStripePayoutMethod ? "Connected account:" : "Account number:"}{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutAccount}</span>
                 </p>
                 <Link
