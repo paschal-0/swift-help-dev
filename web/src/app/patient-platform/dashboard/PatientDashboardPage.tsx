@@ -6,11 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
-import { getApiErrorMessage } from "@/services/authApi";
+import {
+  createAuthenticatedEventSource,
+  getApiErrorMessage,
+} from "@/services/authApi";
 import {
   confirmPatientConsultationComplete,
   disputePatientConsultationCompletion,
   getPatientDashboard,
+  getPatientLiveUrl,
   initializePaystackConsultationPayment,
   type PatientDashboard,
   verifyPaystackConsultationPayment,
@@ -265,6 +269,56 @@ export function PatientDashboardPage() {
     loadDashboard();
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    let eventSource: EventSource | null = null;
+
+    const refreshDashboard = async () => {
+      try {
+        const response = await getPatientDashboard();
+        if (!isMounted) return;
+        setDashboard(response);
+        setActiveAppointmentId(response.appointments[0]?.id ?? "");
+      } catch {
+        // The initial dashboard load reports errors; background refreshes stay quiet.
+      }
+    };
+
+    const handleConsultationUpdate = () => {
+      void refreshDashboard();
+    };
+
+    void createAuthenticatedEventSource(getPatientLiveUrl()).then((source) => {
+      if (!isMounted) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener(
+        "patient.consultation_session.updated",
+        handleConsultationUpdate,
+      );
+      source.onerror = () => source.close();
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshDashboard();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      eventSource?.removeEventListener(
+        "patient.consultation_session.updated",
+        handleConsultationUpdate,
+      );
+      eventSource?.close();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

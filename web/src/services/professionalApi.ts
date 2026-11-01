@@ -426,6 +426,33 @@ export type ProfessionalEarning = {
   createdAt: string;
 };
 
+export type ProfessionalEarningDetails = {
+  transactionId: string;
+  sourceType: ProfessionalEarning["sourceType"];
+  status: ProfessionalEarning["status"];
+  description: string;
+  patient: string | null;
+  bookingReference: string | null;
+  consultationReference: string | null;
+  date: string;
+  availableAt: string | null;
+  currency: string;
+  originalAmountCents: number;
+  chargeableAmountCents: number;
+  unusedRefundCents: number;
+  platformFeeCents: number;
+  professionalNetCents: number;
+  feeRatePercentage: number;
+  provider: string | null;
+  providerReference: string | null;
+  transferReference: string | null;
+  paymentStatus?: string | null;
+  escrowStatus?: string | null;
+  refundStatus?: string | null;
+  refundReference?: string | number | null;
+  settledAt?: string | null;
+};
+
 export type ProfessionalPayoutMethod = {
   id: string;
   professionalUserId: string;
@@ -433,6 +460,7 @@ export type ProfessionalPayoutMethod = {
   accountName: string;
   accountNumberLast4: string;
   bankCode: string | null;
+  sortCode: string | null;
   currency: string;
   provider: string;
   providerRecipientCode: string | null;
@@ -1213,19 +1241,38 @@ export function listProfessionalEarnings() {
   );
 }
 
+export function getProfessionalEarningDetails(earningId: string) {
+  return apiRequest<ProfessionalEarningDetails>(
+    `/professional/earnings/transactions/${encodeURIComponent(earningId)}/details`,
+    { method: "GET" },
+  );
+}
+
 export function getProfessionalWallet() {
   return apiRequest<{
     summary: EarningsSummary;
     payoutMethods: ProfessionalPayoutMethod[];
     payouts: ProfessionalPayout[];
+    payoutSchedule: {
+      frequency: "weekly";
+      nextPayoutAt: string;
+    };
   }>("/professional/wallet", { method: "GET" });
+}
+
+export function createProfessionalStripePayoutMethod() {
+  return apiRequest<ProfessionalPayoutMethod>(
+    "/professional/wallet/payout-methods/stripe",
+    { method: "POST", body: JSON.stringify({}) },
+  );
 }
 
 export function createProfessionalPayoutMethod(payload: {
   bankName: string;
   accountName: string;
   accountNumber: string;
-  bankCode: string;
+  bankCode?: string;
+  sortCode?: string;
   currency: string;
   defaultMethod?: boolean;
 }) {
@@ -1300,10 +1347,13 @@ export function getProfessionalStripeConnectStatus() {
   });
 }
 
-export function startProfessionalStripeConnectOnboarding() {
+export function startProfessionalStripeConnectOnboarding(input?: {
+  returnUrl?: string;
+  refreshUrl?: string;
+}) {
   return apiRequest<{ url: string; stripeAccountId: string; status: string }>(
     "/stripe/connect/onboarding",
-    { method: "POST", body: JSON.stringify({}) },
+    { method: "POST", body: JSON.stringify(input ?? {}) },
   );
 }
 

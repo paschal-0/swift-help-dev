@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   createProfessionalPayoutMethod,
-  createProfessionalWithdrawal,
+  createProfessionalStripePayoutMethod,
   formatApiMoney,
   getProfessionalWallet,
+  getProfessionalStripeConnectStatus,
   getPaystackBanks,
+  startProfessionalStripeConnectOnboarding,
   type ProfessionalPayoutMethod,
 } from "@/services/professionalApi";
 
@@ -17,6 +19,7 @@ type AddBankFormState = {
   bankName: string;
   accountNumber: string;
   bankCode: string;
+  sortCode: string;
   currency: string;
 };
 
@@ -25,37 +28,61 @@ const emptyAddBankForm: AddBankFormState = {
   bankName: "",
   accountNumber: "",
   bankCode: "",
+  sortCode: "",
   currency: "NGN",
 };
 
+const paystackCurrencies = new Set(["NGN"]);
 export function ProfessionalReferralWithdrawPage() {
   const [availableBalance, setAvailableBalance] = useState(0);
   const [payoutMethods, setPayoutMethods] = useState<ProfessionalPayoutMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState("");
-  const [amountInput, setAmountInput] = useState("");
-  const [password, setPassword] = useState("");
   const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
   const [isSavingBank, setIsSavingBank] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [withdrawalError, setWithdrawalError] = useState("");
   const [banks, setBanks] = useState<Array<{ name: string; code: string; currency: string }>>([]);
   const [currency, setCurrency] = useState("NGN");
+  const [nextPayoutAt, setNextPayoutAt] = useState<string | null>(null);
+  const [stripeStatus, setStripeStatus] = useState<Awaited<ReturnType<typeof getProfessionalStripeConnectStatus>> | null>(null);
+  const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
+  const isInternational = !paystackCurrencies.has(currency);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadWallet() {
       try {
-        const wallet = await getProfessionalWallet();
+        const [wallet, stripe] = await Promise.all([
+          getProfessionalWallet(),
+          getProfessionalStripeConnectStatus().catch(() => null),
+        ]);
         if (cancelled) return;
         setAvailableBalance(wallet.summary.availableBalance);
         setCurrency(wallet.summary.currency);
+        setNextPayoutAt(wallet.payoutSchedule.nextPayoutAt);
+        setStripeStatus(stripe);
         setAddBankForm((current) => ({ ...current, currency: wallet.summary.currency }));
-        setPayoutMethods(wallet.payoutMethods);
+        const walletCurrency = wallet.summary.currency;
+        const walletProvider = paystackCurrencies.has(walletCurrency) ? "paystack" : "stripe";
+        let methods = wallet.payoutMethods.filter(
+          (method) => method.currency === walletCurrency && method.provider === walletProvider,
+        );
+        if (
+          stripe?.status === "active" &&
+          !paystackCurrencies.has(walletCurrency) &&
+          !methods.some((method) => method.provider === "stripe" && method.currency === walletCurrency)
+        ) {
+          try {
+            const method = await createProfessionalStripePayoutMethod();
+            methods = [method, ...methods];
+          } catch {
+            // Stripe Connect status remains the source of truth until the local method is created.
+          }
+        }
+        setPayoutMethods(methods);
         setSelectedMethodId(
-          wallet.payoutMethods.find((method) => method.defaultMethod)?.id ??
-            wallet.payoutMethods[0]?.id ??
+          methods.find((method) => method.defaultMethod)?.id ??
+            methods[0]?.id ??
             "",
         );
       } catch (error) {
@@ -76,6 +103,12 @@ export function ProfessionalReferralWithdrawPage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!paystackCurrencies.has(currency)) {
+      setBanks([]);
+      return () => {
+        cancelled = true;
+      };
+    }
     void getPaystackBanks(currency)
       .then((items) => {
         if (!cancelled) setBanks(items);
@@ -91,34 +124,13 @@ export function ProfessionalReferralWithdrawPage() {
     };
   }, [currency]);
 
-  const parsedAmountCents = Number(amountInput.replace(/[^\d]/g, "")) * 100;
-  const selectedMethod = payoutMethods.find((method) => method.id === selectedMethodId);
-
-  const amountError = useMemo(() => {
-    if (!amountInput) return "";
-    if (!Number.isFinite(parsedAmountCents) || parsedAmountCents <= 0) {
-      return "Enter a valid amount.";
-    }
-    if (parsedAmountCents > availableBalance) {
-      return "Amount exceeds your available balance.";
-    }
-    return "";
-  }, [amountInput, availableBalance, parsedAmountCents]);
-
-  const canWithdraw = Boolean(
-    selectedMethod &&
-      amountInput &&
-      password.trim().length >= 8 &&
-      !amountError &&
-      parsedAmountCents > 0,
-  );
-
   const handleAddBank = async () => {
     if (
       addBankForm.accountName.trim().length < 3 ||
       addBankForm.bankName.trim().length < 2 ||
       !addBankForm.bankCode ||
-      addBankForm.accountNumber.trim().length < 10
+      addBankForm.accountNumber.trim().length < 6 ||
+      (!paystackCurrencies.has(currency) && addBankForm.sortCode.trim().length < 3)
     ) {
       toast.error("Complete the bank details first");
       return;
@@ -130,7 +142,8 @@ export function ProfessionalReferralWithdrawPage() {
         accountName: addBankForm.accountName.trim(),
         bankName: addBankForm.bankName.trim(),
         accountNumber: addBankForm.accountNumber.trim(),
-        bankCode: addBankForm.bankCode,
+        bankCode: addBankForm.bankCode || undefined,
+        sortCode: addBankForm.sortCode.trim() || undefined,
         currency: addBankForm.currency,
         defaultMethod: payoutMethods.length === 0,
       });
@@ -145,32 +158,18 @@ export function ProfessionalReferralWithdrawPage() {
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!canWithdraw || !selectedMethod) {
-      toast.error("Complete the withdrawal details first");
-      return;
-    }
-
-    setIsWithdrawing(true);
-    setWithdrawalError("");
+  const handleStripeSetup = async () => {
+    setIsSettingUpStripe(true);
     try {
-      await createProfessionalWithdrawal({
-        payoutMethodId: selectedMethod.id,
-        amountCents: parsedAmountCents,
-        password,
+      const base = window.location.origin;
+      const result = await startProfessionalStripeConnectOnboarding({
+        returnUrl: `${base}/professional-platform/earnings/withdraw?stripe_connect=complete`,
+        refreshUrl: `${base}/professional-platform/earnings/withdraw?stripe_connect=refresh`,
       });
-      setAvailableBalance((current) => Math.max(0, current - parsedAmountCents));
-      setAmountInput("");
-      setPassword("");
-      toast.success(
-        `Withdrawal request for ${formatApiMoney(parsedAmountCents, currency)} submitted`,
-      );
+      window.location.assign(result.url);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to request withdrawal";
-      setWithdrawalError(message);
-      toast.error(message);
-    } finally {
-      setIsWithdrawing(false);
+      toast.error(error instanceof Error ? error.message : "Unable to start Stripe payout setup");
+      setIsSettingUpStripe(false);
     }
   };
 
@@ -183,7 +182,7 @@ export function ProfessionalReferralWithdrawPage() {
               Withdraw Funds
             </h1>
             <p className="mt-1.5 max-w-[560px] text-[14px] leading-5 text-[#64748B]">
-              Transfer available professional earnings to your bank account.
+              Connect your payout account and receive eligible earnings in the weekly settlement cycle.
             </p>
           </div>
           <Link
@@ -196,7 +195,7 @@ export function ProfessionalReferralWithdrawPage() {
 
         <div className="mt-5 rounded-[8px] bg-[#E3F2FD] px-4 py-5 text-center sm:px-6">
           <p className="text-[14px] font-medium text-[#1565C0]">
-            Available balance
+            Available for next payout
           </p>
           <p className="mt-2 break-words text-[30px] font-semibold leading-none text-[#334155] sm:text-[34px]">
             {isLoading ? "Loading..." : formatApiMoney(availableBalance, currency)}
@@ -207,7 +206,9 @@ export function ProfessionalReferralWithdrawPage() {
           <div>
             <h2 className="text-[17px] font-semibold text-[#334155]">Payout method</h2>
             <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
-              Add and select the verified bank account that should receive this withdrawal.
+              {isInternational
+                ? "Stripe securely collects and manages your identity and bank details for international payouts."
+                : "Add and select the verified Nigerian bank account that should receive your payout."}
             </p>
           </div>
 
@@ -241,6 +242,7 @@ export function ProfessionalReferralWithdrawPage() {
             })}
           </div>
 
+          {!isInternational ? <>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <input
               value={addBankForm.accountName}
@@ -272,7 +274,17 @@ export function ProfessionalReferralWithdrawPage() {
               inputMode="numeric"
               className="h-11 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
             />
+            <input
+              value={addBankForm.sortCode}
+              onChange={(event) => setAddBankForm((current) => ({ ...current, sortCode: event.target.value.replace(/[^a-zA-Z0-9 -]/g, "") }))}
+              placeholder={paystackCurrencies.has(currency) ? "Sort code (optional)" : "Sort code"}
+              autoComplete="off"
+              className="h-11 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+            />
           </div>
+          <p className="mt-2 text-[12px] leading-5 text-[#64748B]">
+            Nigerian payouts use Paystack bank verification. Paystack is not used for international currencies.
+          </p>
           <button
             type="button"
             onClick={handleAddBank}
@@ -281,49 +293,47 @@ export function ProfessionalReferralWithdrawPage() {
           >
             {isSavingBank ? "Saving..." : "Add bank"}
           </button>
+          </> : (
+            <div className="mt-5 rounded-[8px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 py-4">
+              {stripeStatus?.status === "active" ? (
+                <>
+                  <p className="text-[15px] font-semibold text-[#166534]">Stripe payout account connected</p>
+                  <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+                    Your Stripe account is eligible to receive international payouts. Swift HELP does not store your bank details.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[15px] font-semibold text-[#334155]">Stripe payout setup required</p>
+                  <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+                    Complete Stripe-hosted onboarding to verify your identity and add the bank account for {currency} settlement.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleStripeSetup}
+                    disabled={isSettingUpStripe}
+                    className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSettingUpStripe ? "Opening Stripe..." : "Set up Stripe payout account"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </section>
 
-        <section id="withdrawal" className="scroll-mt-24 mt-4 rounded-[8px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-          <h2 className="text-[17px] font-semibold text-[#334155]">Withdrawal amount</h2>
-          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">Enter the amount in {currency}.</p>
-          <input
-            value={amountInput}
-            onChange={(event) => setAmountInput(event.target.value.replace(/[^\d]/g, ""))}
-            inputMode="numeric"
-            placeholder="0"
-            className="mt-3 h-11 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[15px] text-[#334155] outline-none focus:border-[#1565C0]"
-          />
-          {amountError ? (
-            <p className="mt-2 text-[13px] text-[#C2410C]">{amountError}</p>
-          ) : null}
+        <section id="withdrawal" className="scroll-mt-24 mt-4 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#334155]">Weekly settlement</h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            Eligible earnings are settled automatically once each week. The next payout window is:
+          </p>
+          <p className="mt-3 text-[18px] font-semibold text-[#1565C0]">
+            {nextPayoutAt
+              ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(nextPayoutAt))
+              : "Loading..."}
+          </p>
+          <p className="mt-1 text-[12px] text-[#64748B]">Payouts are sent only after the connected account or Nigerian bank method is verified.</p>
         </section>
-
-        <section className="mt-4 rounded-[8px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-          <h2 className="text-[17px] font-semibold text-[#334155]">Confirm with account password</h2>
-          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">Your password is required to authorize a payout request.</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="********"
-            className="mt-3 h-11 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[15px] text-[#334155] outline-none focus:border-[#1565C0]"
-          />
-        </section>
-
-        {withdrawalError ? (
-          <div role="alert" className="mt-4 rounded-[8px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-[13px] leading-5 text-[#B91C1C]">
-            {withdrawalError}
-          </div>
-        ) : null}
-
-        <button
-          type="button"
-          disabled={!canWithdraw || isWithdrawing}
-          onClick={handleWithdraw}
-          className="mt-5 inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[15px] font-medium text-white shadow-[0_14px_28px_rgba(30,136,229,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
-        >
-          {isWithdrawing ? "Submitting..." : "Withdraw"}
-        </button>
       </div>
     </div>
   );

@@ -7,11 +7,13 @@ import Link from "next/link";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
   formatApiMoney,
+  getProfessionalEarningDetails,
   getProfessionalWallet,
   listProfessionalEarnings,
   listProfessionalPayouts,
   type EarningsSummary,
   type ProfessionalEarning,
+  type ProfessionalEarningDetails,
   type ProfessionalPayout,
   type ProfessionalPayoutMethod,
 } from "@/services/professionalApi";
@@ -131,7 +133,7 @@ const buildSummaryCards = (
       id: "available",
       title: "Available Balance",
       value: formatApiMoney(currentSummary.availableBalance, currentSummary.currency),
-      note: "Ready for withdrawal",
+      note: "Available for next payout",
     },
     {
       id: "pending",
@@ -157,9 +159,15 @@ export function ProfessionalEarningsPage() {
   );
   const [payoutFilter, setPayoutFilter] = useState<"All Payouts" | TransactionStatus>("All Payouts");
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedTransactionDetails, setSelectedTransactionDetails] = useState<ProfessionalEarningDetails | null>(null);
+  const [isLoadingTransactionDetails, setIsLoadingTransactionDetails] = useState(false);
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
   const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
   const [walletSummary, setWalletSummary] = useState<EarningsSummary | null>(null);
+  const [payoutSchedule, setPayoutSchedule] = useState<{
+    frequency: "weekly";
+    nextPayoutAt: string;
+  } | null>(null);
   const [transactionItems, setTransactionItems] = useState<TransactionItem[]>([]);
   const [payoutItems, setPayoutItems] = useState<TransactionItem[]>([]);
   const [payoutMethodItems, setPayoutMethodItems] = useState<ProfessionalPayoutMethod[]>([]);
@@ -233,16 +241,32 @@ export function ProfessionalEarningsPage() {
   const selectedTransaction =
     transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
+
+  const openTransactionDetails = async (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setSelectedTransactionDetails(null);
+    setIsLoadingTransactionDetails(true);
+    try {
+      const details = await getProfessionalEarningDetails(transactionId);
+      setSelectedTransactionDetails(details);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load transaction details");
+    } finally {
+      setIsLoadingTransactionDetails(false);
+    }
+  };
   const lastPayout = payoutItems.find((payout) => payout.status === "Completed") ?? payoutItems[0] ?? null;
   const activePayoutMethodItem =
     payoutMethodItems.find((method) => method.defaultMethod) ?? payoutMethodItems[0] ?? null;
   const activePayoutMethod = activePayoutMethodItem
-    ? `${activePayoutMethodItem.bankName} - **** ${activePayoutMethodItem.accountNumberLast4}`
+    ? activePayoutMethodItem.provider === "stripe"
+      ? `Stripe Connect - **** ${activePayoutMethodItem.accountNumberLast4}`
+      : `${activePayoutMethodItem.bankName} - **** ${activePayoutMethodItem.accountNumberLast4}`
     : "No payout method added";
   const [activePayoutBank, activePayoutAccount = ""] = activePayoutMethod.split(" - ");
   const payoutSummaryItems = [
     {
-      label: "Available for withdrawal",
+      label: "Available for next payout",
       value: formatApiMoney(walletSummary?.availableBalance ?? 0, walletSummary?.currency ?? "NGN"),
     },
     {
@@ -294,7 +318,13 @@ export function ProfessionalEarningsPage() {
         if (cancelled) return;
 
         setWalletSummary(wallet.summary);
-        setPayoutMethodItems(wallet.payoutMethods);
+        setPayoutSchedule(wallet.payoutSchedule);
+        const payoutProvider = wallet.summary.currency === "NGN" ? "paystack" : "stripe";
+        setPayoutMethodItems(
+          wallet.payoutMethods.filter(
+            (method) => method.currency === wallet.summary.currency && method.provider === payoutProvider,
+          ),
+        );
         setTransactionItems(earnings.length ? earnings.map(mapEarning) : []);
         setPayoutItems(payouts.length ? payouts.map(mapPayout) : []);
       } catch (error) {
@@ -325,7 +355,7 @@ export function ProfessionalEarningsPage() {
               href="/professional-platform/earnings/withdraw#withdrawal"
               className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium leading-none whitespace-nowrap text-[#F8FAFC] shadow-sm transition hover:brightness-105 md:flex-none"
             >
-              Withdraw funds
+              Payout setup
             </Link>
             <button
               type="button"
@@ -378,7 +408,11 @@ export function ProfessionalEarningsPage() {
             Next Payout Window
             <br />
             <span className="font-normal text-[#64748B] md:text-[#334155]">
-              {walletSummary?.pendingEarnings ? "Pending payout review" : "No scheduled payout"}
+              {payoutSchedule
+                ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+                    new Date(payoutSchedule.nextPayoutAt),
+                  )
+                : "Loading..."}
             </span>
           </p>
           <p className="pt-3 text-[14px] font-semibold leading-[20px] tracking-[-0.05em] text-[#334155] md:pt-0 md:leading-[18px]">
@@ -475,7 +509,16 @@ export function ProfessionalEarningsPage() {
                             </div>
                           </div>
                           <div className="mt-1 border-t border-[#F1F5F9] pt-2">
-                            <span className="text-[12px] text-[#94A3B8]">{transaction.date}</span>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-[12px] text-[#94A3B8]">{transaction.date}</span>
+                              <button
+                                type="button"
+                                onClick={() => void openTransactionDetails(transaction.id)}
+                                className="text-[12px] font-semibold text-[#1565C0] underline"
+                              >
+                                View Details
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -581,16 +624,40 @@ export function ProfessionalEarningsPage() {
 
           <div className="mt-2 overflow-x-auto pb-4 md:mt-[5px] earnings-scroll">
             {selectedTransaction ? (
-              <div className="mb-4 rounded-[12px] bg-[#F8FAFC] p-4 text-[14px] leading-[22px] tracking-[-0.05em] text-[#334155] shadow-[0_0_8px_rgba(21,101,192,0.1)] md:mb-3 md:px-4 md:py-3 md:leading-[20px]">
-                <p>
-                  Transaction ID: <span className="font-semibold">{selectedTransaction.transactionId}</span>
-                </p>
-                <p>
-                  Patient: <span className="font-semibold">{selectedTransaction.patient}</span>
-                </p>
-                <p>
-                  Amount: <span className="font-semibold">{selectedTransaction.amount}</span>
-                </p>
+              <div className="mb-4 rounded-[12px] border border-[#E2E8F0] bg-white p-4 text-[14px] leading-[22px] tracking-[-0.05em] text-[#334155] shadow-sm md:mb-3 md:px-5 md:py-4 md:leading-[20px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-[17px] font-semibold text-[#334155]">Transaction details</h3>
+                    <p className="mt-1 text-[12px] text-[#64748B]">{selectedTransaction.consultation}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTransactionId(null)}
+                    className="text-[13px] font-medium text-[#1565C0] underline"
+                  >
+                    Close
+                  </button>
+                </div>
+                {isLoadingTransactionDetails ? (
+                  <p className="mt-4 text-[#64748B]">Loading transaction breakdown...</p>
+                ) : selectedTransactionDetails ? (
+                  <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                    <p>Original payment: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.originalAmountCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>Used / chargeable amount: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.chargeableAmountCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>Unused-time refund: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.unusedRefundCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>Swift HELP fee: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.platformFeeCents, selectedTransactionDetails.currency)} ({selectedTransactionDetails.feeRatePercentage}%)</span></p>
+                    <p>Professional net earning: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.professionalNetCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>Status: <span className={`font-semibold ${statusTone(earningStatusLabel[selectedTransactionDetails.status])}`}>{earningStatusLabel[selectedTransactionDetails.status]}</span></p>
+                    <p>Transaction ID: <span className="break-all font-semibold">{selectedTransactionDetails.transactionId}</span></p>
+                    <p>Booking reference: <span className="break-all font-semibold">{selectedTransactionDetails.bookingReference ?? "-"}</span></p>
+                    <p>Date: <span className="font-semibold">{new Date(selectedTransactionDetails.date).toLocaleString()}</span></p>
+                    <p>Provider: <span className="font-semibold">{selectedTransactionDetails.provider ?? "-"}</span></p>
+                    <p>Payment reference: <span className="break-all font-semibold">{selectedTransactionDetails.providerReference ?? "-"}</span></p>
+                    <p>Transfer reference: <span className="break-all font-semibold">{selectedTransactionDetails.transferReference ?? "-"}</span></p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-[#64748B]">The transaction breakdown could not be loaded.</p>
+                )}
               </div>
             ) : null}
 
@@ -623,7 +690,7 @@ export function ProfessionalEarningsPage() {
                     <span className={statusTone(transaction.status)}>{transaction.status}</span>
                     <button
                       type="button"
-                      onClick={() => setSelectedTransactionId(transaction.id)}
+                      onClick={() => void openTransactionDetails(transaction.id)}
                       className="cursor-pointer text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details
@@ -660,8 +727,8 @@ export function ProfessionalEarningsPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedTransactionId(transaction.id)}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
+                        onClick={() => void openTransactionDetails(transaction.id)}
+                        className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
                       >
                         View Details
                       </button>

@@ -32,6 +32,13 @@ import { exportTablePdf } from "@/utils/pdfExport";
 
 type PaymentTab = "transactions" | "subscriptions" | "referrals" | "escrows" | "stripe" | "configuration";
 type EscrowAction = "release_to_professional" | "refund_patient" | "partial_refund" | "send_to_review";
+
+const FINAL_ESCROW_STATUSES = new Set([
+  "released_to_professional",
+  "refunded_to_patient",
+  "partially_refunded",
+  "failed",
+]);
 type StatusFilter = "all" | AdminPaymentStatus;
 type IconName =
   | "active"
@@ -724,7 +731,7 @@ export default function SuperAdminPaymentsRoute() {
               ["transactions", "Transactions"],
               ["subscriptions", "Subscriptions"],
               ["referrals", "Referral payouts"],
-              ["escrows", `Escrow review${overview.summary.escrowReviewCount ? ` (${overview.summary.escrowReviewCount})` : ""}`],
+              ["escrows", `Escrows${overview.summary.escrowReviewCount ? ` (${overview.summary.escrowReviewCount} need review)` : ""}`],
               ["stripe", "Stripe operations"],
               ["configuration", "Configuration"],
             ].map(([value, label]) => (
@@ -907,7 +914,7 @@ function TransactionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1160px] table-fixed border-collapse">
+      <table className="w-full min-w-[1460px] table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
             <th className="w-[20%] px-5 py-3 font-medium">User</th>
@@ -1039,17 +1046,19 @@ function EscrowReviewTable({
       <table className="w-full min-w-[1160px] table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[18%] px-5 py-3 font-medium">Patient</th>
-            <th className="w-[18%] px-3 py-3 font-medium">Professional</th>
-            <th className="w-[16%] px-3 py-3 font-medium">Consultation</th>
-            <th className="w-[12%] px-3 py-3 font-medium">Amount</th>
-            <th className="w-[14%] px-3 py-3 font-medium">Escrow</th>
-            <th className="w-[10%] px-3 py-3 font-medium">Updated</th>
-            <th className="w-[12%] px-4 py-3 text-right font-medium">Decision</th>
+            <th className="w-[16%] px-5 py-3 font-medium">Patient</th>
+            <th className="w-[16%] px-3 py-3 font-medium">Professional</th>
+            <th className="w-[14%] px-3 py-3 font-medium">Consultation</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Gross amount</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Platform fee</th>
+            <th className="w-[11%] px-3 py-3 font-medium">Professional payout</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Escrow</th>
+            <th className="w-[8%] px-3 py-3 font-medium">Updated</th>
+            <th className="w-[15%] px-4 py-3 text-right font-medium">Decision</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#94A3B8]">
-          {!rows.length ? <EmptyRows columns={7} message="No consultation escrows need review right now." /> : null}
+          {!rows.length ? <EmptyRows columns={9} message="No consultation escrow records are available yet." /> : null}
           {rows.map((row) => (
             <tr key={row.id} className="h-[68px] align-middle">
               <td className="px-5 py-2.5"><UserCell user={row.payer} /></td>
@@ -1065,6 +1074,12 @@ function EscrowReviewTable({
               <td className="px-3 py-2.5 font-semibold text-[#334155]">
                 <span className="block truncate" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</span>
               </td>
+              <td className="px-3 py-2.5 font-semibold text-[#334155]">
+                <span className="block truncate" title={formatCurrency(row.platformFee ?? 0, row.currency)}>{formatCurrency(row.platformFee ?? 0, row.currency)}</span>
+              </td>
+              <td className="px-3 py-2.5 font-semibold text-[#334155]">
+                <span className="block truncate" title={formatCurrency(row.professionalAmount ?? 0, row.currency)}>{formatCurrency(row.professionalAmount ?? 0, row.currency)}</span>
+              </td>
               <td className="px-3 py-2.5">
                 <span className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(row.escrowStatus)}`}>
                   <span className="truncate leading-4" title={labelize(row.escrowStatus)}>{labelize(row.escrowStatus)}</span>
@@ -1072,7 +1087,9 @@ function EscrowReviewTable({
               </td>
               <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.updatedAt)}</td>
               <td className="px-4 py-2.5">
-                <div className="flex flex-wrap justify-end gap-2">
+                {FINAL_ESCROW_STATUSES.has(row.escrowStatus) ? (
+                  <span className="block text-right text-[11px] font-semibold text-[#64748B]">Resolved</span>
+                ) : <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => onResolve(row, "release_to_professional")}
@@ -1094,7 +1111,7 @@ function EscrowReviewTable({
                   >
                     Partial
                   </button>
-                </div>
+                </div>}
               </td>
             </tr>
           ))}

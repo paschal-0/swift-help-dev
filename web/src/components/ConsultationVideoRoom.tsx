@@ -325,6 +325,36 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
   }
 }
 
+function describeDailyError(error: unknown, fallback: string): string {
+  if (error instanceof DOMException && error.name) {
+    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      return "Camera or microphone permission was blocked. Allow access for swifthelp.net, then try again.";
+    }
+    if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      return "No usable camera or microphone was found on this device.";
+    }
+    if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+      return "The camera or microphone is already in use by another application.";
+    }
+  }
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const nested = record.error;
+    if (nested && nested !== error) {
+      const nestedMessage: string = describeDailyError(nested, "");
+      if (nestedMessage) return nestedMessage;
+    }
+    for (const key of ["message", "errorMsg", "type"]) {
+      if (typeof record[key] === "string" && record[key]) {
+        return record[key] as string;
+      }
+    }
+  }
+
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 function normalizeDailyEventPayload(args: unknown[]) {
   const payload = args.find(
     (item): item is Record<string, unknown> =>
@@ -446,12 +476,17 @@ async function enableCleanMicrophoneAudio(
   }
 }
 
-function playMediaElement(element: HTMLMediaElement) {
+function playMediaElement(
+  element: HTMLMediaElement,
+  onPlaybackBlocked?: () => void,
+  onPlaybackStarted?: () => void,
+) {
   const retry = () => {
-    void element.play().catch(() => undefined);
+    void element.play().then(onPlaybackStarted).catch(() => onPlaybackBlocked?.());
   };
 
-  void element.play().catch(() => {
+  void element.play().then(onPlaybackStarted).catch(() => {
+    onPlaybackBlocked?.();
     window.addEventListener("click", retry, { once: true });
     window.addEventListener("keydown", retry, { once: true });
     window.addEventListener("touchstart", retry, { once: true });
@@ -606,9 +641,15 @@ function VideoSurface({
 function RemoteAudio({
   track,
   volume,
+  playbackRequestKey,
+  onPlaybackBlocked,
+  onPlaybackStarted,
 }: {
   track: MediaStreamTrack | null;
   volume: number;
+  playbackRequestKey: number;
+  onPlaybackBlocked?: () => void;
+  onPlaybackStarted?: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -622,13 +663,17 @@ function RemoteAudio({
     }
 
     audio.srcObject = new MediaStream([track]);
-    const cleanupPlaybackRetry = playMediaElement(audio);
+    const cleanupPlaybackRetry = playMediaElement(
+      audio,
+      onPlaybackBlocked,
+      onPlaybackStarted,
+    );
 
     return () => {
       cleanupPlaybackRetry();
       audio.srcObject = null;
     };
-  }, [track]);
+  }, [onPlaybackBlocked, onPlaybackStarted, playbackRequestKey, track]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -785,6 +830,9 @@ export function ConsultationVideoRoom({
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
   const [speakerMuted, setSpeakerMuted] = useState(false);
+  const [speakerPlaybackBlocked, setSpeakerPlaybackBlocked] = useState(false);
+  const [speakerPlaybackRequest, setSpeakerPlaybackRequest] = useState(0);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"messages" | "summary" | "shared">(
     "messages",
   );
@@ -822,6 +870,18 @@ export function ConsultationVideoRoom({
       ),
     [participantList, playAllRemoteAudio, remoteLabel, remoteParticipant],
   );
+
+  const requestSpeakerPlayback = useCallback(() => {
+    setSpeakerMuted(false);
+    setSpeakerPlaybackBlocked(false);
+    setSpeakerPlaybackRequest((current) => current + 1);
+  }, []);
+  const handleSpeakerPlaybackBlocked = useCallback(() => {
+    setSpeakerPlaybackBlocked(true);
+  }, []);
+  const handleSpeakerPlaybackStarted = useCallback(() => {
+    setSpeakerPlaybackBlocked(false);
+  }, []);
   const effectiveRemoteLabel = remoteParticipant?.user_name || remoteLabel;
   const isReady = Boolean(canJoin && token && meetingUrl);
   const callDebugEnabled =
@@ -877,6 +937,7 @@ export function ConsultationVideoRoom({
     let cancelled = false;
     let activeCall: DailyCallObject | null = null;
     let prewarmedStream: MediaStream | null = null;
+    let joined = false;
 
     const syncParticipants = () => {
       if (!activeCall || cancelled) return;
@@ -908,6 +969,8 @@ export function ConsultationVideoRoom({
 
     const handleJoined = () => {
       if (cancelled) return;
+      joined = true;
+      setConnectionError(null);
       setConnectionStatus("connected");
       setJoinedAt(Date.now());
       presenceChangeRef.current?.({
@@ -929,10 +992,19 @@ export function ConsultationVideoRoom({
       });
     };
 
-    const handleError = () => {
+    const handleError = (...args: unknown[]) => {
+      const message = describeDailyError(
+        normalizeDailyEventPayload(args),
+        "Daily could not prepare the consultation room.",
+      );
+      addCallDiagnostic("daily error", { message, args });
       if (!cancelled) {
-        addCallDiagnostic("daily error");
-        setConnectionStatus("error");
+        if (joined) {
+          setControlNotice(message);
+        } else {
+          setConnectionError(message);
+          setConnectionStatus("error");
+        }
       }
     };
 
@@ -1004,6 +1076,8 @@ export function ConsultationVideoRoom({
     };
 
     setConnectionStatus("connecting");
+    setConnectionError(null);
+    setControlNotice(null);
 
     void import("@daily-co/daily-js")
       .then(async (dailyModule) => {
@@ -1014,29 +1088,78 @@ export function ConsultationVideoRoom({
           throw new Error("Daily call object API is unavailable.");
         }
 
-        try {
-          prewarmedStream = await navigator.mediaDevices.getUserMedia({
-            audio: CLEAN_AUDIO_CONSTRAINTS,
-            video: true,
-          });
-          if (cancelled) {
-            prewarmedStream.getTracks().forEach((track) => track.stop());
-            return;
+        let audioTrack: MediaStreamTrack | null = null;
+        let videoTrack: MediaStreamTrack | null = null;
+        const mediaStreams: MediaStream[] = [];
+
+        if (navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: CLEAN_AUDIO_CONSTRAINTS,
+              video: true,
+            });
+            mediaStreams.push(stream);
+            audioTrack = stream.getAudioTracks()[0] ?? null;
+            videoTrack = stream.getVideoTracks()[0] ?? null;
+          } catch (error) {
+            addCallDiagnostic("combined local media unavailable", {
+              message: describeDailyError(error, "media request failed"),
+            });
           }
-          const previewVideoTrack =
-            prewarmedStream.getVideoTracks()[0] ?? null;
-          setLocalPreviewTrack(previewVideoTrack);
-          addCallDiagnostic("local media prewarmed", {
-            audio: Boolean(prewarmedStream.getAudioTracks()[0]),
-            video: Boolean(previewVideoTrack),
-          });
-        } catch (error) {
-          addCallDiagnostic("local media prewarm unavailable", error);
+
+          if (!audioTrack) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                audio: CLEAN_AUDIO_CONSTRAINTS,
+                video: false,
+              });
+              mediaStreams.push(stream);
+              audioTrack = stream.getAudioTracks()[0] ?? null;
+            } catch (error) {
+              addCallDiagnostic("microphone prewarm unavailable", {
+                message: describeDailyError(error, "microphone request failed"),
+              });
+            }
+          }
+
+          if (!videoTrack) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: true,
+              });
+              mediaStreams.push(stream);
+              videoTrack = stream.getVideoTracks()[0] ?? null;
+            } catch (error) {
+              addCallDiagnostic("camera prewarm unavailable", {
+                message: describeDailyError(error, "camera request failed"),
+              });
+            }
+          }
+        } else {
+          addCallDiagnostic("media devices API unavailable");
         }
 
+        if (cancelled) {
+          mediaStreams.forEach((stream) =>
+            stream.getTracks().forEach((track) => track.stop()),
+          );
+          return;
+        }
+
+        const tracks = [audioTrack, videoTrack].filter(
+          (track): track is MediaStreamTrack => Boolean(track),
+        );
+        prewarmedStream = tracks.length ? new MediaStream(tracks) : null;
+        setLocalPreviewTrack(videoTrack);
+        addCallDiagnostic("local media prewarmed", {
+          audio: Boolean(audioTrack),
+          video: Boolean(videoTrack),
+        });
+
         activeCall = DailyIframe.createCallObject({
-          audioSource: prewarmedStream?.getAudioTracks()[0] ?? true,
-          videoSource: prewarmedStream?.getVideoTracks()[0] ?? true,
+          audioSource: audioTrack ?? false,
+          videoSource: videoTrack ?? false,
           dailyConfig: {
             micAudioMode: "speech",
           },
@@ -1067,10 +1190,32 @@ export function ConsultationVideoRoom({
         void activeCall
           .join({ url: meetingUrl, token })
           .then(async () => {
-            await enableCleanMicrophoneAudio(
-              activeCall as DailyCallObject,
-              addCallDiagnostic,
-            );
+            const call = activeCall as DailyCallObject;
+            await enableCleanMicrophoneAudio(call, addCallDiagnostic);
+            try {
+              await Promise.resolve(call.setLocalAudio(true));
+              setMicrophoneEnabled(true);
+            } catch (error) {
+              setMicrophoneEnabled(false);
+              setControlNotice(
+                describeDailyError(
+                  error,
+                  "Microphone could not be enabled. Allow microphone access and use the mic button to retry.",
+                ),
+              );
+            }
+            try {
+              await Promise.resolve(call.setLocalVideo(true));
+              setCameraEnabled(true);
+            } catch (error) {
+              setCameraEnabled(false);
+              setControlNotice(
+                describeDailyError(
+                  error,
+                  "Camera could not be enabled. Allow camera access and use the camera button to retry.",
+                ),
+              );
+            }
             addCallDiagnostic("joined daily room", {
               meetingUrl,
               roomName,
@@ -1078,11 +1223,24 @@ export function ConsultationVideoRoom({
           })
           .catch((error) => {
             addCallDiagnostic("daily join failed", error);
-            if (!cancelled) setConnectionStatus("error");
+            if (!cancelled) {
+              setConnectionError(
+                describeDailyError(
+                  error,
+                  "Daily could not join this consultation room. Try again or check your network and browser permissions.",
+                ),
+              );
+              setConnectionStatus("error");
+            }
           });
       })
-      .catch(() => {
-        if (!cancelled) setConnectionStatus("error");
+      .catch((error) => {
+        if (!cancelled) {
+          setConnectionError(
+            describeDailyError(error, "The video provider could not load.")
+          );
+          setConnectionStatus("error");
+        }
       });
 
     return () => {
@@ -1386,11 +1544,14 @@ export function ConsultationVideoRoom({
             </div>
           ) : null}
           {remoteAudioTracks.map(({ id, track }) => (
-            <RemoteAudio
-              key={`${id}:${track.id}`}
-              track={track}
-              volume={speakerMuted ? 0 : audioVolume}
-            />
+          <RemoteAudio
+            key={`${id}:${track.id}`}
+            track={track}
+            volume={speakerMuted ? 0 : audioVolume}
+            playbackRequestKey={speakerPlaybackRequest}
+            onPlaybackBlocked={handleSpeakerPlaybackBlocked}
+            onPlaybackStarted={handleSpeakerPlaybackStarted}
+          />
           ))}
 
           <div className="absolute left-2 top-2 flex h-11 max-w-[54%] items-center gap-2 rounded-[10px] bg-[rgba(248,250,252,0.92)] p-1 pr-2 shadow-sm backdrop-blur-sm sm:left-[18px] sm:top-[15px] sm:h-12 sm:max-w-[220px] sm:rounded-[12px] sm:pr-3">
@@ -1443,15 +1604,15 @@ export function ConsultationVideoRoom({
             <div className="group relative hidden sm:block">
               <button
                 type="button"
-                onClick={() => setSpeakerMuted((current) => !current)}
+                onClick={requestSpeakerPlayback}
                 className={`relative flex h-[48px] w-[48px] items-center justify-center rounded-full transition ${
                   speakerMuted
                     ? "bg-[#64748B]"
                     : "bg-[rgba(255,255,255,0.2)]"
                 }`}
                 aria-pressed={!speakerMuted}
-                aria-label={speakerMuted ? "Unmute speaker" : "Mute speaker"}
-                title={speakerMuted ? "Unmute speaker" : "Mute speaker"}
+                aria-label={speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
+                title={speakerPlaybackBlocked ? "Enable consultation audio" : speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
               >
                 <SpeakerIcon />
                 {speakerMuted ? <ControlSlash /> : null}
@@ -1477,12 +1638,12 @@ export function ConsultationVideoRoom({
 
             <button
               type="button"
-              onClick={() => setSpeakerMuted((current) => !current)}
+              onClick={requestSpeakerPlayback}
               className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition sm:hidden ${
                 speakerMuted ? "bg-[#64748B]" : "bg-[rgba(255,255,255,0.2)]"
               }`}
               aria-pressed={!speakerMuted}
-              aria-label={speakerMuted ? "Unmute speaker" : "Mute speaker"}
+              aria-label={speakerMuted ? "Unmute speaker" : "Retry speaker audio"}
             >
               <SpeakerIcon />
               {speakerMuted ? <ControlSlash /> : null}
@@ -1616,9 +1777,18 @@ export function ConsultationVideoRoom({
                   Video room unavailable
                 </p>
                 <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                  The video provider could not prepare this room. Try again or
-                  check the Daily configuration.
+                  {connectionError ??
+                    "The video provider could not prepare this room. Try again or check the Daily configuration."}
                 </p>
+                {connectionStatus === "error" ? (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="mt-4 rounded-full bg-[#1E88E5] px-4 py-2 text-[12px] font-medium text-white"
+                  >
+                    Try again
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : connectionStatus === "connecting" ? (
@@ -1631,6 +1801,16 @@ export function ConsultationVideoRoom({
             <div className="absolute left-4 right-4 top-[74px] rounded-[12px] bg-[rgba(15,23,42,0.68)] px-4 py-2 text-center text-[12px] font-medium tracking-[-0.04em] text-white">
               {networkNotice}
             </div>
+          ) : null}
+
+          {speakerPlaybackBlocked && connectionStatus === "connected" ? (
+            <button
+              type="button"
+              onClick={requestSpeakerPlayback}
+              className="absolute left-3 right-3 top-[74px] z-10 rounded-[12px] bg-[rgba(15,23,42,0.78)] px-4 py-2 text-center text-[12px] font-medium text-white"
+            >
+              Tap to enable consultation audio
+            </button>
           ) : null}
 
           {callDebugEnabled ? (
