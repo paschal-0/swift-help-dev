@@ -474,6 +474,7 @@ export type ProfessionalPayout = {
   payoutMethodId: string;
   amountCents: number;
   currency: string;
+  provider: string;
   status: "requested" | "processing" | "completed" | "failed" | "cancelled" | "reversed";
   providerReference: string | null;
   providerTransferCode: string | null;

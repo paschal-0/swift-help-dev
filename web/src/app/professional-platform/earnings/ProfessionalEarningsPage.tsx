@@ -170,6 +170,7 @@ export function ProfessionalEarningsPage() {
   } | null>(null);
   const [transactionItems, setTransactionItems] = useState<TransactionItem[]>([]);
   const [payoutItems, setPayoutItems] = useState<TransactionItem[]>([]);
+  const [payoutRecords, setPayoutRecords] = useState<ProfessionalPayout[]>([]);
   const [payoutMethodItems, setPayoutMethodItems] = useState<ProfessionalPayoutMethod[]>([]);
   const mobileScrollbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showOverviewEmptyState = transactionItems.length === 0 && payoutItems.length === 0;
@@ -213,11 +214,11 @@ export function ProfessionalEarningsPage() {
 
   const payoutsForTab = useMemo(() => {
     if (payoutFilter === "All Payouts") {
-      return payoutItems;
+      return payoutRecords;
     }
 
-    return payoutItems.filter((transaction) => transaction.status === payoutFilter);
-  }, [payoutItems, payoutFilter]);
+    return payoutRecords.filter((payout) => payoutStatusLabel[payout.status] === payoutFilter);
+  }, [payoutRecords, payoutFilter]);
 
   useEffect(() => {
     setSelectedTransactionId(null);
@@ -246,7 +247,7 @@ export function ProfessionalEarningsPage() {
   const summaryCards = buildSummaryCards(walletSummary, completedPeriodTotal, period);
   const selectedTransaction =
     transactionsForTab.find((transaction) => transaction.id === selectedTransactionId) ?? null;
-  const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
+  const selectedPayout = payoutRecords.find((payout) => payout.id === selectedPayoutId) ?? null;
 
   const openTransactionDetails = async (transactionId: string) => {
     setActiveTab("transactions");
@@ -262,7 +263,32 @@ export function ProfessionalEarningsPage() {
       setIsLoadingTransactionDetails(false);
     }
   };
-  const lastPayout = payoutItems.find((payout) => payout.status === "Completed") ?? payoutItems[0] ?? null;
+  const openPayoutDetails = (payoutId: string) => {
+    setSelectedPayoutId(payoutId);
+  };
+
+  useEffect(() => {
+    if (!selectedPayoutId || activeTab !== "payouts") return;
+
+    // Wait for React to commit the detail panel before scrolling. Scrolling in
+    // the click handler races the render and was the reason View Details could
+    // appear to do nothing.
+    window.requestAnimationFrame(() => {
+      document.getElementById("professional-payout-details")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }, [activeTab, selectedPayoutId]);
+
+  const payoutDestination = (payout: ProfessionalPayout) => {
+    const method = payoutMethodItems.find((item) => item.id === payout.payoutMethodId);
+    if (!method) return "Payout method unavailable";
+    return method.provider === "stripe"
+      ? `Stripe connected account - ID ending ${method.accountNumberLast4}`
+      : `${method.bankName} - **** ${method.accountNumberLast4}`;
+  };
+  const lastPayout = payoutRecords.find((payout) => payout.status === "completed") ?? payoutRecords[0] ?? null;
   const activePayoutMethodItem =
     payoutMethodItems.find((method) => method.defaultMethod) ?? payoutMethodItems[0] ?? null;
   const isStripePayoutMethod = activePayoutMethodItem?.provider === "stripe";
@@ -290,7 +316,7 @@ export function ProfessionalEarningsPage() {
     },
     {
       label: "Last Payout",
-      value: lastPayout?.amount ?? "No payouts",
+      value: lastPayout ? formatApiMoney(lastPayout.amountCents, lastPayout.currency) : "No payouts",
     },
   ];
 
@@ -341,6 +367,7 @@ export function ProfessionalEarningsPage() {
           ),
         );
         setTransactionItems(earnings.length ? earnings.map(mapEarning) : []);
+        setPayoutRecords(payouts);
         setPayoutItems(payouts.length ? payouts.map(mapPayout) : []);
       } catch (error) {
         if (!cancelled) {
@@ -782,16 +809,50 @@ export function ProfessionalEarningsPage() {
 
           <div className="mt-2 overflow-x-auto pb-4 md:mt-[5px] earnings-scroll">
             {selectedPayout ? (
-              <div className="mb-4 rounded-[12px] bg-[#F8FAFC] p-4 text-[14px] leading-[22px] tracking-[-0.05em] text-[#334155] shadow-[0_0_8px_rgba(21,101,192,0.1)] md:mb-3 md:px-4 md:py-3 md:leading-[20px]">
-                <p>
-                  Payout ID: <span className="font-semibold">{selectedPayout.transactionId}</span>
-                </p>
-                <p>
-                  Processed On: <span className="font-semibold">{selectedPayout.date}</span>
-                </p>
-                <p>
-                  Amount: <span className="font-semibold">{selectedPayout.amount}</span>
-                </p>
+              <div
+                id="professional-payout-details"
+                className="mb-4 rounded-[12px] bg-[#F8FAFC] p-4 text-[14px] leading-[22px] tracking-[-0.05em] text-[#334155] shadow-[0_0_8px_rgba(21,101,192,0.1)] md:mb-3 md:px-4 md:py-3 md:leading-[20px]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[16px] font-semibold">Payout details</h3>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPayoutId(null)}
+                    className="cursor-pointer font-semibold text-[#1565C0] underline"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                  <p>
+                    Amount: <span className="font-semibold">{formatApiMoney(selectedPayout.amountCents, selectedPayout.currency)}</span>
+                  </p>
+                  <p>
+                    Status: <span className={`font-semibold ${statusTone(payoutStatusLabel[selectedPayout.status])}`}>
+                      {payoutStatusLabel[selectedPayout.status]}
+                    </span>
+                  </p>
+                  <p>
+                    Requested on: <span className="font-semibold">{new Date(selectedPayout.createdAt).toLocaleString()}</span>
+                  </p>
+                  <p>
+                    Processed on: <span className="font-semibold">
+                      {selectedPayout.processedAt ? new Date(selectedPayout.processedAt).toLocaleString() : "Not processed yet"}
+                    </span>
+                  </p>
+                  <p>
+                    Destination: <span className="font-semibold">{payoutDestination(selectedPayout)}</span>
+                  </p>
+                  <p>
+                    Settlement reference: <span className="break-all font-semibold">{selectedPayout.providerReference ?? "Not assigned"}</span>
+                  </p>
+                  <p>
+                    {selectedPayout.provider === "stripe" ? "Stripe payout reference" : "Transfer reference"}: <span className="break-all font-semibold">{selectedPayout.providerTransferCode ?? "Not created yet"}</span>
+                  </p>
+                  <p>
+                    Failure reason: <span className="font-semibold">{selectedPayout.failureReason ?? "None recorded"}</span>
+                  </p>
+                </div>
               </div>
             ) : null}
 
@@ -816,15 +877,15 @@ export function ProfessionalEarningsPage() {
                     key={payout.id}
                     className="grid grid-cols-[153px_175px_120px_132px_135px_99px_77px] border-b border-[#334155] px-[6px] py-[8px] text-[14px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155]"
                   >
-                    <span>{payout.transactionId}</span>
-                    <span>{payout.consultation}</span>
-                    <span>{payout.patient}</span>
-                    <span>{payout.date}</span>
-                    <span>{payout.amount}</span>
-                    <span className={statusTone(payout.status)}>{payout.status}</span>
+                    <span>{payout.id.slice(0, 8)}</span>
+                    <span>{formatDate(payout.createdAt)}</span>
+                    <span>{formatApiMoney(payout.amountCents, payout.currency)}</span>
+                    <span>{payoutDestination(payout)}</span>
+                    <span>{payout.processedAt ? formatDate(payout.processedAt) : "Not processed yet"}</span>
+                    <span className={statusTone(payoutStatusLabel[payout.status])}>{payoutStatusLabel[payout.status]}</span>
                     <button
                       type="button"
-                      onClick={() => setSelectedPayoutId(payout.id)}
+                      onClick={() => openPayoutDetails(payout.id)}
                       className="cursor-pointer text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details
@@ -845,24 +906,24 @@ export function ProfessionalEarningsPage() {
                     <div className="flex items-start justify-between border-b border-[#F1F5F9] pb-3">
                       <div className="flex flex-col gap-1">
                         <span className="text-[16px] font-semibold text-[#334155]">Bank Transfer</span>
-                        <span className="text-[13px] text-[#64748B]">ID: {payout.transactionId}</span>
+                        <span className="text-[13px] text-[#64748B]">ID: {payout.id.slice(0, 8)}</span>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-[16px] font-bold text-[#334155]">{payout.amount}</span>
-                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(payout.status)}`}>
-                          {payout.status}
+                        <span className="text-[16px] font-bold text-[#334155]">{formatApiMoney(payout.amountCents, payout.currency)}</span>
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(payoutStatusLabel[payout.status])}`}>
+                          {payoutStatusLabel[payout.status]}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-3">
                       <div className="flex flex-col">
                         <span className="text-[11px] font-medium text-[#94A3B8]">PROCESSED ON</span>
-                        <span className="text-[13px] text-[#475569]">{payout.date}</span>
+                        <span className="text-[13px] text-[#475569]">{payout.processedAt ? formatDate(payout.processedAt) : "Not processed yet"}</span>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedPayoutId(payout.id)}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
+                        onClick={() => openPayoutDetails(payout.id)}
+                        className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
                       >
                         View Details
                       </button>
