@@ -288,7 +288,9 @@ export function ProfessionalEarningsPage() {
       ? `Stripe connected account - ID ending ${method.accountNumberLast4}`
       : `${method.bankName} - **** ${method.accountNumberLast4}`;
   };
-  const lastPayout = payoutRecords.find((payout) => payout.status === "completed") ?? payoutRecords[0] ?? null;
+  // A requested or processing record means funds are reserved, not settled at
+  // the professional's bank. Never present it as the last completed payout.
+  const lastPayout = payoutRecords.find((payout) => payout.status === "completed") ?? null;
   const activePayoutMethodItem =
     payoutMethodItems.find((method) => method.defaultMethod) ?? payoutMethodItems[0] ?? null;
   const isStripePayoutMethod = activePayoutMethodItem?.provider === "stripe";
@@ -316,7 +318,7 @@ export function ProfessionalEarningsPage() {
     },
     {
       label: "Last Payout",
-      value: lastPayout ? formatApiMoney(lastPayout.amountCents, lastPayout.currency) : "No payouts",
+      value: lastPayout ? formatApiMoney(lastPayout.amountCents, lastPayout.currency) : "No completed payouts",
     },
   ];
 
@@ -443,7 +445,9 @@ export function ProfessionalEarningsPage() {
             Last Payout
             <br />
             <span className="font-normal text-[#64748B] md:text-[#334155]">
-              {lastPayout ? `${lastPayout.amount} - ${lastPayout.date}` : "No payouts yet"}
+              {lastPayout
+                ? `${formatApiMoney(lastPayout.amountCents, lastPayout.currency)} - ${formatDate(lastPayout.processedAt ?? lastPayout.createdAt)}`
+                : "No completed payouts yet"}
             </span>
           </p>
           <p className="py-3 text-[14px] font-semibold leading-[20px] tracking-[-0.05em] text-[#334155] md:py-0 md:leading-[18px]">
