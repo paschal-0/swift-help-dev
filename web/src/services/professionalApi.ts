@@ -479,6 +479,12 @@ export type ProfessionalPayout = {
   providerReference: string | null;
   providerTransferCode: string | null;
   failureReason: string | null;
+  metadata?: {
+    lastReadinessCheckAt?: string;
+    connectedBalanceCents?: number;
+    pendingBalanceCents?: number;
+    nextPendingAvailabilityAt?: string | null;
+  } | null;
   processedAt: string | null;
   createdAt: string;
 };

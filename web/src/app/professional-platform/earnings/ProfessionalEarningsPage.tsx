@@ -871,12 +871,34 @@ export function ProfessionalEarningsPage() {
                     {selectedPayout.provider === "stripe" ? "Stripe payout reference" : "Transfer reference"}: <span className="break-all font-semibold">{selectedPayout.providerTransferCode ?? "Not created yet"}</span>
                   </p>
                   <p>
-                    Failure reason: <span className="font-semibold">{selectedPayout.failureReason ?? "None recorded"}</span>
+                    {isPayoutAwaitingFundsAvailability(selectedPayout) ? "Latest Stripe availability check" : "Failure reason"}: <span className="font-semibold">{selectedPayout.failureReason ?? "None recorded"}</span>
                   </p>
                   {isPayoutAwaitingFundsAvailability(selectedPayout) ? (
-                    <p className="sm:col-span-2">
-                      This payout is reserved and will retry automatically when Stripe reports enough funds available for a standard bank payout.
-                    </p>
+                    <>
+                      <p>
+                        Stripe available now: <span className="font-semibold">{formatApiMoney(selectedPayout.metadata?.connectedBalanceCents ?? 0, selectedPayout.currency)}</span>
+                      </p>
+                      <p>
+                        Stripe pending: <span className="font-semibold">{formatApiMoney(selectedPayout.metadata?.pendingBalanceCents ?? 0, selectedPayout.currency)}</span>
+                      </p>
+                      <p>
+                        Earliest pending funds availability: <span className="font-semibold">
+                          {selectedPayout.metadata?.nextPendingAvailabilityAt
+                            ? new Date(selectedPayout.metadata.nextPendingAvailabilityAt).toLocaleString()
+                            : "Stripe has not provided a date"}
+                        </span>
+                      </p>
+                      <p>
+                        Last checked: <span className="font-semibold">
+                          {selectedPayout.metadata?.lastReadinessCheckAt
+                            ? new Date(selectedPayout.metadata.lastReadinessCheckAt).toLocaleString()
+                            : "Not recorded"}
+                        </span>
+                      </p>
+                      <p className="sm:col-span-2">
+                        This payout is reserved and will retry automatically when Stripe reports enough funds available for a standard bank payout.
+                      </p>
+                    </>
                   ) : null}
                 </div>
               </div>
