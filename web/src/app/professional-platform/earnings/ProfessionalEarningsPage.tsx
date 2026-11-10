@@ -45,6 +45,7 @@ type TransactionStatus =
   | "Paid out"
   | "Completed"
   | "Requested"
+  | "Awaiting funds availability"
   | "Processing"
   | "Failed"
   | "Cancelled";
@@ -64,6 +65,18 @@ const payoutStatusLabel: Record<ProfessionalPayout["status"], TransactionStatus>
   cancelled: "Cancelled",
   reversed: "Failed",
 };
+
+const isPayoutAwaitingFundsAvailability = (payout: ProfessionalPayout) =>
+  payout.provider === "stripe" &&
+  payout.status === "requested" &&
+  /^Connected Stripe balance is \d+ cents; \d+ cents are required$/.test(
+    payout.failureReason ?? "",
+  );
+
+const payoutDisplayStatus = (payout: ProfessionalPayout): TransactionStatus =>
+  isPayoutAwaitingFundsAvailability(payout)
+    ? "Awaiting funds availability"
+    : payoutStatusLabel[payout.status];
 
 const statusTone = (status: TransactionStatus) => {
   if (["Completed", "Available", "Paid out"].includes(status)) return "text-[#19AA4A]";
@@ -105,7 +118,7 @@ const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
   createdAt: payout.createdAt,
   amount: formatApiMoney(payout.amountCents, payout.currency),
   amountCents: payout.amountCents,
-  status: payoutStatusLabel[payout.status],
+  status: payoutDisplayStatus(payout),
 });
 
 const buildSummaryCards = (
@@ -217,7 +230,11 @@ export function ProfessionalEarningsPage() {
       return payoutRecords;
     }
 
-    return payoutRecords.filter((payout) => payoutStatusLabel[payout.status] === payoutFilter);
+    return payoutRecords.filter((payout) =>
+      payoutFilter === "Requested"
+        ? payout.status === "requested"
+        : payoutDisplayStatus(payout) === payoutFilter,
+    );
   }, [payoutRecords, payoutFilter]);
 
   useEffect(() => {
@@ -832,8 +849,8 @@ export function ProfessionalEarningsPage() {
                     Amount: <span className="font-semibold">{formatApiMoney(selectedPayout.amountCents, selectedPayout.currency)}</span>
                   </p>
                   <p>
-                    Status: <span className={`font-semibold ${statusTone(payoutStatusLabel[selectedPayout.status])}`}>
-                      {payoutStatusLabel[selectedPayout.status]}
+                    Status: <span className={`font-semibold ${statusTone(payoutDisplayStatus(selectedPayout))}`}>
+                      {payoutDisplayStatus(selectedPayout)}
                     </span>
                   </p>
                   <p>
@@ -856,6 +873,11 @@ export function ProfessionalEarningsPage() {
                   <p>
                     Failure reason: <span className="font-semibold">{selectedPayout.failureReason ?? "None recorded"}</span>
                   </p>
+                  {isPayoutAwaitingFundsAvailability(selectedPayout) ? (
+                    <p className="sm:col-span-2">
+                      This payout is reserved and will retry automatically when Stripe reports enough funds available for a standard bank payout.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -886,7 +908,7 @@ export function ProfessionalEarningsPage() {
                     <span>{formatApiMoney(payout.amountCents, payout.currency)}</span>
                     <span>{payoutDestination(payout)}</span>
                     <span>{payout.processedAt ? formatDate(payout.processedAt) : "Not processed yet"}</span>
-                    <span className={statusTone(payoutStatusLabel[payout.status])}>{payoutStatusLabel[payout.status]}</span>
+                    <span className={statusTone(payoutDisplayStatus(payout))}>{payoutDisplayStatus(payout)}</span>
                     <button
                       type="button"
                       onClick={() => openPayoutDetails(payout.id)}
@@ -914,8 +936,8 @@ export function ProfessionalEarningsPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-[16px] font-bold text-[#334155]">{formatApiMoney(payout.amountCents, payout.currency)}</span>
-                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(payoutStatusLabel[payout.status])}`}>
-                          {payoutStatusLabel[payout.status]}
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(payoutDisplayStatus(payout))}`}>
+                          {payoutDisplayStatus(payout)}
                         </span>
                       </div>
                     </div>
