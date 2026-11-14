@@ -87,6 +87,8 @@ const mainNav: NavItem[] = [
   { label: "Shift management", href: "/super-admin-platform/shifts", icon: "shifts" },
   { label: "Referrals", href: "/super-admin-platform/referrals", icon: "referrals" },
   { label: "Payments", href: "/super-admin-platform/payments", icon: "payments" },
+  { label: "Subscriptions", href: "/super-admin-platform/subscriptions", icon: "payments" },
+  { label: "Support queue", href: "/super-admin-platform/support", icon: "reviews" },
   { label: "Reports & Analytics", href: "/super-admin-platform/reports", icon: "reports" },
   { label: "Reviews & Feedback", href: "/super-admin-platform/reviews", icon: "reviews" },
 ];

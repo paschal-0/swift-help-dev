@@ -46,6 +46,7 @@ const mainNav: NavItem[] = [
 
 const lowerNav: NavItem[] = [
   { label: "My Profile", href: "/professional-platform/my-profile", icon: "profile" },
+  { label: "Help and support", href: "/professional-platform/help", icon: "help" },
   { label: "Settings", href: "/professional-platform/settings", icon: "settings" },
 ];
 

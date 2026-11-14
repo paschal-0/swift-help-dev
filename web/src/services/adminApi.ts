@@ -2262,3 +2262,134 @@ export async function removeAdminReview(reviewId: string) {
     method: "DELETE",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Subscription plans, commission rates and the support queue
+// ---------------------------------------------------------------------------
+
+export type AdminSubscriptionPlan = {
+  id: string;
+  planCode: string | null;
+  name: string;
+  description?: string | null;
+  targetUserType: string;
+  country: string;
+  currency: string;
+  monthlyPrice: number;
+  monthlyPriceMinor: number | null;
+  provider: string;
+  stripePriceId: string | null;
+  paystackPlanCode: string | null;
+  commissionPercentage: string | null;
+  features: string[];
+  taxInclusive: boolean;
+  isActive: boolean;
+};
+
+export type AdminCommissionRates = {
+  starterFeePercentage: number;
+  proFeePercentage: number;
+};
+
+export function listAdminSubscriptionPlans(params: {
+  country?: string;
+  audience?: string;
+} = {}) {
+  const query = new URLSearchParams();
+  if (params.country) query.set("country", params.country);
+  if (params.audience) query.set("audience", params.audience);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest<AdminSubscriptionPlan[]>(
+    `/admin/subscriptions/plans${suffix}`,
+    { method: "GET" },
+  );
+}
+
+export function updateAdminSubscriptionPlan(
+  id: string,
+  body: Partial<{
+    name: string;
+    monthlyPriceMinor: number;
+    currency: string;
+    stripePriceId: string | null;
+    paystackPlanCode: string | null;
+    features: string[];
+    taxInclusive: boolean;
+    isActive: boolean;
+  }>,
+) {
+  return apiRequest<AdminSubscriptionPlan>(
+    `/admin/subscriptions/plans/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+}
+
+export function seedAdminSubscriptionPlans() {
+  return apiRequest<{ created: string[]; skipped: string[] }>(
+    "/admin/subscriptions/plans/seed",
+    { method: "POST" },
+  );
+}
+
+export function getAdminCommissionRates() {
+  return apiRequest<AdminCommissionRates>("/admin/subscriptions/commission", {
+    method: "GET",
+  });
+}
+
+export function updateAdminCommissionRates(body: Partial<AdminCommissionRates>) {
+  return apiRequest<AdminCommissionRates>("/admin/subscriptions/commission", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function runAdminSubscriptionSweep() {
+  return apiRequest<Record<string, unknown>>("/admin/subscriptions/sweep", {
+    method: "POST",
+  });
+}
+
+export function runAdminSubscriptionReconcile() {
+  return apiRequest<Record<string, unknown>>("/admin/subscriptions/reconcile", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export type AdminSupportRequest = {
+  id: string;
+  requesterUserId: string;
+  requesterRole: string;
+  subject: string;
+  body: string;
+  category: string;
+  status: string;
+  priority: "priority" | "standard";
+  respondByAt: string | null;
+  firstRespondedAt: string | null;
+  createdAt: string;
+  overdue: boolean;
+};
+
+export function listAdminSupportRequests(status?: string) {
+  const suffix = status && status !== "all" ? `?status=${status}` : "";
+  return apiRequest<AdminSupportRequest[]>(
+    `/admin/support/requests${suffix}`,
+    { method: "GET" },
+  );
+}
+
+export function respondToAdminSupportRequest(id: string, message: string) {
+  return apiRequest<{ id: string }>(
+    `/admin/support/requests/${encodeURIComponent(id)}/respond`,
+    { method: "POST", body: JSON.stringify({ message }) },
+  );
+}
+
+export function closeAdminSupportRequest(id: string) {
+  return apiRequest<{ id: string }>(
+    `/admin/support/requests/${encodeURIComponent(id)}/close`,
+    { method: "POST" },
+  );
+}
