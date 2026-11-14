@@ -1480,3 +1480,50 @@ export function startProfessionalProCheckout(input?: {
     body: JSON.stringify(input ?? {}),
   });
 }
+
+export type ProfessionalSubscriptionInvoice = {
+  id: string | null;
+  number: string | null;
+  status: string | null;
+  amountMinor: number;
+  currency: string;
+  createdAt: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdf: string | null;
+};
+
+export type ProfessionalCancellationSummary = {
+  cancelAtPeriodEnd: boolean;
+  effectiveAt: string | null;
+  status: string | null;
+};
+
+/** A link into the Stripe Customer Portal for payment methods and invoices. */
+export function openProfessionalBillingPortal() {
+  return apiRequest<{ url: string }>("/professional/subscription/portal", {
+    method: "POST",
+  });
+}
+
+/** Schedules cancellation for the end of the period already paid for. */
+export function cancelProfessionalSubscription() {
+  return apiRequest<ProfessionalCancellationSummary>(
+    "/professional/subscription/cancel",
+    { method: "POST" },
+  );
+}
+
+/** Withdraws a cancellation that has not taken effect yet. */
+export function reactivateProfessionalSubscription() {
+  return apiRequest<ProfessionalCancellationSummary>(
+    "/professional/subscription/reactivate",
+    { method: "POST" },
+  );
+}
+
+export function getProfessionalSubscriptionInvoices() {
+  return apiRequest<{
+    invoices: ProfessionalSubscriptionInvoice[];
+    unavailable?: boolean;
+  }>("/professional/subscription/invoices", { method: "GET" });
+}

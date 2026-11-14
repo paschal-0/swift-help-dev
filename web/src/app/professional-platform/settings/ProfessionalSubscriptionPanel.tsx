@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  cancelProfessionalSubscription,
   getProfessionalSubscription,
+  getProfessionalSubscriptionInvoices,
+  openProfessionalBillingPortal,
+  reactivateProfessionalSubscription,
   startProfessionalProCheckout,
+  type ProfessionalSubscriptionInvoice,
   type ProfessionalSubscriptionOverview,
 } from "@/services/professionalApi";
 
@@ -53,12 +58,25 @@ export default function ProfessionalSubscriptionPanel() {
   const [overview, setOverview] = useState<ProfessionalSubscriptionOverview | null>(
     null,
   );
+  const [invoices, setInvoices] = useState<ProfessionalSubscriptionInvoice[]>([]);
+  const [invoicesUnavailable, setInvoicesUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  /** Which management action is in flight, so only that button is disabled. */
+  const [busy, setBusy] = useState<"portal" | "cancel" | "reactivate" | null>(
+    null,
+  );
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setOverview(await getProfessionalSubscription());
+      const next = await getProfessionalSubscription();
+      setOverview(next);
+      if (next.isPro || next.status) {
+        const history = await getProfessionalSubscriptionInvoices();
+        setInvoices(history.invoices ?? []);
+        setInvoicesUnavailable(Boolean(history.unavailable));
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -117,6 +135,61 @@ export default function ProfessionalSubscriptionPanel() {
       );
     } finally {
       setUpgrading(false);
+    }
+  };
+
+  const openPortal = async () => {
+    setBusy("portal");
+    try {
+      const { url } = await openProfessionalBillingPortal();
+      window.location.assign(url);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to open billing management",
+      );
+      setBusy(null);
+    }
+  };
+
+  const cancel = async () => {
+    setBusy("cancel");
+    try {
+      const result = await cancelProfessionalSubscription();
+      const until = formatDate(result.effectiveAt);
+      toast.success(
+        until
+          ? `Your Pro plan will end on ${until}. You keep Pro until then.`
+          : "Your Pro plan has been cancelled.",
+      );
+      setConfirmingCancel(false);
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to cancel your subscription",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const reactivate = async () => {
+    setBusy("reactivate");
+    try {
+      await reactivateProfessionalSubscription();
+      toast.success("Your Pro plan will continue as normal.");
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to restart your subscription",
+      );
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -198,6 +271,162 @@ export default function ProfessionalSubscriptionPanel() {
           </div>
         )}
       </div>
+
+      {overview.status ? (
+        <div className="rounded-[14px] border border-[#DDE6F0] bg-white p-6">
+          <h4 className="text-[16px] font-semibold text-[#334155]">
+            Manage your subscription
+          </h4>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            Payment methods and invoice receipts are handled securely by
+            Stripe.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={openPortal}
+              disabled={busy !== null}
+              className="rounded-[10px] border border-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy === "portal"
+                ? "Opening..."
+                : "Update payment method and invoices"}
+            </button>
+
+            {overview.cancelAtPeriodEnd ? (
+              <button
+                type="button"
+                onClick={reactivate}
+                disabled={busy !== null}
+                className="rounded-[10px] bg-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy === "reactivate" ? "Restarting..." : "Keep my Pro plan"}
+              </button>
+            ) : overview.isPro ? (
+              <button
+                type="button"
+                onClick={() => setConfirmingCancel(true)}
+                disabled={busy !== null}
+                className="rounded-[10px] border border-[#DDE6F0] px-4 py-2.5 text-[14px] font-semibold text-[#64748B] transition hover:border-[#C9D7E6] hover:text-[#334155] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel subscription
+              </button>
+            ) : null}
+          </div>
+
+          {confirmingCancel ? (
+            <div className="mt-4 rounded-[12px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
+              <p className="text-[14px] font-semibold text-[#92400E]">
+                Cancel your Pro plan?
+              </p>
+              <p className="mt-1 text-[13px] leading-5 text-[#92400E]">
+                You keep Pro and the {overview.commissionPercentage}%
+                commission rate until{" "}
+                {formatDate(overview.currentPeriodEnd) ??
+                  "the end of your paid period"}
+                . After that your commission returns to the Starter rate. You
+                will not be charged again.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={cancel}
+                  disabled={busy !== null}
+                  className="rounded-[10px] bg-[#B45309] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#92400E] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy === "cancel" ? "Cancelling..." : "Yes, cancel at period end"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(false)}
+                  disabled={busy !== null}
+                  className="rounded-[10px] border border-[#DDE6F0] bg-white px-4 py-2 text-[14px] font-semibold text-[#64748B] transition hover:text-[#334155] disabled:cursor-not-allowed"
+                >
+                  Keep my plan
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {overview.status ? (
+        <div className="rounded-[14px] border border-[#DDE6F0] bg-white p-6">
+          <h4 className="text-[16px] font-semibold text-[#334155]">
+            Subscription payments
+          </h4>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            What you have paid for your plan. Your consultation earnings are
+            shown separately under Billing and plan.
+          </p>
+
+          {invoicesUnavailable ? (
+            <div className="mt-4 rounded-[12px] border border-dashed border-[#C9D7E6] p-5 text-[14px] text-[#94A3B8]">
+              Your payment history could not be loaded just now. Your
+              subscription is unaffected.
+            </div>
+          ) : invoices.length ? (
+            <div className="mt-4 overflow-x-auto rounded-[12px] border border-[#DDE6F0]">
+              <table className="w-full min-w-[520px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-[#DDE6F0] text-[12px] font-semibold uppercase text-[#64748B]">
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Invoice</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
+                    <tr
+                      key={invoice.id ?? invoice.number}
+                      className="border-b border-[#EEF2F7] text-[14px] text-[#334155] last:border-b-0"
+                    >
+                      <td className="px-4 py-3">
+                        {formatDate(invoice.createdAt) ?? "-"}
+                      </td>
+                      <td className="px-4 py-3">{invoice.number ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        {formatPrice(
+                          invoice.amountMinor / 100,
+                          invoice.currency,
+                        )}
+                      </td>
+                      <td className="px-4 py-3 capitalize">
+                        {invoice.status ?? "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {invoice.invoicePdf ?? invoice.hostedInvoiceUrl ? (
+                          <a
+                            href={
+                              invoice.invoicePdf ??
+                              invoice.hostedInvoiceUrl ??
+                              "#"
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-[#1565C0] hover:underline"
+                          >
+                            View
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-[12px] border border-dashed border-[#C9D7E6] p-5 text-[14px] text-[#94A3B8]">
+              No subscription payments yet.
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {overview.plans.map((plan) => (
