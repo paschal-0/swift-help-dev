@@ -832,3 +832,107 @@ export async function getOrganizationReferrals() {
     method: "GET",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Subscription and plan
+//
+// What the organisation pays Swift HELP for its plan, and the staffing
+// commission that plan confers. Separate from the weekly staffing invoices.
+// ---------------------------------------------------------------------------
+
+export type OrganizationPlanOption = {
+  id: string;
+  planCode: string | null;
+  name: string;
+  description: string | null;
+  currency: string;
+  monthlyPrice: number;
+  monthlyPriceMinor: number | null;
+  staffingCommissionPercentage: number;
+  features: string[];
+  taxInclusive: boolean;
+  isCurrent: boolean;
+};
+
+export type OrganizationSubscriptionOverview = {
+  planCode: string | null;
+  plan: "starter" | "growth";
+  planName: string;
+  status: string | null;
+  staffingCommissionPercentage: number;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  graceUntil: string | null;
+  hasSubscription: boolean;
+  plans: OrganizationPlanOption[];
+};
+
+export type OrganizationSubscriptionInvoice = {
+  id: string | null;
+  number: string | null;
+  status: string | null;
+  amountMinor: number;
+  currency: string;
+  createdAt: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdf: string | null;
+};
+
+export function getOrganizationSubscription(country?: string) {
+  const query = country ? `?country=${encodeURIComponent(country)}` : "";
+  return apiRequest<OrganizationSubscriptionOverview>(
+    `/organization/subscription${query}`,
+    { method: "GET" },
+  );
+}
+
+/** What a plan change would cost. Charges nothing. */
+export function previewOrganizationPlanChange(plan: "starter" | "growth") {
+  return apiRequest<{
+    amountDueMinor: number | null;
+    currency: string | null;
+    nextPaymentAt: string | null;
+    target: string;
+  }>("/organization/subscription/preview", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export function changeOrganizationPlan(plan: "starter" | "growth") {
+  return apiRequest<{ planCode: string; status: string; changedAt: string }>(
+    "/organization/subscription/change",
+    { method: "POST", body: JSON.stringify({ plan }) },
+  );
+}
+
+export function cancelOrganizationSubscription() {
+  return apiRequest<{
+    cancelAtPeriodEnd: boolean;
+    effectiveAt: string | null;
+    status: string | null;
+  }>("/organization/subscription/cancel", { method: "POST" });
+}
+
+export function reactivateOrganizationSubscription() {
+  return apiRequest<{
+    cancelAtPeriodEnd: boolean;
+    effectiveAt: string | null;
+    status: string | null;
+  }>("/organization/subscription/reactivate", { method: "POST" });
+}
+
+export function openOrganizationBillingPortal() {
+  return apiRequest<{ url: string }>("/organization/subscription/portal", {
+    method: "POST",
+  });
+}
+
+export function getOrganizationSubscriptionInvoices() {
+  return apiRequest<{
+    invoices: OrganizationSubscriptionInvoice[];
+    unavailable?: boolean;
+  }>("/organization/subscription/invoices", { method: "GET" });
+}

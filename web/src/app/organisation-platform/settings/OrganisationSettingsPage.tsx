@@ -16,8 +16,9 @@ import {
   type OrganizationSettings,
 } from "@/services/organizationApi";
 import { exportTablePdf } from "@/utils/pdfExport";
+import OrganisationSubscriptionPanel from "./OrganisationSubscriptionPanel";
 
-const settingTabs = ["General", "Notifications", "Security", "Billing and plan"] as const;
+const settingTabs = ["General", "Notifications", "Security", "Billing and plan", "Subscription"] as const;
 const operatingDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const premiumEase = [0.32, 0.72, 0, 1] as const;
 const microInteractionClass =
@@ -447,6 +448,24 @@ function SessionStatusBadge({ status }: { status: SessionItem["status"] }) {
 export function OrganisationSettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("General");
+
+  // Stripe returns the organisation to ?tab=subscription after the portal, so
+  // they land back on the plan rather than on General.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    const match = settingTabs.find(
+      (tab) =>
+        tab.toLowerCase().replace(/[^a-z]/g, "") ===
+        (requested ?? "").toLowerCase().replace(/[^a-z]/g, ""),
+    );
+    if (match) {
+      // Read after mount rather than in the initial state: the server has no
+      // query string, so deriving it during render would hydrate mismatched.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab(match);
+    }
+  }, []);
   const [defaultShiftDuration, setDefaultShiftDuration] = useState("8 hours");
   const [timeZone, setTimeZone] = useState("(PST) Pacific Standard Time");
   const [dateFormat, setDateFormat] = useState("MM/DD/YYYY");
@@ -1283,6 +1302,7 @@ export function OrganisationSettingsPage() {
             {activeTab === "Notifications" ? renderNotificationsTab() : null}
             {activeTab === "Security" ? renderSecurityTab() : null}
             {activeTab === "Billing and plan" ? renderBillingTab() : null}
+            {activeTab === "Subscription" ? <OrganisationSubscriptionPanel /> : null}
           </motion.div>
         </AnimatePresence>
       </motion.div>
