@@ -100,10 +100,11 @@ export default function ProfessionalAssistantPage() {
           Practice assistant
         </h2>
         <p className="mt-2 max-w-[620px] text-[15px] leading-6 text-[#64748B]">
-          The practice assistant is part of the Pro plan. It helps with your
-          schedule, your bookings, your earnings and drafting your own notes,
-          and you can speak to it rather than type. It does not advise on
-          clinical decisions.
+          The assistant is part of the Pro plan. It helps with your schedule,
+          your bookings, your earnings and drafting your own notes, and will
+          talk through clinical questions as a well-read colleague would. You
+          can speak to it rather than type. It is decision support, never the
+          decision.
         </p>
         <button
           type="button"
@@ -126,8 +127,8 @@ export default function ProfessionalAssistantPage() {
             Practice assistant
           </h2>
           <p className="mt-0.5 text-[13px] text-[#94A3B8]">
-            Schedule, bookings, earnings and your own notes. Not for clinical
-            decisions.
+            Your practice, and clinical questions as decision support. You
+            remain responsible for the decision.
           </p>
         </div>
 
@@ -202,6 +203,12 @@ export default function ProfessionalAssistantPage() {
         }}
         className="border-t border-[#EEF2F7] px-5 py-4"
       >
+        <p className="mb-2 text-[12px] leading-4 text-[#94A3B8]">
+          The assistant has not seen your patient and has no access to their
+          record. Confirm anything clinical against the current BNF, NICE or
+          your local protocols before acting.
+        </p>
+
         {voice.error ? (
           <p className="mb-2 text-[13px] text-[#B45309]">{voice.error}</p>
         ) : null}
