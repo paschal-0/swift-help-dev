@@ -1412,3 +1412,71 @@ export function formatApiMoney(amountCents: number, currency = "NGN") {
     maximumFractionDigits: 2,
   }).format(amountCents / 100);
 }
+
+// ---------------------------------------------------------------------------
+// Subscription and plan
+//
+// A professional's own plan. Separate from the billing endpoints above, which
+// describe money earned rather than money spent.
+// ---------------------------------------------------------------------------
+
+export type ProfessionalPlanOption = {
+  id: string;
+  planCode: string | null;
+  name: string;
+  description: string | null;
+  currency: string;
+  monthlyPrice: number;
+  monthlyPriceMinor: number | null;
+  commissionPercentage: number | null;
+  features: string[];
+  taxInclusive: boolean;
+  isCurrent: boolean;
+};
+
+export type ProfessionalSubscriptionOverview = {
+  planCode: string;
+  planName: string;
+  status: string | null;
+  isPro: boolean;
+  commissionPercentage: number;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  graceUntil: string | null;
+  provider: string | null;
+  currency: string;
+  plans: ProfessionalPlanOption[];
+};
+
+export function getProfessionalSubscription(country?: string) {
+  const query = country ? `?country=${encodeURIComponent(country)}` : "";
+  return apiRequest<ProfessionalSubscriptionOverview>(
+    `/professional/subscription${query}`,
+    { method: "GET" },
+  );
+}
+
+/**
+ * Starts a Pro upgrade and returns a Stripe Checkout URL.
+ *
+ * The caller is an existing, signed-in professional, so this never routes
+ * through registration.
+ */
+export function startProfessionalProCheckout(input?: {
+  planId?: string;
+  idempotencyKey?: string;
+}) {
+  return apiRequest<{
+    alreadyPaid: boolean;
+    checkoutUrl: string | null;
+    transactionId: string;
+    planCode?: string;
+    amountMinor?: number;
+    currency?: string;
+  }>("/professional/subscription/checkout", {
+    method: "POST",
+    body: JSON.stringify(input ?? {}),
+  });
+}

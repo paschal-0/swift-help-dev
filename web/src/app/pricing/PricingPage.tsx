@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { containerClass } from "../landing/classes";
+import { getProfile, platformPathForRole, type BackendRole } from "@/services/authApi";
 
 type Audience = "patients" | "professionals" | "organizations";
 
@@ -201,6 +202,40 @@ function Mark() {
   );
 }
 
+/**
+ * Where a plan's button should lead for whoever is reading the page.
+ *
+ * A signed-in professional upgrading to Pro belongs in their own subscription
+ * settings; sending them to create an account would make them register twice
+ * and leave the account they already have on the Starter rate.
+ */
+function resolvePlanCta(
+  plan: PricingPlan,
+  role: BackendRole | null,
+): PricingPlan {
+  if (!role) return plan;
+  const isProfessionalUpgrade =
+    role === "professional" &&
+    plan.href.includes("role=professional") &&
+    plan.href.includes("plan=pro");
+  if (isProfessionalUpgrade) {
+    return {
+      ...plan,
+      cta: "Upgrade to Pro",
+      href: "/professional-platform/settings?tab=subscription",
+    };
+  }
+  // Anyone signed in who is already on the free tier of their own audience
+  // goes to their platform rather than to registration.
+  const isOwnFreePlan =
+    plan.href.includes(`role=${role === "organization" ? "organisation" : role}`) &&
+    !plan.href.includes("plan=");
+  if (isOwnFreePlan) {
+    return { ...plan, cta: "Go to your dashboard", href: platformPathForRole(role) };
+  }
+  return plan;
+}
+
 function PlanCard({ plan }: { plan: PricingPlan }) {
   return (
     <article
@@ -259,7 +294,33 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
 
 export function PricingPage() {
   const [audience, setAudience] = useState<Audience>("patients");
-  const plans = useMemo(() => pricingPlans[audience], [audience]);
+  const [signedInRole, setSignedInRole] = useState<BackendRole | null>(null);
+
+  // Someone already signed in should be sent to the plan they can act on,
+  // not back through registration.
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        const role =
+          profile && typeof profile === "object" && "role" in profile
+            ? (profile as { role?: unknown }).role
+            : null;
+        setSignedInRole(typeof role === "string" ? (role as BackendRole) : null);
+      })
+      .catch(() => {
+        // Signed out. The public call-to-action is correct as written.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const plans = useMemo(
+    () => pricingPlans[audience].map((plan) => resolvePlanCta(plan, signedInRole)),
+    [audience, signedInRole],
+  );
 
   return (
     <main className="bg-white text-slate-900">

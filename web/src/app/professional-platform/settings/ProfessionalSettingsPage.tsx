@@ -22,8 +22,9 @@ import {
   type ProfessionalStripeConnectStatus,
 } from "@/services/professionalApi";
 import { exportTablePdf } from "@/utils/pdfExport";
+import ProfessionalSubscriptionPanel from "./ProfessionalSubscriptionPanel";
 
-type SettingsTab = "general" | "notifications" | "security" | "billing";
+type SettingsTab = "general" | "notifications" | "security" | "billing" | "subscription";
 type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
 type GeneralForm = {
@@ -52,6 +53,7 @@ const tabs: Array<{ id: SettingsTab; label: string }> = [
   { id: "notifications", label: "Notifications" },
   { id: "security", label: "Security" },
   { id: "billing", label: "Billing and plan" },
+  { id: "subscription", label: "Subscription" },
 ];
 
 const dayOptions: Array<{ key: DayKey; label: string }> = [
@@ -361,6 +363,22 @@ function buildWeeklySchedule(form: AvailabilityForm, current: WeeklyAvailability
 export function ProfessionalSettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  // Stripe returns the professional to ?tab=subscription after checkout, so
+  // they land back on the plan they just bought rather than on General.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (
+      requested === "general" ||
+      requested === "notifications" ||
+      requested === "security" ||
+      requested === "billing" ||
+      requested === "subscription"
+    ) {
+      setActiveTab(requested);
+    }
+  }, []);
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingAvailability, setSavingAvailability] = useState(false);
@@ -826,6 +844,10 @@ export function ProfessionalSettingsPage() {
               </div>
             </SettingsCard>
           </div>
+        ) : null}
+
+        {!loading && activeTab === "subscription" ? (
+          <ProfessionalSubscriptionPanel />
         ) : null}
 
         {!loading && activeTab === "billing" ? (
