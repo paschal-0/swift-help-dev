@@ -278,21 +278,25 @@ export default function ProfessionalSubscriptionPanel() {
             Manage your subscription
           </h4>
           <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
-            Payment methods and invoice receipts are handled securely by
-            Stripe.
+            {overview.provider === "paystack"
+              ? "Your renewals are charged to the card you paid with. To use a different card, cancel and subscribe again with it."
+              : "Payment methods and invoice receipts are handled securely by Stripe."}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={openPortal}
-              disabled={busy !== null}
-              className="rounded-[10px] border border-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy === "portal"
-                ? "Opening..."
-                : "Update payment method and invoices"}
-            </button>
+            {/* Paystack has no hosted portal, so the button is not offered. */}
+            {overview.provider === "paystack" ? null : (
+              <button
+                type="button"
+                onClick={openPortal}
+                disabled={busy !== null}
+                className="rounded-[10px] border border-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy === "portal"
+                  ? "Opening..."
+                  : "Update payment method and invoices"}
+              </button>
+            )}
 
             {overview.cancelAtPeriodEnd ? (
               <button
