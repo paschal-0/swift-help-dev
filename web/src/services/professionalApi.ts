@@ -573,6 +573,22 @@ export type ProfessionalVerificationStatus = {
   uploadedDocuments: ProfessionalDocument[];
 };
 
+export type ProfessionalAdvancedPerformance = {
+  earningsByMonth: Array<{
+    month: string;
+    amountCents: number;
+    consultations: number;
+  }>;
+  uniquePatients: number;
+  returningPatients: number;
+  repeatPatientRate: number;
+  cancellationRate: number;
+  averageConsultationMinutes: number;
+  busiestDay: string | null;
+  busiestHour: number | null;
+  ratingTrend: Array<{ createdAt: string; rating: number }>;
+};
+
 export type ProfessionalPerformance = {
   completedSessions: number;
   completedShifts: number;
@@ -580,6 +596,10 @@ export type ProfessionalPerformance = {
   responseRate: number;
   averageRating: number;
   reviewCount: number;
+  /** Whether the professional currently holds Pro benefits. */
+  isPro?: boolean;
+  /** Null for a professional on the Starter plan. */
+  advanced?: ProfessionalAdvancedPerformance | null;
 };
 
 export type ProfessionalReview = {

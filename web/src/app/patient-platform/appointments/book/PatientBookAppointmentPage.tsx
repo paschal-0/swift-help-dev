@@ -39,6 +39,7 @@ type ProfessionalCard = {
   inPersonVisitRateCents: number | null;
   videoRateLabel: string;
   inPersonRateLabel: string;
+  promoted: boolean;
 };
 
 type PriceFilterId = "all" | "under-100" | "100-200" | "over-200";
@@ -215,6 +216,7 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     inPersonVisitRateCents: provider.inPersonVisitRateCents ?? null,
     videoRateLabel,
     inPersonRateLabel,
+    promoted: provider.promoted ?? false,
   };
 }
 
@@ -830,6 +832,14 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.role}
                         </p>
+                        {prof.promoted ? (
+                          <span
+                            className="mt-1 inline-flex items-center rounded-full bg-[#EEF2F7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
+                            title="This professional subscribes to Swift HELP Pro, which lists them higher"
+                          >
+                            Promoted
+                          </span>
+                        ) : null}
                         {prof.countryName ? (
                           <p
                             className="mt-0.5 truncate text-[11px] text-[#94A3B8]"
@@ -863,6 +873,14 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.role}
                         </p>
+                        {prof.promoted ? (
+                          <span
+                            className="mt-1 inline-flex items-center rounded-full bg-[#EEF2F7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
+                            title="This professional subscribes to Swift HELP Pro, which lists them higher"
+                          >
+                            Promoted
+                          </span>
+                        ) : null}
                         {prof.countryName ? (
                           <p
                             className="truncate text-[10px] font-normal leading-4 text-[#94A3B8]"

@@ -222,6 +222,11 @@ export type PatientProvider = {
   currencyCode?: string;
   videoConsultationRateCents?: number | null;
   inPersonVisitRateCents?: number | null;
+  /**
+   * This listing is shown higher because the professional pays for the Pro
+   * plan. Disclosed rather than applied silently.
+   */
+  promoted?: boolean;
 };
 
 export type PatientProviderAvailability = {

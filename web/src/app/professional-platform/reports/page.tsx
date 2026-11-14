@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   getCommunicationRecordingArchive,
@@ -769,6 +770,8 @@ export default function ProfessionalReportsRoute() {
         ))}
       </div>
 
+      <ProAnalyticsSection performance={performance} />
+
       <div className="mt-5 grid grid-cols-1 gap-3 sm:mt-6 sm:grid-cols-3">
         <ReportDropdown value={range} options={rangeOptions} onChange={setRange} label="Date range" />
         <ReportDropdown value={modeFilter} options={modeOptions} onChange={setModeFilter} label="Mode" />
@@ -994,6 +997,143 @@ export default function ProfessionalReportsRoute() {
           }
         />
       ) : null}
+    </section>
+  );
+}
+
+
+/**
+ * The analytics the Pro plan adds.
+ *
+ * A professional on Starter is told what Pro would show rather than being
+ * shown an empty panel, so the plan's value is legible before they buy it.
+ */
+function ProAnalyticsSection({
+  performance,
+}: {
+  performance: ProfessionalPerformance | null;
+}) {
+  const router = useRouter();
+  if (!performance) return null;
+
+  const advanced = performance.advanced;
+
+  if (!advanced) {
+    return (
+      <section className="mt-5 rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 sm:mt-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-[16px] font-semibold text-[#334155]">
+              Advanced analytics
+            </h3>
+            <p className="mt-1 max-w-[560px] text-[14px] leading-5 text-[#64748B]">
+              The Pro plan adds earnings by month, how many patients come back,
+              your cancellation rate and when your work actually lands - built
+              from your existing history, so it is complete from the day you
+              upgrade.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/professional-platform/settings?tab=subscription")
+            }
+            className="rounded-[10px] bg-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#0F4C94]"
+          >
+            See the Pro plan
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const peakMonth = advanced.earningsByMonth.reduce(
+    (highest, row) => (row.amountCents > highest.amountCents ? row : highest),
+    advanced.earningsByMonth[0] ?? { month: "", amountCents: 0, consultations: 0 },
+  );
+
+  return (
+    <section className="mt-5 rounded-[14px] border border-[#DDE6F0] bg-white p-6 sm:mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-[16px] font-semibold text-[#334155]">
+          Advanced analytics
+        </h3>
+        <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-semibold text-[#1565C0]">
+          Pro
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          {
+            label: "Patients who returned",
+            value: `${advanced.repeatPatientRate}%`,
+            note: `${advanced.returningPatients} of ${advanced.uniquePatients}`,
+          },
+          {
+            label: "Cancellation rate",
+            value: `${advanced.cancellationRate}%`,
+            note: "of all consultations",
+          },
+          {
+            label: "Typical consultation",
+            value: `${advanced.averageConsultationMinutes} min`,
+            note: "billed time",
+          },
+          {
+            label: "Busiest time",
+            value: advanced.busiestDay ?? "-",
+            note:
+              advanced.busiestHour !== null
+                ? `around ${String(advanced.busiestHour).padStart(2, "0")}:00`
+                : "not enough data yet",
+          },
+        ].map((item) => (
+          <article
+            key={item.label}
+            className="min-w-0 rounded-[12px] bg-[#F8FAFC] px-3 py-3 sm:px-5 sm:py-4"
+          >
+            <p className="text-[11px] font-medium text-[#94A3B8] sm:text-[13px]">
+              {item.label}
+            </p>
+            <p className="mt-1 truncate text-[22px] font-semibold text-[#334155] sm:text-[28px]">
+              {item.value}
+            </p>
+            <p className="mt-1 truncate text-[11px] text-[#64748B] sm:text-[13px]">
+              {item.note}
+            </p>
+          </article>
+        ))}
+      </div>
+
+      <div className="mt-5">
+        <p className="text-[13px] font-semibold text-[#334155]">
+          Earnings over the last six months
+        </p>
+        <div className="mt-3 flex items-end gap-2 sm:gap-4">
+          {advanced.earningsByMonth.map((row) => {
+            const height =
+              peakMonth.amountCents > 0
+                ? Math.max(
+                    4,
+                    Math.round((row.amountCents / peakMonth.amountCents) * 100),
+                  )
+                : 4;
+            return (
+              <div key={row.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                <div
+                  className="w-full rounded-t-[6px] bg-[#1565C0]"
+                  style={{ height: `${height}px` }}
+                  title={`${row.consultations} consultations`}
+                />
+                <span className="truncate text-[10px] text-[#94A3B8] sm:text-[12px]">
+                  {row.month.slice(5)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </section>
   );
 }
