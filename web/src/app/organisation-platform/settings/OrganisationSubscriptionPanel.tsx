@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   cancelOrganizationSubscription,
+  initializeOrganizationSubscription,
   changeOrganizationPlan,
   getOrganizationSubscription,
   getOrganizationSubscriptionInvoices,
@@ -111,6 +112,26 @@ export default function OrganisationSubscriptionPanel() {
         error instanceof Error ? error.message : "Unable to change your plan",
       );
     } finally {
+      setBusy(null);
+    }
+  };
+
+  const subscribe = async (plan: PlanChoice) => {
+    setBusy(`subscribe-${plan}`);
+    try {
+      const result = await initializeOrganizationSubscription(
+        plan,
+        overview?.plans.find((option) => option.currency === "NGN")
+          ? "NG"
+          : "GB",
+      );
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to start your subscription",
+      );
       setBusy(null);
     }
   };
@@ -303,6 +324,19 @@ export default function OrganisationSubscriptionPanel() {
                   {busy === `quote-${choice}`
                     ? "Checking cost..."
                     : `Switch to ${plan.name}`}
+                </button>
+              ) : null}
+
+              {!overview.hasSubscription ? (
+                <button
+                  type="button"
+                  onClick={() => subscribe(choice)}
+                  disabled={busy !== null}
+                  className="mt-5 w-full rounded-[10px] bg-[#1565C0] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy === `subscribe-${choice}`
+                    ? "Starting..."
+                    : `Subscribe to ${plan.name}`}
                 </button>
               ) : null}
             </div>

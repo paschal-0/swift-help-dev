@@ -629,12 +629,29 @@ export async function getOrganizationBillingCredit() {
   });
 }
 
-export async function initializeOrganizationStripeSubscription(plan: "starter" | "growth") {
-  return apiRequest<{ authorizationUrl: string; reference: string; plan: string }>(
-    "/organization/billing/subscription/initialize",
-    { method: "POST", body: JSON.stringify({ plan }) },
-  );
+/**
+ * Starts a subscription with whichever provider bills the organisation's
+ * country: Stripe for the UK, Paystack for Nigeria.
+ */
+export async function initializeOrganizationSubscription(
+  plan: "starter" | "growth",
+  country = "GB",
+) {
+  return apiRequest<{
+    authorizationUrl: string;
+    reference: string;
+    plan: string;
+    provider?: string;
+  }>("/organization/billing/subscription/initialize", {
+    method: "POST",
+    body: JSON.stringify({ plan, country }),
+  });
 }
+
+/** @deprecated Use initializeOrganizationSubscription, which routes by country. */
+export const initializeOrganizationStripeSubscription = (
+  plan: "starter" | "growth",
+) => initializeOrganizationSubscription(plan, "GB");
 
 export async function inviteProfessionalsToOrganizationShift(
   shiftId: string,
