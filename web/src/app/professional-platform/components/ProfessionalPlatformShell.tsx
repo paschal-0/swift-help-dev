@@ -40,6 +40,7 @@ const mainNav: NavItem[] = [
   { label: "Requests", href: "/professional-platform/requests", icon: "requests" },
   { label: "Earnings", href: "/professional-platform/earnings", icon: "earnings" },
   { label: "Records", href: "/professional-platform/reports", icon: "reports" },
+  { label: "Assistant", href: "/professional-platform/assistant", icon: "help" },
   { label: "Referrals", href: "/professional-platform/referrals", icon: "referrals" },
 ];
 

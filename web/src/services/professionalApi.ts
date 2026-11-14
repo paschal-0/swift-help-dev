@@ -1547,3 +1547,130 @@ export function getProfessionalSubscriptionInvoices() {
     unavailable?: boolean;
   }>("/professional/subscription/invoices", { method: "GET" });
 }
+
+// ---------------------------------------------------------------------------
+// Practice assistant and support
+// ---------------------------------------------------------------------------
+
+export type ProfessionalAssistantMessage = {
+  id: string;
+  sessionId: string;
+  sender: "professional" | "assistant";
+  body: string;
+  source?: string;
+  metadata?: { suggestions?: string[] } | null;
+  createdAt: string;
+};
+
+export type ProfessionalAssistantSession = {
+  id: string;
+  title: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function getProfessionalAssistantAvailability() {
+  return apiRequest<{ available: boolean }>(
+    "/professional/ai-assistant/availability",
+    { method: "GET" },
+  );
+}
+
+export function listProfessionalAssistantSessions() {
+  return apiRequest<ProfessionalAssistantSession[]>(
+    "/professional/ai-assistant/sessions",
+    { method: "GET" },
+  );
+}
+
+export function startProfessionalAssistantSession(message?: string) {
+  return apiRequest<{
+    session: ProfessionalAssistantSession;
+    messages: ProfessionalAssistantMessage[];
+    suggestions?: string[];
+  }>("/professional/ai-assistant/sessions", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
+export function sendProfessionalAssistantMessage(
+  sessionId: string,
+  message: string,
+  context?: Record<string, number | string>,
+) {
+  return apiRequest<{
+    session: ProfessionalAssistantSession;
+    reply: ProfessionalAssistantMessage;
+    suggestions: string[];
+    messages: ProfessionalAssistantMessage[];
+  }>(`/professional/ai-assistant/sessions/${encodeURIComponent(sessionId)}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ message, context }),
+  });
+}
+
+export type SupportRequestSummary = {
+  id: string;
+  subject: string;
+  body: string;
+  category: string;
+  status: string;
+  priority: "priority" | "standard";
+  respondByAt: string | null;
+  firstRespondedAt: string | null;
+  createdAt: string;
+};
+
+export type SupportRequestMessageItem = {
+  id: string;
+  sender: "requester" | "support";
+  body: string;
+  createdAt: string;
+};
+
+export function getProfessionalSupportEntitlement() {
+  return apiRequest<{
+    priority: boolean;
+    responseHours: number;
+    policy: { priorityResponseHours: number; standardResponseHours: number };
+  }>("/professional/support/entitlement", { method: "GET" });
+}
+
+export function listProfessionalSupportRequests() {
+  return apiRequest<SupportRequestSummary[]>("/professional/support/requests", {
+    method: "GET",
+  });
+}
+
+export function createProfessionalSupportRequest(input: {
+  subject: string;
+  body: string;
+  category?: string;
+}) {
+  return apiRequest<{
+    request: SupportRequestSummary;
+    responseHours: number;
+    priority: boolean;
+  }>("/professional/support/requests", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function getProfessionalSupportRequest(id: string) {
+  return apiRequest<{
+    request: SupportRequestSummary;
+    messages: SupportRequestMessageItem[];
+  }>(`/professional/support/requests/${encodeURIComponent(id)}`, {
+    method: "GET",
+  });
+}
+
+export function replyToProfessionalSupportRequest(id: string, message: string) {
+  return apiRequest<SupportRequestMessageItem>(
+    `/professional/support/requests/${encodeURIComponent(id)}/messages`,
+    { method: "POST", body: JSON.stringify({ message }) },
+  );
+}

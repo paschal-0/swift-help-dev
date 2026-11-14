@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import SupportRequestsPanel from "./SupportRequestsPanel";
 
 type HelpCategoryId = "appointments" | "schedules" | "earnings" | "requests";
 
@@ -413,6 +414,8 @@ export function ProfessionalHelpPage() {
             )}
           </div>
         </motion.section>
+
+        <SupportRequestsPanel />
       </div>
     </div>
   );
