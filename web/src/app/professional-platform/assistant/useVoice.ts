@@ -9,11 +9,16 @@ import {
 } from "react";
 
 /**
- * Speech in and out, using what the browser already provides.
+ * Speech in and out, using what the browser provides.
  *
- * Nothing is uploaded: the microphone audio is transcribed by the browser and
- * only the resulting text is ever sent. That keeps a clinician's dictation off
- * our servers, which matters more here than squeezing out better accuracy.
+ * This does NOT keep audio on the device. Chrome and Edge send microphone
+ * audio to Google's speech service to transcribe it, and Safari sends it to
+ * Apple's; only the returned text reaches Swift HELP. A clinician dictating
+ * here is therefore sending that audio to a third party, which is why the
+ * page says so plainly and warns against patient-identifiable detail.
+ *
+ * On-device transcription would need a model shipped to the browser or audio
+ * uploaded to a provider we control. Both are real options; neither is this.
  *
  * Support is uneven - good in Chrome and Edge, partial in Safari, absent in
  * Firefox - so every caller must handle `supported` being false rather than
