@@ -23,7 +23,10 @@ type Draft = {
 };
 
 function minorToDisplay(minor: number | null, currency: string) {
-  const amount = (minor ?? 0) / 100;
+  // A plan with no price set is not a free plan. Showing it as 0.00 invites
+  // somebody to assume it is configured when nobody has set it.
+  if (minor === null || minor === undefined) return "Not configured";
+  const amount = minor / 100;
   try {
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
@@ -315,8 +318,11 @@ export default function AdminSubscriptionsPage() {
                     </span>
                   </h3>
                   <p className="mt-0.5 text-[13px] text-[#64748B]">
-                    {minorToDisplay(plan.monthlyPriceMinor, plan.currency)} /
-                    month via {plan.provider}
+                    {minorToDisplay(plan.monthlyPriceMinor, plan.currency)}
+                    {plan.monthlyPriceMinor !== null &&
+                    plan.monthlyPriceMinor !== undefined
+                      ? ` / month via ${plan.provider}`
+                      : ""}
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-[13px] font-medium text-[#64748B]">
@@ -406,6 +412,14 @@ export default function AdminSubscriptionsPage() {
                   </button>
                 </div>
               </div>
+
+              {plan.planCode === null ? (
+                <p className="mt-3 text-[12px] text-[#B45309]">
+                  This plan predates the current catalogue and has no plan
+                  code. Use &quot;Create missing plans&quot; to bring it onto
+                  the catalogue rather than editing it here.
+                </p>
+              ) : null}
 
               {needsStripe && !draft.stripePriceId.trim() ? (
                 <p className="mt-3 text-[12px] text-[#B45309]">
