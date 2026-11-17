@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   getAdminCommissionRates,
+  getAdminTaxPolicy,
   normalizeAdminLegacyPricing,
+  updateAdminTaxPolicy,
   listAdminSubscriptionPlans,
   runAdminSubscriptionReconcile,
   runAdminSubscriptionSweep,
@@ -13,6 +15,7 @@ import {
   updateAdminSubscriptionPlan,
   type AdminCommissionRates,
   type AdminSubscriptionPlan,
+  type AdminTaxPolicy,
   type LegacyPricingReport,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
@@ -56,15 +59,33 @@ export default function AdminSubscriptionsPage() {
   const [pricingReport, setPricingReport] = useState<LegacyPricingReport | null>(
     null,
   );
+  const [tax, setTax] = useState<AdminTaxPolicy | null>(null);
+  const [taxDrafts, setTaxDrafts] = useState<
+    Record<string, { rate: string; label: string; registered: boolean }>
+  >({});
 
   const load = useCallback(async () => {
     try {
-      const [planList, rateValues] = await Promise.all([
+      const [planList, rateValues, taxPolicy] = await Promise.all([
         listAdminSubscriptionPlans(),
         getAdminCommissionRates(),
+        getAdminTaxPolicy(),
       ]);
       setPlans(planList ?? []);
       setRates(rateValues);
+      setTax(taxPolicy);
+      setTaxDrafts(
+        Object.fromEntries(
+          Object.entries(taxPolicy.countries ?? {}).map(([code, rule]) => [
+            code,
+            {
+              rate: String(rule.ratePercentage),
+              label: rule.label,
+              registered: rule.registered,
+            },
+          ]),
+        ),
+      );
       setRateDraft({
         starter: String(rateValues.starterFeePercentage),
         pro: String(rateValues.proFeePercentage),
@@ -172,6 +193,40 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
+  const saveTax = async (country: string) => {
+    const draft = taxDrafts[country];
+    if (!draft) return;
+
+    const rate = Number(draft.rate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      toast.error("A tax rate must be between 0 and 100 percent.");
+      return;
+    }
+
+    setBusy(`tax-${country}`);
+    try {
+      const updated = await updateAdminTaxPolicy({
+        countries: {
+          [country]: {
+            ratePercentage: rate,
+            label: draft.label.trim() || "VAT",
+            registered: draft.registered,
+          },
+        },
+      });
+      setTax(updated);
+      toast.success(
+        draft.registered || rate === 0
+          ? "Saved."
+          : "Saved. No tax will be charged until this country is marked as registered.",
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const runTask = async (
     key: string,
     task: () => Promise<unknown>,
@@ -264,6 +319,103 @@ export default function AdminSubscriptionsPage() {
       </section>
 
       <section className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
+        <h2 className="text-[16px] font-semibold text-[#334155]">
+          Tax treatment
+        </h2>
+        <p className="mt-1 max-w-[720px] text-[13px] leading-5 text-[#64748B]">
+          Prices are advertised inclusive of tax, so the tax is taken out of
+          the advertised figure rather than added to it - the amount charged
+          does not change. Nothing is charged until a rate is set and the
+          country is marked as registered.
+        </p>
+
+        {tax && !tax.readyForLiveSales ? (
+          <div className="mt-4 rounded-[12px] border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-[13px] leading-5 text-[#92400E]">
+            {tax.readiness
+              .filter((entry) => !entry.settled)
+              .map((entry) => (
+                <p key={entry.country}>
+                  <span className="font-semibold">{entry.country}</span>:{" "}
+                  {entry.reason}
+                </p>
+              ))}
+          </div>
+        ) : null}
+
+        <div className="mt-4 space-y-3">
+          {Object.entries(taxDrafts).map(([country, draft]) => (
+            <div
+              key={country}
+              className="flex flex-wrap items-end gap-3 rounded-[12px] border border-[#EEF2F7] p-4"
+            >
+              <span className="text-[15px] font-semibold text-[#334155]">
+                {country}
+              </span>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Rate %
+                <input
+                  value={draft.rate}
+                  onChange={(event) =>
+                    setTaxDrafts((prev) => ({
+                      ...prev,
+                      [country]: { ...prev[country], rate: event.target.value },
+                    }))
+                  }
+                  inputMode="decimal"
+                  className="mt-1 block w-24 rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Called
+                <input
+                  value={draft.label}
+                  onChange={(event) =>
+                    setTaxDrafts((prev) => ({
+                      ...prev,
+                      [country]: {
+                        ...prev[country],
+                        label: event.target.value,
+                      },
+                    }))
+                  }
+                  className="mt-1 block w-28 rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 pb-2 text-[13px] font-medium text-[#64748B]">
+                <input
+                  type="checkbox"
+                  checked={draft.registered}
+                  onChange={(event) =>
+                    setTaxDrafts((prev) => ({
+                      ...prev,
+                      [country]: {
+                        ...prev[country],
+                        registered: event.target.checked,
+                      },
+                    }))
+                  }
+                  className="h-4 w-4 accent-[#1565C0]"
+                />
+                Registered to charge it
+              </label>
+
+              <button
+                type="button"
+                onClick={() => saveTax(country)}
+                disabled={busy !== null}
+                className="rounded-[10px] bg-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy === `tax-${country}` ? "Saving..." : "Save"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[16px] font-semibold text-[#334155]">
             Maintenance
@@ -342,13 +494,44 @@ export default function AdminSubscriptionsPage() {
             <h2 className="text-[16px] font-semibold text-[#334155]">
               Legacy pricing - dry run
             </h2>
-            <button
-              type="button"
-              onClick={() => setPricingReport(null)}
-              className="text-[13px] font-semibold text-[#64748B] hover:text-[#334155]"
-            >
-              Dismiss
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {pricingReport.plans.length > 0 &&
+              pricingReport.plans.every((row) => row.charges.unchanged) ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setBusy("pricing-apply");
+                    try {
+                      const applied = await normalizeAdminLegacyPricing(true);
+                      setPricingReport(applied);
+                      toast.success(
+                        `Recorded ${applied.affected} plan prices. No charge changed.`,
+                      );
+                      await load();
+                    } catch (error) {
+                      toast.error(getApiErrorMessage(error));
+                    } finally {
+                      setBusy(null);
+                    }
+                  }}
+                  disabled={busy !== null || pricingReport.applied}
+                  className="rounded-[10px] bg-[#1565C0] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {pricingReport.applied
+                    ? "Recorded"
+                    : busy === "pricing-apply"
+                      ? "Recording..."
+                      : "Record these prices"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setPricingReport(null)}
+                className="text-[13px] font-semibold text-[#64748B] hover:text-[#334155]"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
           <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
             Nothing has been written. This shows what each plan charges now and

@@ -2421,3 +2421,32 @@ export function normalizeAdminLegacyPricing(apply = false) {
     { method: "POST", body: JSON.stringify({ apply }) },
   );
 }
+
+export type AdminTaxRule = {
+  ratePercentage: number;
+  label: string;
+  registered: boolean;
+};
+
+export type AdminTaxPolicy = {
+  pricesIncludeTax: boolean;
+  countries: Record<string, AdminTaxRule>;
+  readiness: Array<{ country: string; settled: boolean; reason: string | null }>;
+  readyForLiveSales: boolean;
+};
+
+export function getAdminTaxPolicy() {
+  return apiRequest<AdminTaxPolicy>("/admin/subscriptions/tax", {
+    method: "GET",
+  });
+}
+
+export function updateAdminTaxPolicy(body: {
+  pricesIncludeTax?: boolean;
+  countries?: Record<string, Partial<AdminTaxRule>>;
+}) {
+  return apiRequest<AdminTaxPolicy>("/admin/subscriptions/tax", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
