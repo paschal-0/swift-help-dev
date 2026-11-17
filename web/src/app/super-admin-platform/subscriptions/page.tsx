@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   getAdminCommissionRates,
+  normalizeAdminLegacyPricing,
   listAdminSubscriptionPlans,
   runAdminSubscriptionReconcile,
   runAdminSubscriptionSweep,
@@ -12,6 +13,7 @@ import {
   updateAdminSubscriptionPlan,
   type AdminCommissionRates,
   type AdminSubscriptionPlan,
+  type LegacyPricingReport,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 
@@ -45,6 +47,15 @@ export default function AdminSubscriptionsPage() {
   const [rateDraft, setRateDraft] = useState({ starter: "", pro: "" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  /** A price change that has been described but not yet agreed to. */
+  const [pendingPriceChange, setPendingPriceChange] = useState<{
+    planId: string;
+    from: string;
+    to: string;
+  } | null>(null);
+  const [pricingReport, setPricingReport] = useState<LegacyPricingReport | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     try {
@@ -94,6 +105,20 @@ export default function AdminSubscriptionsPage() {
       return;
     }
 
+    // Moving a price moves what subscribers pay. The change is described and
+    // agreed to before it is sent, rather than the server refusing it and the
+    // administrator wondering why saving did nothing.
+    const movesPrice =
+      plan.monthlyPriceMinor !== null && plan.monthlyPriceMinor !== minor;
+    if (movesPrice && pendingPriceChange?.planId !== plan.id) {
+      setPendingPriceChange({
+        planId: plan.id,
+        from: minorToDisplay(plan.monthlyPriceMinor, plan.currency),
+        to: minorToDisplay(minor, plan.currency),
+      });
+      return;
+    }
+
     setBusy(plan.id);
     try {
       await updateAdminSubscriptionPlan(plan.id, {
@@ -101,7 +126,9 @@ export default function AdminSubscriptionsPage() {
         stripePriceId: draft.stripePriceId.trim() || null,
         paystackPlanCode: draft.paystackPlanCode.trim() || null,
         isActive: draft.isActive,
+        confirmPriceChange: movesPrice ? true : undefined,
       });
+      setPendingPriceChange(null);
       toast.success(
         "Saved. This applies to future charges only - anything already settled keeps the rate recorded against it.",
       );
@@ -264,6 +291,26 @@ export default function AdminSubscriptionsPage() {
           </button>
           <button
             type="button"
+            onClick={async () => {
+              setBusy("pricing-report");
+              try {
+                setPricingReport(await normalizeAdminLegacyPricing(false));
+              } catch (error) {
+                toast.error(getApiErrorMessage(error));
+              } finally {
+                setBusy(null);
+              }
+            }}
+            disabled={busy !== null}
+            className="rounded-[10px] border border-[#DDE6F0] px-4 py-2.5 text-[14px] font-semibold text-[#64748B] transition hover:border-[#1565C0] hover:text-[#1565C0] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy === "pricing-report"
+              ? "Checking..."
+              : "Check legacy pricing (dry run)"}
+          </button>
+
+          <button
+            type="button"
             onClick={() =>
               runTask("sweep", runAdminSubscriptionSweep, "Sweep finished.")
             }
@@ -288,6 +335,78 @@ export default function AdminSubscriptionsPage() {
           </button>
         </div>
       </section>
+
+      {pricingReport ? (
+        <section className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[16px] font-semibold text-[#334155]">
+              Legacy pricing - dry run
+            </h2>
+            <button
+              type="button"
+              onClick={() => setPricingReport(null)}
+              className="text-[13px] font-semibold text-[#64748B] hover:text-[#334155]"
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            Nothing has been written. This shows what each plan charges now and
+            what would be recorded. A plan whose charge would move is refused
+            rather than written.
+          </p>
+
+          {pricingReport.plans.length === 0 ? (
+            <p className="mt-4 text-[14px] text-[#94A3B8]">
+              Nothing to normalise.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto rounded-[12px] border border-[#DDE6F0]">
+              <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-[#DDE6F0] text-[12px] font-semibold uppercase text-[#64748B]">
+                    <th className="px-4 py-3">Plan</th>
+                    <th className="px-4 py-3">For</th>
+                    <th className="px-4 py-3">Claims</th>
+                    <th className="px-4 py-3">Charges now</th>
+                    <th className="px-4 py-3">Would record</th>
+                    <th className="px-4 py-3">Charge</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pricingReport.plans.map((row) => (
+                    <tr
+                      key={row.planId}
+                      className="border-b border-[#EEF2F7] text-[14px] text-[#334155] last:border-b-0"
+                    >
+                      <td className="px-4 py-3">{row.name}</td>
+                      <td className="px-4 py-3 capitalize">
+                        {row.targetUserType}
+                      </td>
+                      <td className="px-4 py-3 text-[#94A3B8]">
+                        {row.claimedCurrency ?? "-"}
+                      </td>
+                      <td className="px-4 py-3">{row.charges.before}</td>
+                      <td className="px-4 py-3">{row.charges.after}</td>
+                      <td className="px-4 py-3">
+                        {row.charges.unchanged ? (
+                          <span className="font-semibold text-[#0D8C24]">
+                            Unchanged
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-[#B45309]">
+                            Would move
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-[16px] font-semibold text-[#334155]">Plans</h2>
@@ -412,6 +531,44 @@ export default function AdminSubscriptionsPage() {
                   </button>
                 </div>
               </div>
+
+              {pendingPriceChange?.planId === plan.id ? (
+                <div className="mt-4 rounded-[12px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                  <p className="text-[14px] font-semibold text-[#92400E]">
+                    This changes what subscribers are charged
+                  </p>
+                  <p className="mt-1 text-[13px] leading-5 text-[#92400E]">
+                    From{" "}
+                    <span className="font-semibold">
+                      {pendingPriceChange.from}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold">
+                      {pendingPriceChange.to}
+                    </span>
+                    . Anyone already subscribed pays the new amount at their
+                    next renewal.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => savePlan(plan)}
+                      disabled={busy !== null}
+                      className="rounded-[10px] bg-[#B45309] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#92400E] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {busy === plan.id ? "Saving..." : "Yes, change the price"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingPriceChange(null)}
+                      disabled={busy !== null}
+                      className="rounded-[10px] border border-[#DDE6F0] bg-white px-4 py-2 text-[13px] font-semibold text-[#64748B] transition disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {plan.planCode === null ? (
                 <p className="mt-3 text-[12px] text-[#B45309]">

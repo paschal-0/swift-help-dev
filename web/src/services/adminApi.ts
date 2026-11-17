@@ -2316,6 +2316,8 @@ export function updateAdminSubscriptionPlan(
     features: string[];
     taxInclusive: boolean;
     isActive: boolean;
+    /** Required when the change moves what subscribers are charged. */
+    confirmPriceChange: boolean;
   }>,
 ) {
   return apiRequest<AdminSubscriptionPlan>(
@@ -2391,5 +2393,31 @@ export function closeAdminSupportRequest(id: string) {
   return apiRequest<{ id: string }>(
     `/admin/support/requests/${encodeURIComponent(id)}/close`,
     { method: "POST" },
+  );
+}
+
+export type LegacyPricingReport = {
+  applied: boolean;
+  affected: number;
+  note?: string;
+  plans: Array<{
+    planId: string;
+    name: string;
+    targetUserType: string;
+    claimedCurrency: string | null;
+    charges: { before: string; after: string; unchanged: boolean };
+    willRecord: {
+      currency: string;
+      monthlyPriceMinor: number;
+      monthlyPrice: number;
+    };
+  }>;
+};
+
+/** Dry run unless apply is true. Never writes a change that moves money. */
+export function normalizeAdminLegacyPricing(apply = false) {
+  return apiRequest<LegacyPricingReport>(
+    "/admin/subscriptions/plans/normalize-pricing",
+    { method: "POST", body: JSON.stringify({ apply }) },
   );
 }
