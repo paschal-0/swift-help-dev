@@ -4,9 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   closeAdminSupportRequest,
+  getAdminSupportPolicy,
   listAdminSupportRequests,
   respondToAdminSupportRequest,
+  updateAdminSupportPolicy,
   type AdminSupportRequest,
+  type SupportPolicy,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 
@@ -37,10 +40,23 @@ export default function AdminSupportPage() {
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [policy, setPolicy] = useState<SupportPolicy | null>(null);
+  const [policyDraft, setPolicyDraft] = useState({ priority: "", standard: "" });
 
   const load = useCallback(async () => {
     try {
-      setRequests((await listAdminSupportRequests(filter)) ?? []);
+      const [list, current] = await Promise.all([
+        listAdminSupportRequests(filter),
+        getAdminSupportPolicy().catch(() => null),
+      ]);
+      setRequests(list ?? []);
+      if (current) {
+        setPolicy(current);
+        setPolicyDraft({
+          priority: String(current.priorityResponseHours),
+          standard: String(current.standardResponseHours),
+        });
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -80,6 +96,31 @@ export default function AdminSupportPage() {
     }
   };
 
+  const savePolicy = async () => {
+    const priority = Number(policyDraft.priority);
+    const standard = Number(policyDraft.standard);
+    if (!Number.isFinite(priority) || !Number.isFinite(standard)) {
+      toast.error("Response times must be numbers of hours.");
+      return;
+    }
+
+    setBusy("policy");
+    try {
+      const updated = await updateAdminSupportPolicy({
+        priorityResponseHours: priority,
+        standardResponseHours: standard,
+      });
+      setPolicy(updated);
+      toast.success(
+        "Saved. Requests already raised keep the time they were promised.",
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const overdueCount = requests.filter((request) => request.overdue).length;
 
   return (
@@ -100,6 +141,59 @@ export default function AdminSupportPage() {
           {overdueCount} request{overdueCount === 1 ? " is" : "s are"} past the
           response time we promised.
         </div>
+      ) : null}
+
+      {policy ? (
+        <section className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
+          <h2 className="text-[16px] font-semibold text-[#334155]">
+            Response times we promise
+          </h2>
+          <p className="mt-1 max-w-[680px] text-[13px] leading-5 text-[#64748B]">
+            Shown to professionals when they raise a request, and used to flag
+            anything overdue. A target that cannot be met on a bad day is worse
+            than a longer one that can, so widen it rather than miss it.
+            Requests already raised keep the time they were promised.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-end gap-4">
+            <label className="text-[12px] font-medium text-[#94A3B8]">
+              Pro, in hours
+              <input
+                value={policyDraft.priority}
+                onChange={(event) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    priority: event.target.value,
+                  }))
+                }
+                inputMode="numeric"
+                className="mt-1 block w-24 rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              />
+            </label>
+            <label className="text-[12px] font-medium text-[#94A3B8]">
+              Everyone else, in hours
+              <input
+                value={policyDraft.standard}
+                onChange={(event) =>
+                  setPolicyDraft((prev) => ({
+                    ...prev,
+                    standard: event.target.value,
+                  }))
+                }
+                inputMode="numeric"
+                className="mt-1 block w-24 rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={savePolicy}
+              disabled={busy !== null}
+              className="rounded-[10px] bg-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy === "policy" ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       <div className="flex flex-wrap gap-2">

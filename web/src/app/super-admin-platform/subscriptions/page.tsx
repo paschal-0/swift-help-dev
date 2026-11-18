@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  createAdminSubscriptionPlan,
   getAdminCommissionRates,
+  getAdminSweepStatus,
   getAdminTaxPolicy,
   normalizeAdminLegacyPricing,
   updateAdminTaxPolicy,
@@ -17,6 +19,7 @@ import {
   type AdminSubscriptionPlan,
   type AdminTaxPolicy,
   type LegacyPricingReport,
+  type SweepStatus,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 
@@ -59,6 +62,16 @@ export default function AdminSubscriptionsPage() {
   const [pricingReport, setPricingReport] = useState<LegacyPricingReport | null>(
     null,
   );
+  const [sweep, setSweep] = useState<SweepStatus | null>(null);
+  const [newPlan, setNewPlan] = useState({
+    open: false,
+    name: "",
+    targetUserType: "patient",
+    country: "GB",
+    currency: "GBP",
+    priceMinor: "",
+    planCode: "",
+  });
   const [tax, setTax] = useState<AdminTaxPolicy | null>(null);
   const [taxDrafts, setTaxDrafts] = useState<
     Record<string, { rate: string; label: string; registered: boolean }>
@@ -66,11 +79,13 @@ export default function AdminSubscriptionsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [planList, rateValues, taxPolicy] = await Promise.all([
+      const [planList, rateValues, taxPolicy, sweepStatus] = await Promise.all([
         listAdminSubscriptionPlans(),
         getAdminCommissionRates(),
         getAdminTaxPolicy(),
+        getAdminSweepStatus().catch(() => null),
       ]);
+      setSweep(sweepStatus);
       setPlans(planList ?? []);
       setRates(rateValues);
       setTax(taxPolicy);
@@ -185,6 +200,39 @@ export default function AdminSubscriptionsPage() {
       toast.success(
         "Saved. Consultations settling from now on use the new rate; settled ones are unchanged.",
       );
+      await load();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const addPlan = async () => {
+    const minor = Number(newPlan.priceMinor);
+    if (!newPlan.name.trim()) {
+      toast.error("Give the plan a name.");
+      return;
+    }
+    if (!Number.isInteger(minor) || minor < 0) {
+      toast.error("A price must be a whole number of minor units.");
+      return;
+    }
+
+    setBusy("new-plan");
+    try {
+      await createAdminSubscriptionPlan({
+        name: newPlan.name.trim(),
+        targetUserType: newPlan.targetUserType,
+        country: newPlan.country.trim().toUpperCase(),
+        currency: newPlan.currency.trim().toUpperCase(),
+        monthlyPriceMinor: minor,
+        planCode: newPlan.planCode.trim() || undefined,
+      });
+      toast.success(
+        "Added. It is on sale immediately, so anyone in that country is offered it.",
+      );
+      setNewPlan((prev) => ({ ...prev, open: false, name: "", priceMinor: "" }));
       await load();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -317,6 +365,54 @@ export default function AdminSubscriptionsPage() {
           ) : null}
         </div>
       </section>
+
+      {sweep ? (
+        <section
+          className={`rounded-[14px] border p-5 ${
+            sweep.overdue
+              ? "border-[#FDE68A] bg-[#FFFBEB]"
+              : "border-[#DDE6F0] bg-white"
+          }`}
+        >
+          <h2 className="text-[16px] font-semibold text-[#334155]">
+            Nightly sweep
+          </h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+            Renews Paystack subscriptions, ends grace periods, closes expired
+            plans and reconciles with both providers. Runs at {sweep.schedule}{" "}
+            ({sweep.timeZone}).
+          </p>
+
+          {sweep.overdue ? (
+            <p className="mt-3 text-[14px] font-semibold text-[#92400E]">
+              No sweep has succeeded in over a day. While that is true,
+              subscriptions are not renewing and grace periods are not ending.
+            </p>
+          ) : (
+            <p className="mt-3 text-[14px] text-[#334155]">
+              Last succeeded{" "}
+              <span className="font-semibold">
+                {sweep.lastSuccessAt
+                  ? new Date(sweep.lastSuccessAt).toLocaleString("en-GB")
+                  : "never"}
+              </span>
+              .
+            </p>
+          )}
+
+          {!sweep.enabled ? (
+            <p className="mt-2 text-[13px] font-semibold text-[#92400E]">
+              The schedule is switched off in this environment.
+            </p>
+          ) : null}
+
+          {sweep.lastRun?.error ? (
+            <p className="mt-2 text-[12px] text-[#92400E]">
+              Last error: {sweep.lastRun.error}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
         <h2 className="text-[16px] font-semibold text-[#334155]">
@@ -592,7 +688,122 @@ export default function AdminSubscriptionsPage() {
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-[16px] font-semibold text-[#334155]">Plans</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[16px] font-semibold text-[#334155]">Plans</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setNewPlan((prev) => ({ ...prev, open: !prev.open }))
+            }
+            disabled={busy !== null}
+            className="rounded-[10px] border border-[#1565C0] px-4 py-2 text-[13px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {newPlan.open ? "Cancel" : "Add a plan"}
+          </button>
+        </div>
+
+        {newPlan.open ? (
+          <div className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
+            <p className="text-[13px] leading-5 text-[#64748B]">
+              For a plan the agreed catalogue does not cover - a patient plan
+              priced for a particular country, for instance, so patients there
+              are quoted a set price rather than a converted one.
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Name
+                <input
+                  value={newPlan.name}
+                  onChange={(event) =>
+                    setNewPlan((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  className="mt-1 block w-full rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                For
+                <select
+                  value={newPlan.targetUserType}
+                  onChange={(event) =>
+                    setNewPlan((prev) => ({
+                      ...prev,
+                      targetUserType: event.target.value,
+                    }))
+                  }
+                  className="mt-1 block w-full rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                >
+                  <option value="patient">Patients</option>
+                  <option value="professional">Professionals</option>
+                  <option value="organization">Organisations</option>
+                </select>
+              </label>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Country
+                <input
+                  value={newPlan.country}
+                  onChange={(event) =>
+                    setNewPlan((prev) => ({
+                      ...prev,
+                      country: event.target.value,
+                      currency:
+                        event.target.value.toUpperCase() === "NG"
+                          ? "NGN"
+                          : prev.currency,
+                    }))
+                  }
+                  maxLength={2}
+                  className="mt-1 block w-full rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] uppercase text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Currency
+                <input
+                  value={newPlan.currency}
+                  onChange={(event) =>
+                    setNewPlan((prev) => ({
+                      ...prev,
+                      currency: event.target.value,
+                    }))
+                  }
+                  maxLength={3}
+                  className="mt-1 block w-full rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] uppercase text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <label className="text-[12px] font-medium text-[#94A3B8]">
+                Price in {newPlan.currency.toUpperCase() === "NGN"
+                  ? "kobo"
+                  : "pence"}
+                <input
+                  value={newPlan.priceMinor}
+                  onChange={(event) =>
+                    setNewPlan((prev) => ({
+                      ...prev,
+                      priceMinor: event.target.value,
+                    }))
+                  }
+                  inputMode="numeric"
+                  className="mt-1 block w-full rounded-[10px] border border-[#DDE6F0] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                />
+              </label>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={addPlan}
+                  disabled={busy !== null}
+                  className="w-full rounded-[10px] bg-[#1565C0] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy === "new-plan" ? "Adding..." : "Add plan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {plans.length === 0 ? (
           <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[14px] text-[#94A3B8]">

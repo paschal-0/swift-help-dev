@@ -2450,3 +2450,56 @@ export function updateAdminTaxPolicy(body: {
     body: JSON.stringify(body),
   });
 }
+
+export type SweepStatus = {
+  enabled: boolean;
+  schedule: string;
+  timeZone: string;
+  lastSuccessAt: string | null;
+  overdue: boolean;
+  lastRun: {
+    status: string;
+    startedAt: string;
+    finishedAt: string | null;
+    attempts: number;
+    error: string | null;
+  } | null;
+};
+
+export function getAdminSweepStatus() {
+  return apiRequest<SweepStatus>("/admin/subscriptions/sweep-status", {
+    method: "GET",
+  });
+}
+
+export function createAdminSubscriptionPlan(body: {
+  planCode?: string;
+  targetUserType: string;
+  name: string;
+  country: string;
+  currency: string;
+  monthlyPriceMinor: number;
+  description?: string;
+  features?: string[];
+}) {
+  return apiRequest<AdminSubscriptionPlan>("/admin/subscriptions/plans", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type SupportPolicy = {
+  priorityResponseHours: number;
+  standardResponseHours: number;
+};
+
+export function getAdminSupportPolicy() {
+  return apiRequest<SupportPolicy>("/admin/support/policy", { method: "GET" });
+}
+
+export function updateAdminSupportPolicy(body: Partial<SupportPolicy>) {
+  return apiRequest<SupportPolicy>("/admin/support/policy", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
