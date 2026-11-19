@@ -1455,6 +1455,8 @@ export type ProfessionalPlanOption = {
 };
 
 export type ProfessionalSubscriptionOverview = {
+  /** The country these prices are for. */
+  country?: string;
   planCode: string;
   planName: string;
   status: string | null;
@@ -1485,8 +1487,10 @@ export function getProfessionalSubscription(country?: string) {
  * through registration.
  */
 export function startProfessionalProCheckout(input?: {
+  /** The plan the professional was actually shown, so checkout charges that one. */
   planId?: string;
   idempotencyKey?: string;
+  country?: string;
 }) {
   return apiRequest<{
     alreadyPaid: boolean;

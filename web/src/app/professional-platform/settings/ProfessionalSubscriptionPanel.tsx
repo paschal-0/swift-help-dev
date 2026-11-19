@@ -117,10 +117,15 @@ export default function ProfessionalSubscriptionPanel() {
     }
   }, [load]);
 
-  const upgrade = async () => {
+  const upgrade = async (planId?: string) => {
     setUpgrading(true);
     try {
+      // The plan shown is the plan bought. Without naming it, the server has
+      // to guess which country's Pro plan was meant - which is how a UK
+      // professional reached a naira checkout.
       const result = await startProfessionalProCheckout({
+        planId,
+        country: overview?.country,
         idempotencyKey: `pro-upgrade-${Date.now()}`,
       });
       if (result.checkoutUrl) {
@@ -495,7 +500,7 @@ export default function ProfessionalSubscriptionPanel() {
             {!plan.isCurrent && plan.monthlyPrice > 0 ? (
               <button
                 type="button"
-                onClick={upgrade}
+                onClick={() => upgrade(plan.id)}
                 disabled={upgrading}
                 className="mt-5 w-full rounded-[10px] bg-[#1565C0] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
               >
