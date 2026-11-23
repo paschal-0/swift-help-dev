@@ -366,8 +366,10 @@ export default function ProfessionalSubscriptionPanel() {
             Subscription payments
           </h4>
           <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
-            What you have paid for your plan. Your consultation earnings are
-            shown separately under Billing and plan.
+            What you have paid for your plan. A paid charge links to its
+            receipt; an invoice is only shown while payment is outstanding.
+            Your consultation earnings are shown separately under Billing and
+            plan.
           </p>
 
           {invoicesUnavailable ? (
@@ -381,10 +383,10 @@ export default function ProfessionalSubscriptionPanel() {
                 <thead>
                   <tr className="border-b border-[#DDE6F0] text-[12px] font-semibold uppercase text-[#64748B]">
                     <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Invoice</th>
+                    <th className="px-4 py-3">Reference</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Receipt</th>
+                    <th className="px-4 py-3">Document</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -402,14 +404,38 @@ export default function ProfessionalSubscriptionPanel() {
                           invoice.amountMinor / 100,
                           invoice.currency,
                         )}
-                      </td>
-                      <td className="px-4 py-3 capitalize">
-                        {invoice.status ?? "-"}
+                        {/* Only ever shown when something is genuinely
+                            outstanding, so a paid row cannot read as a
+                            demand for payment. */}
+                        {!invoice.paid &&
+                        (invoice.amountRemainingMinor ?? 0) > 0 ? (
+                          <span className="ml-2 text-[12px] text-[#B45309]">
+                            {formatPrice(
+                              (invoice.amountRemainingMinor ?? 0) / 100,
+                              invoice.currency,
+                            )}{" "}
+                            due
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
-                        {invoice.invoicePdf ?? invoice.hostedInvoiceUrl ? (
+                        {invoice.paid ? (
+                          <span className="rounded-full bg-[#D9F8DE] px-2 py-0.5 text-[11px] font-semibold text-[#0D8C24]">
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="capitalize">
+                            {invoice.status ?? "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {invoice.documentUrl ??
+                        invoice.invoicePdf ??
+                        invoice.hostedInvoiceUrl ? (
                           <a
                             href={
+                              invoice.documentUrl ??
                               invoice.invoicePdf ??
                               invoice.hostedInvoiceUrl ??
                               "#"
@@ -418,7 +444,8 @@ export default function ProfessionalSubscriptionPanel() {
                             rel="noreferrer"
                             className="font-semibold text-[#1565C0] hover:underline"
                           >
-                            View
+                            {invoice.documentLabel ??
+                              (invoice.paid ? "Receipt" : "Invoice")}
                           </a>
                         ) : (
                           "-"

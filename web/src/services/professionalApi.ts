@@ -1509,11 +1509,18 @@ export type ProfessionalSubscriptionInvoice = {
   id: string | null;
   number: string | null;
   status: string | null;
+  paid?: boolean;
   amountMinor: number;
+  amountPaidMinor?: number;
+  amountRemainingMinor?: number;
   currency: string;
   createdAt: string | null;
   hostedInvoiceUrl: string | null;
   invoicePdf: string | null;
+  receiptUrl?: string | null;
+  /** The receipt once paid, the invoice while payment is outstanding. */
+  documentUrl?: string | null;
+  documentLabel?: string;
 };
 
 export type ProfessionalCancellationSummary = {
