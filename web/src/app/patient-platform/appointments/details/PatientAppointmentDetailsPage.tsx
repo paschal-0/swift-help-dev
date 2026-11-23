@@ -698,9 +698,6 @@ export function PatientAppointmentDetailsPage() {
           draft.meetingMode === "in-person" && draft.longitude
             ? Number(draft.longitude)
             : undefined,
-        durationMinutes: draft.durationMinutes
-          ? Number(draft.durationMinutes)
-          : undefined,
         patientNote: shareSummaryWithProvider
           ? buildAiPatientNote(draft)
           : undefined,
