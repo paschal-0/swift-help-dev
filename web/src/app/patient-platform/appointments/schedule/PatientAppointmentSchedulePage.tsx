@@ -18,6 +18,11 @@ type TimeSlot = {
   id: string;
   consultant: string;
   patient: string;
+  /** The slot's own start and end, in the patient's timezone, shown in the
+   *  pickers. Kept apart from the combined `patient` label because the end of
+   *  a booking is not always the end of its first slot. */
+  patientStart: string;
+  patientEnd: string;
   startDate?: string;
   endDate?: string;
   startTime?: string;
@@ -153,15 +158,6 @@ function formatTimeInZone(isoDate: string, timeZone: string) {
   }).format(new Date(isoDate));
 }
 
-function formatTime24InZone(isoDate: string, timeZone: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(isoDate));
-}
-
 function formatSlotTime(value: string) {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
   if (!match) return value;
@@ -258,12 +254,9 @@ export function PatientAppointmentSchedulePage() {
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [manualStartTime, setManualStartTime] = useState(
-    draft?.startTime?.match(/^\d{2}:\d{2}$/) ? draft.startTime : "09:00",
-  );
-  const [manualEndTime, setManualEndTime] = useState(
-    draft?.endTime?.match(/^\d{2}:\d{2}$/) ? draft.endTime : "09:30",
-  );
+  // The slot the booking ends with. The same slot as the start for a single
+  // session, or a later one when consecutive slots are taken together.
+  const [selectedEndSlot, setSelectedEndSlot] = useState("");
   const [reason, setReason] = useState(draft?.reason ?? "");
   const [locationName, setLocationName] = useState(
     draft?.locationName ?? "",
@@ -332,6 +325,22 @@ export function PatientAppointmentSchedulePage() {
             id: `slot-${index + 1}`,
             consultant: `${formatSlotTime(slot.startTime)} - ${formatSlotTime(slot.endTime)}`,
             patient: `${formatTimeInZone(zonedDateTimeToIso(slot.startDate ?? dateKey, slot.startTime, response.timezone), patientTimezone)} - ${formatTimeInZone(zonedDateTimeToIso(slot.endDate ?? dateKey, slot.endTime, response.timezone), patientTimezone)}`,
+            patientStart: formatTimeInZone(
+              zonedDateTimeToIso(
+                slot.startDate ?? dateKey,
+                slot.startTime,
+                response.timezone,
+              ),
+              patientTimezone,
+            ),
+            patientEnd: formatTimeInZone(
+              zonedDateTimeToIso(
+                slot.endDate ?? dateKey,
+                slot.endTime,
+                response.timezone,
+              ),
+              patientTimezone,
+            ),
             startDate: slot.startDate ?? dateKey,
             endDate: slot.endDate ?? dateKey,
             startTime: slot.startTime,
@@ -348,19 +357,17 @@ export function PatientAppointmentSchedulePage() {
                   normalizeProviderTime(draft?.endTime),
             )
           : undefined;
-        setSelectedSlot(
-          matchingDraftSlot?.id ??
-            (isRescheduling
-              ? slots[0]?.id ?? "custom"
-              : draft?.startTime && draft?.endTime
-                ? "custom"
-                : slots[0]?.id ?? "custom"),
-        );
+        // Whatever the draft asked for, only a slot the professional is
+        // actually offering can be selected.
+        const nextSlotId = matchingDraftSlot?.id ?? slots[0]?.id ?? "";
+        setSelectedSlot(nextSlotId);
+        setSelectedEndSlot(nextSlotId);
       } catch (error) {
         toast.error(getApiErrorMessage(error));
         if (isMounted) {
           setAvailableSlots([]);
-          setSelectedSlot("custom");
+          setSelectedSlot("");
+          setSelectedEndSlot("");
         }
       }
     }
@@ -396,80 +403,82 @@ export function PatientAppointmentSchedulePage() {
       availableSlots[0],
     [availableSlots, selectedSlot],
   );
-  const selectedTime = useMemo(() => {
-    if (selectedSlot === "custom") {
-      const selectedDateKey = formatLocalDateKey(selectedDate);
-      const customTimeZone = isRescheduling
-        ? providerTimezone
-        : patientTimezone;
-      const startsAt = zonedDateTimeToIso(
-        selectedDateKey,
-        manualStartTime,
-        customTimeZone,
-      );
-      const endsAt = zonedDateTimeToIso(
-        selectedDateKey,
-        manualEndTime,
-        customTimeZone,
-      );
-      return {
-        startTime: manualStartTime,
-        endTime: manualEndTime,
-        requestedStartAt: startsAt,
-        requestedEndAt: endsAt,
-        scheduledDate: selectedDateKey,
-        providerScheduledDate: getDateKeyInZone(startsAt, providerTimezone),
-        providerStartTime: formatTimeInZone(startsAt, providerTimezone),
-        providerEndTime: formatTimeInZone(endsAt, providerTimezone),
-        providerStartTimeValue: formatTime24InZone(startsAt, providerTimezone),
-        providerEndTimeValue: formatTime24InZone(endsAt, providerTimezone),
-        label: `${formatSlotTime(manualStartTime)} - ${formatSlotTime(manualEndTime)} (${timezoneLabel(customTimeZone)})`,
-      };
-    }
+  /**
+   * The slots a booking starting at `selectedTimeSlot` could run through.
+   *
+   * Only an unbroken run counts: each slot has to begin exactly where the one
+   * before it ended, so a gap the professional has already booked out cannot
+   * be swallowed by a longer appointment.
+   */
+  const reachableEndSlots = useMemo(() => {
+    if (!selectedTimeSlot) return [] as TimeSlot[];
+    const startIndex = availableSlots.findIndex(
+      (slot) => slot.id === selectedTimeSlot.id,
+    );
+    if (startIndex < 0) return [] as TimeSlot[];
 
-    if (!selectedTimeSlot) return null;
+    const run = [availableSlots[startIndex]];
+    for (let index = startIndex + 1; index < availableSlots.length; index += 1) {
+      const previous = run[run.length - 1];
+      const next = availableSlots[index];
+      const joins =
+        normalizeProviderTime(next.startTime) ===
+          normalizeProviderTime(previous.endTime) &&
+        (next.startDate ?? "") === (previous.endDate ?? "");
+      if (!joins) break;
+      run.push(next);
+    }
+    return run;
+  }, [availableSlots, selectedTimeSlot]);
+
+  // Falling back to the opening slot keeps the end from ever preceding the
+  // start, whatever is left over from a previous day's selection.
+  const selectedEndTimeSlot = useMemo(
+    () =>
+      reachableEndSlots.find((slot) => slot.id === selectedEndSlot) ??
+      reachableEndSlots[0] ??
+      selectedTimeSlot,
+    [reachableEndSlots, selectedEndSlot, selectedTimeSlot],
+  );
+
+  const selectedTime = useMemo(() => {
+    if (!selectedTimeSlot || !selectedEndTimeSlot) return null;
 
     const selectedDateKey = formatLocalDateKey(selectedDate);
+    const startTime =
+      selectedTimeSlot.startTime ??
+      selectedTimeSlot.consultant.split(" - ")[0];
+    const endTime =
+      selectedEndTimeSlot.endTime ??
+      selectedEndTimeSlot.consultant.split(" - ")[1];
     const startsAt = zonedDateTimeToIso(
       selectedTimeSlot.startDate ?? selectedDateKey,
-      selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
+      startTime,
       providerTimezone,
     );
     const endsAt = zonedDateTimeToIso(
-      selectedTimeSlot.endDate ?? selectedDateKey,
-      selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      selectedEndTimeSlot.endDate ?? selectedDateKey,
+      endTime,
       providerTimezone,
     );
 
     return {
-      startTime:
-        selectedTimeSlot.startTime ??
-        selectedTimeSlot.consultant.split(" - ")[0],
-      endTime:
-        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      startTime,
+      endTime,
       requestedStartAt: startsAt,
       requestedEndAt: endsAt,
       scheduledDate: selectedDateKey,
       providerScheduledDate: selectedTimeSlot.startDate ?? selectedDateKey,
-      providerStartTime:
-        selectedTimeSlot.startTime ??
-        selectedTimeSlot.consultant.split(" - ")[0],
-      providerEndTime:
-        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
-      providerStartTimeValue:
-        selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
-      providerEndTimeValue:
-        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
-      label: selectedTimeSlot.patient,
+      providerStartTime: formatSlotTime(startTime),
+      providerEndTime: formatSlotTime(endTime),
+      providerStartTimeValue: startTime,
+      providerEndTimeValue: endTime,
+      label: `${selectedTimeSlot.patientStart} - ${selectedEndTimeSlot.patientEnd}`,
     };
   }, [
-    manualEndTime,
-    manualStartTime,
-    patientTimezone,
     providerTimezone,
-    isRescheduling,
     selectedDate,
-    selectedSlot,
+    selectedEndTimeSlot,
     selectedTimeSlot,
   ]);
   const selectedModeRateCents =
@@ -576,22 +585,19 @@ export function PatientAppointmentSchedulePage() {
       selectedRateLabel: selectedModeRateLabel,
       estimatedFeeCents: estimatedFeeCents ? String(estimatedFeeCents) : "",
       estimatedFeeLabel,
-      scheduledDate:
-        selectedSlot === "custom"
-          ? selectedTime.scheduledDate
-          : getDateKeyInZone(selectedTime.requestedStartAt, patientTimezone),
+      scheduledDate: getDateKeyInZone(
+        selectedTime.requestedStartAt,
+        patientTimezone,
+      ),
       providerScheduledDate: getDateKeyInZone(
         selectedTime.requestedStartAt,
         providerTimezone,
       ),
-      startTime:
-        selectedSlot === "custom"
-          ? selectedTime.startTime
-          : formatTimeInZone(selectedTime.requestedStartAt, patientTimezone),
-      endTime:
-        selectedSlot === "custom"
-          ? selectedTime.endTime
-          : formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
+      startTime: formatTimeInZone(
+        selectedTime.requestedStartAt,
+        patientTimezone,
+      ),
+      endTime: formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
       startsAt: selectedTime.requestedStartAt,
       endsAt: selectedTime.requestedEndAt,
       providerStartTime: selectedTime.providerStartTime,
@@ -934,145 +940,86 @@ export function PatientAppointmentSchedulePage() {
               </div>
 
               <div className="w-full max-w-none lg:min-w-0 lg:flex-1">
-                <div
-                  className={`mb-2 grid gap-3 px-[2px] ${
-                    showsSingleTimeColumn ? "grid-cols-1" : "grid-cols-2"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
-                      Available times
-                    </p>
-                    <p
-                      className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
-                      title={timezoneLabel(providerTimezone)}
-                    >
-                      {timezoneLabel(providerTimezone)}
-                    </p>
-                    <p className="mt-1 text-[10px] font-medium leading-3 text-[#1565C0]">
-                      {formatNoticePeriod(minimumNoticeMinutes)}
-                    </p>
-                  </div>
-                  {!showsSingleTimeColumn ? (
-                    <div className="min-w-0 text-right">
-                      <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
-                        Your time
-                      </p>
-                      <p
-                        className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
-                        title={timezoneLabel(patientTimezone)}
-                      >
-                        {timezoneLabel(patientTimezone)}
-                      </p>
-                    </div>
-                  ) : null}
+                <div className="mb-3 px-[2px]">
+                  <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
+                    Available times
+                  </p>
+                  <p
+                    className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
+                    title={timezoneLabel(patientTimezone)}
+                  >
+                    {showsSingleTimeColumn
+                      ? timezoneLabel(providerTimezone)
+                      : `Shown in your time (${timezoneLabel(patientTimezone)})`}
+                  </p>
+                  <p className="mt-1 text-[10px] font-medium leading-3 text-[#1565C0]">
+                    {formatNoticePeriod(minimumNoticeMinutes)}
+                  </p>
                 </div>
 
-                <div className="grid gap-[6px] xl:grid-cols-2">
-                  {availableSlots.map((slot) => {
-                    const selected = selectedSlot === slot.id;
-                    return (
-                      <motion.button
-                        key={slot.id}
-                        type="button"
-                        onClick={() => setSelectedSlot(slot.id)}
-                        whileTap={{ scale: 0.985 }}
-                        animate={{ y: selected ? -1 : 0 }}
-                        transition={{ duration: 0.18, ease: "easeOut" }}
-                        className={`min-h-11 w-full cursor-pointer rounded-[8px] border px-3 py-2 xl:min-h-10 xl:px-2 ${
-                          selected
-                            ? "border-[#1565C0] bg-[#E3F2FD]"
-                            : "border-[#94A3B8] bg-transparent"
-                        }`}
+                {availableSlots.length === 0 ? (
+                  <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B]">
+                    No times are free on this day, once the
+                    professional&apos;s booking notice and existing bookings
+                    are taken into account. Choose another date.
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] p-3">
+                    <label className="block space-y-1">
+                      <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
+                        Start
+                      </span>
+                      <select
+                        value={selectedTimeSlot?.id ?? ""}
+                        onChange={(event) => {
+                          setSelectedSlot(event.target.value);
+                          // A later start can make the previous end
+                          // unreachable, so the booking goes back to a single
+                          // session rather than an impossible range.
+                          setSelectedEndSlot(event.target.value);
+                        }}
+                        className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
                       >
-                        <div
-                          className={`mx-auto grid w-full max-w-[206px] items-center gap-3 xl:max-w-none ${
-                            showsSingleTimeColumn
-                              ? "grid-cols-1"
-                              : "grid-cols-[1fr_auto_1fr]"
-                          }`}
-                        >
-                          <span
-                            className={`text-center text-[12px] font-semibold leading-5 xl:text-[11px] ${
-                              selected ? "text-[#1E88E5]" : "text-black"
-                            }`}
-                          >
-                            {slot.consultant}
-                          </span>
-                          {!showsSingleTimeColumn ? (
-                            <>
-                              <span
-                                className={`h-[19.5px] border-l ${
-                                  selected
-                                    ? "border-[#1565C0]"
-                                    : "border-[#334155]"
-                                }`}
-                              />
-                              <span
-                                className={`text-center text-[12px] font-semibold leading-5 xl:text-[11px] ${
-                                  selected ? "text-[#1E88E5]" : "text-black"
-                                }`}
-                              >
-                                {slot.patient}
-                              </span>
-                            </>
-                          ) : null}
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                  {availableSlots.length === 0 ? (
-                    <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B] xl:col-span-2">
-                      No selectable slots for this day after the professional&apos;s
-                      booking notice and existing bookings.
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] p-3 xl:col-span-2">
-                    <label className="mb-3 flex cursor-pointer items-center gap-2 text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
-                      <input
-                        type="radio"
-                        name="appointment-time"
-                        checked={selectedSlot === "custom"}
-                        onChange={() => setSelectedSlot("custom")}
-                        className="h-4 w-4 accent-[#1565C0]"
-                      />
-                      Preferred time
+                        {availableSlots.map((slot) => (
+                          <option key={slot.id} value={slot.id}>
+                            {slot.patientStart}
+                          </option>
+                        ))}
+                      </select>
                     </label>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                      <label className="space-y-1">
-                        <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
-                          Start
-                        </span>
-                        <input
-                          type="time"
-                          value={manualStartTime}
-                          onChange={(event) => {
-                            setSelectedSlot("custom");
-                            setManualStartTime(event.target.value);
-                          }}
-                          className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
-                        />
-                      </label>
+                    <label className="block space-y-1">
+                      <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
+                        End
+                      </span>
+                      <select
+                        value={selectedEndTimeSlot?.id ?? ""}
+                        onChange={(event) =>
+                          setSelectedEndSlot(event.target.value)
+                        }
+                        className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
+                      >
+                        {reachableEndSlots.map((slot) => (
+                          <option key={slot.id} value={slot.id}>
+                            {slot.patientEnd}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                      <label className="space-y-1">
-                        <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
-                          End
-                        </span>
-                        <input
-                          type="time"
-                          value={manualEndTime}
-                          onChange={(event) => {
-                            setSelectedSlot("custom");
-                            setManualEndTime(event.target.value);
-                          }}
-                          className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
-                        />
-                      </label>
-                    </div>
+                    {!showsSingleTimeColumn && selectedTime ? (
+                      <div className="rounded-[8px] border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2">
+                        <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#1565C0]">
+                          {selectedTime.providerStartTime} -{" "}
+                          {selectedTime.providerEndTime} for the professional
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]">
+                          {timezoneLabel(providerTimezone)}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </motion.section>
