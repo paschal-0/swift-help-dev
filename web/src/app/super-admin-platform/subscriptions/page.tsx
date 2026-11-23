@@ -46,6 +46,31 @@ function minorToDisplay(minor: number | null, currency: string) {
   }
 }
 
+type ReconcileCounts = { checked?: number; corrected?: number; failed?: number };
+
+/** What a reconciliation actually did, rather than that it happened. */
+function describeReconciliation(result: unknown) {
+  const payload = result as
+    | { stripe?: ReconcileCounts; paystack?: ReconcileCounts }
+    | null;
+  const checked =
+    (payload?.stripe?.checked ?? 0) + (payload?.paystack?.checked ?? 0);
+  const corrected =
+    (payload?.stripe?.corrected ?? 0) + (payload?.paystack?.corrected ?? 0);
+  const failed =
+    (payload?.stripe?.failed ?? 0) + (payload?.paystack?.failed ?? 0);
+
+  if (checked === 0) {
+    return "No provider subscriptions to check.";
+  }
+  const subject = corrected === 1 ? "subscription was" : "subscriptions were";
+  const body =
+    corrected === 0
+      ? `Checked ${checked}. All already matched the provider.`
+      : `Checked ${checked}. ${corrected} ${subject} corrected.`;
+  return failed > 0 ? `${body} ${failed} could not be read.` : body;
+}
+
 export default function AdminSubscriptionsPage() {
   const [plans, setPlans] = useState<AdminSubscriptionPlan[]>([]);
   const [rates, setRates] = useState<AdminCommissionRates | null>(null);
@@ -278,12 +303,14 @@ export default function AdminSubscriptionsPage() {
   const runTask = async (
     key: string,
     task: () => Promise<unknown>,
-    done: string,
+    // A function when the result is worth reading back. "Finished" tells an
+    // administrator nothing about whether anything was actually put right.
+    done: string | ((result: unknown) => string),
   ) => {
     setBusy(key);
     try {
-      await task();
-      toast.success(done);
+      const result = await task();
+      toast.success(typeof done === "function" ? done(result) : done);
       await load();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -520,7 +547,9 @@ export default function AdminSubscriptionsPage() {
         <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
           The sweep renews Paystack subscriptions, ends grace periods and
           closes expired plans. It is meant to run on a schedule - this button
-          is for running it by hand.
+          is for running it by hand. Reconciling re-reads Stripe and Paystack
+          and corrects anything that has drifted, including a renewal date
+          that does not match the provider. It takes no payment.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
@@ -573,7 +602,7 @@ export default function AdminSubscriptionsPage() {
               runTask(
                 "reconcile",
                 runAdminSubscriptionReconcile,
-                "Reconciliation finished.",
+                describeReconciliation,
               )
             }
             disabled={busy !== null}
