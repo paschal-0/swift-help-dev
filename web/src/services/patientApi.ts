@@ -756,11 +756,15 @@ export function listPatientConsultationRequests() {
   );
 }
 
-export function cancelPatientConsultationRequest(requestId: string) {
+export function cancelPatientConsultationRequest(
+  requestId: string,
+  reason: string,
+) {
   return apiRequest<PatientConsultationRequest>(
     `/patient/consultation-requests/${encodeURIComponent(requestId)}/cancel`,
     {
       method: "POST",
+      body: JSON.stringify({ reason }),
     },
   );
 }

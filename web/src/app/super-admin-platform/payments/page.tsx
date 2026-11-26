@@ -90,6 +90,8 @@ const defaultOverview: AdminPaymentsOverview = {
       minimumBillableMinutes: 15,
       unusedTimeRefundEnabled: true,
       disputeWindowHours: 48,
+      confirmationWindowHours: 24,
+      confirmationTimeoutPolicy: "escalate",
       autoSettlementDelayHours: 24,
     },
     routingPolicy: {
@@ -1485,6 +1487,9 @@ function SettlementPolicyPanel({
       minimumBillableMinutes: Math.max(Number(draft.minimumBillableMinutes) || 0, 0),
       disputeWindowHours: Math.max(Number(draft.disputeWindowHours) || 0, 0),
       autoSettlementDelayHours: Math.max(Number(draft.autoSettlementDelayHours) || 0, 0),
+      // At least an hour: a window of zero would expire the moment a
+      // consultation ended, before anyone could confirm it.
+      confirmationWindowHours: Math.max(Number(draft.confirmationWindowHours) || 0, 1),
     });
   };
 
@@ -1600,6 +1605,39 @@ function SettlementPolicyPanel({
             onChange={(event) => update("disputeWindowHours", Number(event.target.value))}
             className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
           />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Patient confirmation window (hours)</span>
+          <span className="mt-1 block text-[11px] leading-4 text-[#64748B]">
+            How long a patient has to confirm a consultation before the deadline passes.
+          </span>
+          <input
+            type="number"
+            min="1"
+            max="720"
+            value={draft.confirmationWindowHours}
+            onChange={(event) => update("confirmationWindowHours", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">When that deadline passes</span>
+          <span className="mt-1 block text-[11px] leading-4 text-[#64748B]">
+            Hold it for an administrator, or settle where both sides confirmed and nobody disputed it.
+          </span>
+          <select
+            value={draft.confirmationTimeoutPolicy}
+            onChange={(event) =>
+              update(
+                "confirmationTimeoutPolicy",
+                event.target.value === "auto_release" ? "auto_release" : "escalate",
+              )
+            }
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          >
+            <option value="escalate">Hold for admin review</option>
+            <option value="auto_release">Settle automatically</option>
+          </select>
         </label>
         <label className="block min-w-0">
           <span className="text-[13px] font-semibold text-[#334155]">Auto review delay hours</span>

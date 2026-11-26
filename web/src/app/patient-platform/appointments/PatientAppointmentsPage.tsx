@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
+import { CancelConsultationDialog } from "@/components/CancelConsultationDialog";
 import {
   cancelPatientConsultationRequest,
   getPatientLiveUrl,
@@ -270,6 +271,8 @@ export function PatientAppointmentsPage() {
   const [displayMonth, setDisplayMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(null);
+  const [cancellingAppointment, setCancellingAppointment] =
+    useState<AppointmentItem | null>(null);
   const [payingConsultationId, setPayingConsultationId] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -393,20 +396,31 @@ export function PatientAppointmentsPage() {
     router.push(`/patient-platform/appointments/details?appointmentId=${encodeURIComponent(appointment.id)}`);
   };
 
-  const cancelRequest = async (appointment: AppointmentItem) => {
+  /**
+   * Opens the confirmation. Nothing is cancelled and no refund is started
+   * until it is confirmed there - a browser confirm asked no reason and said
+   * nothing about the money.
+   */
+  const cancelRequest = (appointment: AppointmentItem) => {
     if (appointment.source !== "request" || !appointment.requestId || appointment.status !== "Pending") {
       return;
     }
+    setCancellingAppointment(appointment);
+  };
 
-    const shouldCancel = window.confirm("Cancel this pending appointment request?");
-    if (!shouldCancel) return;
+  const confirmCancelRequest = async (reason: string) => {
+    const requestId = cancellingAppointment?.requestId;
+    if (!requestId) return;
 
-    setCancellingRequestId(appointment.requestId);
+    setCancellingRequestId(requestId);
     try {
-      await cancelPatientConsultationRequest(appointment.requestId);
+      await cancelPatientConsultationRequest(requestId, reason);
+      setCancellingAppointment(null);
       await refreshAppointments();
       toast.success("Appointment request cancelled.");
     } catch (error) {
+      // The server decides whether this was allowed, so its refusal is what
+      // the patient sees.
       toast.error(getApiErrorMessage(error));
     } finally {
       setCancellingRequestId(null);
@@ -786,6 +800,15 @@ export function PatientAppointmentsPage() {
           </div>
         </div>
       </div>
+
+      <CancelConsultationDialog
+        open={Boolean(cancellingAppointment)}
+        actor="patient"
+        consultationLabel={cancellingAppointment?.consultationType ?? null}
+        busy={Boolean(cancellingRequestId)}
+        onKeep={() => setCancellingAppointment(null)}
+        onConfirm={confirmCancelRequest}
+      />
     </article>
   );
 }

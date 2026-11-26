@@ -13,6 +13,12 @@ import { AnimatePresence, motion } from "framer-motion";
 
 type CancelConsultationDialogProps = {
   open: boolean;
+  /**
+   * `cancel` ends the appointment and returns the money. `dispute` sends a
+   * consultation that has already happened to Swift HELP, and moves nothing
+   * by itself - which is the whole point of it being a separate action.
+   */
+  variant?: "cancel" | "dispute";
   /** Who is cancelling, which changes what the consequences are. */
   actor: "patient" | "professional";
   consultationLabel?: string | null;
@@ -24,19 +30,38 @@ type CancelConsultationDialogProps = {
   onConfirm: (reason: string) => void;
 };
 
-const REASONS: Record<"patient" | "professional", string[]> = {
-  patient: [
-    "I no longer need this appointment",
-    "I am not available at this time",
-    "I booked the wrong time or professional",
-    "Something else",
-  ],
-  professional: [
-    "I am no longer available at this time",
-    "The patient asked to rebook",
-    "This booking was made in error",
-    "Something else",
-  ],
+const REASONS: Record<
+  "cancel" | "dispute",
+  Record<"patient" | "professional", string[]>
+> = {
+  cancel: {
+    patient: [
+      "I no longer need this appointment",
+      "I am not available at this time",
+      "I booked the wrong time or professional",
+      "Something else",
+    ],
+    professional: [
+      "I am no longer available at this time",
+      "The patient asked to rebook",
+      "This booking was made in error",
+      "Something else",
+    ],
+  },
+  dispute: {
+    patient: [
+      "The consultation did not take place",
+      "It ended much earlier than booked",
+      "I was charged the wrong amount",
+      "Something else",
+    ],
+    professional: [
+      "This was cancelled by mistake",
+      "The patient did not attend",
+      "I was paid the wrong amount",
+      "Something else",
+    ],
+  },
 };
 
 function formatAmount(amountMinor?: number | null, currency?: string | null) {
@@ -68,6 +93,7 @@ export function CancelConsultationDialog({
 }
 
 function CancelConsultationForm({
+  variant = "cancel",
   actor,
   consultationLabel,
   amountMinor,
@@ -79,6 +105,7 @@ function CancelConsultationForm({
   const [choice, setChoice] = useState("");
   const [detail, setDetail] = useState("");
 
+  const isDispute = variant === "dispute";
   const amount = formatAmount(amountMinor, currency);
   const isOther = choice === "Something else";
   const reason = isOther ? detail.trim() : choice;
@@ -105,37 +132,59 @@ function CancelConsultationForm({
           id="cancel-consultation-title"
           className="text-[18px] font-semibold tracking-[-0.03em] text-[#0F172A]"
         >
-          Cancel this appointment?
+          {isDispute
+            ? "Report a problem with this consultation?"
+            : "Cancel this appointment?"}
         </h2>
         <p className="mt-2 text-[14px] leading-5 text-[#475569]">
           {consultationLabel ? `${consultationLabel}. ` : ""}
-          This cannot be undone.
+          {isDispute
+            ? "Swift HELP will look at it and come back to you."
+            : "This cannot be undone."}
         </p>
 
-        <div className="mt-4 rounded-[10px] border border-[#FECACA] bg-[#FEF2F2] px-3 py-3">
-          <p className="text-[13px] font-semibold leading-5 text-[#B91C1C]">
-            What happens to the payment
-          </p>
-          <ul className="mt-1.5 space-y-1 text-[13px] leading-5 text-[#7F1D1D]">
-            <li>
-              {amount
-                ? `The full ${amount} goes back to the patient.`
-                : "The patient is refunded in full."}
-            </li>
-            <li>
-              {actor === "professional"
-                ? "You earn nothing from this appointment, and no commission is charged."
-                : "The professional earns nothing from this appointment."}
-            </li>
-          </ul>
-        </div>
+        {isDispute ? (
+          <div className="mt-4 rounded-[10px] border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-3">
+            <p className="text-[13px] font-semibold leading-5 text-[#1565C0]">
+              What happens to the payment
+            </p>
+            <ul className="mt-1.5 space-y-1 text-[13px] leading-5 text-[#334155]">
+              <li>
+                Nothing moves while it is reviewed. The payment is held where
+                it is.
+              </li>
+              <li>
+                A refund or a payout after a consultation has taken place is
+                decided by Swift HELP, not by this form.
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-[10px] border border-[#FECACA] bg-[#FEF2F2] px-3 py-3">
+            <p className="text-[13px] font-semibold leading-5 text-[#B91C1C]">
+              What happens to the payment
+            </p>
+            <ul className="mt-1.5 space-y-1 text-[13px] leading-5 text-[#7F1D1D]">
+              <li>
+                {amount
+                  ? `The full ${amount} goes back to the patient.`
+                  : "The patient is refunded in full."}
+              </li>
+              <li>
+                {actor === "professional"
+                  ? "You earn nothing from this appointment, and no commission is charged."
+                  : "The professional earns nothing from this appointment."}
+              </li>
+            </ul>
+          </div>
+        )}
 
         <fieldset className="mt-4">
           <legend className="text-[13px] font-semibold text-[#334155]">
-            Why are you cancelling?
+            {isDispute ? "What went wrong?" : "Why are you cancelling?"}
           </legend>
           <div className="mt-2 space-y-2">
-            {REASONS[actor].map((option) => (
+            {REASONS[isDispute ? "dispute" : "cancel"][actor].map((option) => (
               <label
                 key={option}
                 className="flex cursor-pointer items-start gap-2 text-[14px] leading-5 text-[#334155]"
@@ -158,7 +207,11 @@ function CancelConsultationForm({
               onChange={(event) => setDetail(event.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="Tell us briefly why."
+              placeholder={
+                isDispute
+                  ? "Tell us briefly what happened."
+                  : "Tell us briefly why."
+              }
               className="mt-2 w-full rounded-[8px] border border-[#CBD5E1] px-3 py-2 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
             />
           ) : null}
@@ -166,27 +219,44 @@ function CancelConsultationForm({
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
           {/* The safe choice first in the source and visually dominant: a
-                  mistaken press should keep the appointment, not end it. */}
+              mistaken press should keep the appointment, not end it. A
+              dispute moves no money, so there its confirm is the plain one. */}
           <button
             type="button"
             onClick={onKeep}
             disabled={busy}
-            className="h-11 w-full rounded-[10px] bg-[#1565C0] px-4 text-[15px] font-semibold text-white transition hover:bg-[#0D47A1] disabled:opacity-60 sm:flex-1"
+            className={
+              isDispute
+                ? "h-11 w-full rounded-[10px] border border-[#CBD5E1] px-4 text-[15px] font-semibold text-[#334155] transition hover:bg-[#F1F5F9] disabled:opacity-60 sm:flex-1"
+                : "h-11 w-full rounded-[10px] bg-[#1565C0] px-4 text-[15px] font-semibold text-white transition hover:bg-[#0D47A1] disabled:opacity-60 sm:flex-1"
+            }
           >
-            Keep appointment
+            {isDispute ? "Never mind" : "Keep appointment"}
           </button>
           <button
             type="button"
             onClick={() => onConfirm(reason)}
             disabled={!canConfirm}
-            className="h-11 w-full rounded-[10px] border border-[#DC2626] px-4 text-[15px] font-semibold text-[#DC2626] transition hover:bg-[#FEF2F2] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+            className={
+              isDispute
+                ? "h-11 w-full rounded-[10px] bg-[#1565C0] px-4 text-[15px] font-semibold text-white transition hover:bg-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+                : "h-11 w-full rounded-[10px] border border-[#DC2626] px-4 text-[15px] font-semibold text-[#DC2626] transition hover:bg-[#FEF2F2] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+            }
           >
-            {busy ? "Cancelling..." : "Confirm cancellation"}
+            {busy
+              ? isDispute
+                ? "Sending..."
+                : "Cancelling..."
+              : isDispute
+                ? "Send for review"
+                : "Confirm cancellation"}
           </button>
         </div>
         {reason.length === 0 ? (
           <p className="mt-2 text-center text-[12px] text-[#64748B]">
-            Choose a reason to confirm.
+            {isDispute
+              ? "Choose what went wrong to continue."
+              : "Choose a reason to confirm."}
           </p>
         ) : null}
       </motion.div>

@@ -1105,6 +1105,10 @@ export type AdminPaymentSettlementPolicy = {
   unusedTimeRefundEnabled: boolean;
   disputeWindowHours: number;
   autoSettlementDelayHours: number;
+  /** How long a patient has to confirm a consultation before the deadline. */
+  confirmationWindowHours: number;
+  /** What happens once that deadline passes. */
+  confirmationTimeoutPolicy: "escalate" | "auto_release";
 };
 
 export type AdminPaymentPlanRow = {

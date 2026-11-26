@@ -8,6 +8,7 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import { CancelConsultationDialog } from "@/components/CancelConsultationDialog";
 import {
   cancelProfessionalConsultation,
+  disputeProfessionalConsultation,
   createProfessionalBlockedTime,
   deleteProfessionalBlockedTime,
   getProfessionalSchedule,
@@ -616,6 +617,8 @@ export function ProfessionalSchedulePage() {
   >(null);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
+  const [isDisputing, setIsDisputing] = useState(false);
   const [blockEntireDay, setBlockEntireDay] = useState(false);
   const [calendarHeaderIndex, setCalendarHeaderIndex] = useState(0);
   const [blockedTimeItems, setBlockedTimeItems] = useState<BlockedItem[]>([]);
@@ -684,6 +687,27 @@ export function ProfessionalSchedulePage() {
       );
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const confirmDisputeConsultation = async (reason: string) => {
+    if (!activeConsultationId) return;
+    setIsDisputing(true);
+    try {
+      await disputeProfessionalConsultation(activeConsultationId, reason);
+      setIsDisputeDialogOpen(false);
+      setIsAppointmentDetailsModalOpen(false);
+      toast.success(
+        "Sent to Swift HELP for review. Nothing changes while it is looked at.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to send this consultation for review",
+      );
+    } finally {
+      setIsDisputing(false);
     }
   };
 
@@ -2431,6 +2455,16 @@ export function ProfessionalSchedulePage() {
         ) : null}
 
         <CancelConsultationDialog
+          open={isDisputeDialogOpen}
+          variant="dispute"
+          actor="professional"
+          consultationLabel={activeAppointmentDetails?.type ?? null}
+          busy={isDisputing}
+          onKeep={() => setIsDisputeDialogOpen(false)}
+          onConfirm={confirmDisputeConsultation}
+        />
+
+        <CancelConsultationDialog
           open={isCancelDialogOpen}
           actor="professional"
           consultationLabel={activeAppointmentDetails?.type ?? null}
@@ -2598,6 +2632,19 @@ export function ProfessionalSchedulePage() {
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] border border-[#334155] bg-[#F8FAFC] px-2 text-[13px] font-medium leading-[15px] tracking-[-0.05em] text-[#334155] sm:h-[32px] sm:rounded-[9.26984px] sm:text-[14px]"
                 >
                   Cancel Appointment
+                </button>
+                <button
+                  type="button"
+                  // The route the cancellation guard points at once a
+                  // consultation has been delivered: it holds the money and
+                  // asks Swift HELP, rather than moving it.
+                  onClick={() => {
+                    if (!activeConsultationId) return;
+                    setIsDisputeDialogOpen(true);
+                  }}
+                  className="col-span-2 inline-flex h-[38px] items-center justify-center rounded-[11px] border border-[#CBD5E1] bg-white px-2 text-[13px] font-medium leading-[15px] tracking-[-0.05em] text-[#64748B] sm:h-[32px] sm:rounded-[9.26984px] sm:text-[14px]"
+                >
+                  Report a problem
                 </button>
                 <button
                   type="button"

@@ -1057,6 +1057,23 @@ export function endProfessionalConsultationSession(
   );
 }
 
+/**
+ * Sends a consultation that has already happened to Swift HELP for review.
+ * Moves no money by itself.
+ */
+export function disputeProfessionalConsultation(
+  consultationId: string,
+  reason: string,
+) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${consultationId}/dispute`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
 export function cancelProfessionalConsultation(
   consultationId: string,
   reason: string,
