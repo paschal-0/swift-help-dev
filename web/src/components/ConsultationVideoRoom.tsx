@@ -60,6 +60,12 @@ type ConsultationVideoRoomProps = {
   onToggleTranscription?: () => Promise<void> | void;
   onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
+  /**
+   * Shrinks the consultation into the floating window and goes elsewhere.
+   * Omitted where there is nowhere sensible to go, in which case no control
+   * is shown.
+   */
+  onMinimise?: () => void;
   onBeforeEnd?: () => Promise<boolean> | boolean;
   onEnd: () => void;
   playAllRemoteAudio?: boolean;
@@ -825,6 +831,7 @@ export function ConsultationVideoRoom({
   onToggleTranscription,
   onTranscriptText,
   isEnding,
+  onMinimise,
   onBeforeEnd,
   onEnd,
   playAllRemoteAudio = false,
@@ -1864,6 +1871,29 @@ export function ConsultationVideoRoom({
               <CameraIcon />
               {!cameraEnabled ? <ControlSlash /> : null}
             </button>
+
+            {onMinimise ? (
+              <button
+                type="button"
+                // The call keeps running; only this page closes. Deliberately
+                // next to End and shaped nothing like it, because one of
+                // these is reversible and the other is not.
+                onClick={onMinimise}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1E293B] text-white transition hover:bg-[#334155] sm:h-[54px] sm:w-[54px]"
+                aria-label="Minimise consultation"
+                title="Minimise - the call keeps running"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    d="M5 13h14M8 17h8"
+                  />
+                </svg>
+              </button>
+            ) : null}
 
             <button
               type="button"

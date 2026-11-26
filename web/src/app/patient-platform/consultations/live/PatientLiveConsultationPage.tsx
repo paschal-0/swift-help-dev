@@ -661,6 +661,8 @@ export function PatientLiveConsultationPage() {
   return (
     <article className="mt-3 w-full max-w-none">
       <ConsultationVideoRoom
+        // The call carries on in the floating window; only this page closes.
+        onMinimise={() => router.push("/patient-platform/dashboard")}
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}
         roomName={videoAccess?.roomName ?? null}
