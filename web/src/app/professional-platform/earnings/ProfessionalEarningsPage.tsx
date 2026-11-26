@@ -11,6 +11,7 @@ import {
   getProfessionalWallet,
   listProfessionalEarnings,
   listProfessionalPayouts,
+  confirmProfessionalConsultationComplete,
   type EarningsSummary,
   type ProfessionalEarning,
   type ProfessionalEarningDetails,
@@ -177,6 +178,9 @@ export function ProfessionalEarningsPage() {
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
   const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
   const [walletSummary, setWalletSummary] = useState<EarningsSummary | null>(null);
+  const [confirmingConsultationId, setConfirmingConsultationId] = useState<
+    string | null
+  >(null);
   const [payoutSchedule, setPayoutSchedule] = useState<{
     frequency: "weekly";
     nextPayoutAt: string;
@@ -402,11 +406,91 @@ export function ProfessionalEarningsPage() {
     };
   }, []);
 
+  const awaitingConfirmation = walletSummary?.awaitingConfirmation ?? [];
+
+  const confirmConsultation = async (consultationId: string) => {
+    if (confirmingConsultationId) return;
+    setConfirmingConsultationId(consultationId);
+    try {
+      await confirmProfessionalConsultationComplete(consultationId);
+      toast.success("Consultation confirmed. Your payment is on its way.");
+      const refreshed = await getProfessionalWallet();
+      setWalletSummary(refreshed.summary);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to confirm this consultation",
+      );
+    } finally {
+      setConfirmingConsultationId(null);
+    }
+  };
+
   return (
     <section
       className="mt-[14px] pb-6 xl:mt-[6px]"
       data-mobile-scrollbars={mobileScrollbarsVisible ? "visible" : "hidden"}
     >
+      {awaitingConfirmation.length > 0 ? (
+        <div className="mb-4 rounded-[12px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
+          <h2 className="text-[15px] font-semibold tracking-[-0.03em] text-[#92400E]">
+            {awaitingConfirmation.length === 1
+              ? "A consultation is waiting on you"
+              : `${awaitingConfirmation.length} consultations are waiting on you`}
+          </h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#92400E]">
+            These have taken place but have not been paid out yet, because they
+            have not been confirmed. Confirming releases the payment.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {awaitingConfirmation.map((item) => (
+              <li
+                key={item.consultationId}
+                className="flex flex-col gap-2 rounded-[10px] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold text-[#334155]">
+                    {item.consultationLabel} - {item.patientName}
+                  </p>
+                  <p className="mt-0.5 text-[12px] leading-4 text-[#64748B]">
+                    {formatApiMoney(item.netCents, item.currency)} after
+                    commission
+                    {item.patientConfirmed
+                      ? ". The patient has already confirmed."
+                      : ""}
+                  </p>
+                  {item.confirmationDueAt ? (
+                    <p className="mt-0.5 text-[12px] leading-4 text-[#B45309]">
+                      {/* Said plainly, because after this it stops being a
+                          button press and becomes an admin review. */}
+                      Confirm by{" "}
+                      {new Date(item.confirmationDueAt).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      , or it goes to Swift HELP for review instead.
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => confirmConsultation(item.consultationId)}
+                  disabled={confirmingConsultationId !== null}
+                  className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-4 text-[14px] font-semibold text-white transition hover:bg-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {confirmingConsultationId === item.consultationId
+                    ? "Confirming..."
+                    : "Confirm and release"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="border-b border-[#94A3B8] pb-[14px]">
         <div className="flex flex-wrap items-center justify-between gap-4 md:flex-nowrap md:items-center md:justify-between md:gap-3">
           <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Earnings</h1>

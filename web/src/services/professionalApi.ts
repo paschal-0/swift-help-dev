@@ -403,6 +403,19 @@ export type ProfessionalNotification = {
   createdAt: string;
 };
 
+/** A consultation that has happened and is waiting on the professional. */
+export type ConsultationAwaitingConfirmation = {
+  consultationId: string;
+  consultationLabel: string;
+  patientName: string;
+  endedAt: string;
+  confirmationDueAt: string | null;
+  patientConfirmed: boolean;
+  /** What confirming it will pay, in this consultation's own currency. */
+  netCents: number;
+  currency: string;
+};
+
 export type EarningsSummary = {
   totalEarned: number;
   availableBalance: number;
@@ -410,6 +423,7 @@ export type EarningsSummary = {
   pendingEarnings: number;
   currency: string;
   transactionCount: number;
+  awaitingConfirmation?: ConsultationAwaitingConfirmation[];
 };
 
 export type ProfessionalEarning = {
