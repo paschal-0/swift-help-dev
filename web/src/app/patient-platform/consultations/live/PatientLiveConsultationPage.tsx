@@ -539,6 +539,55 @@ export function PatientLiveConsultationPage() {
     }
   };
 
+  /**
+   * Asks before leaving.
+   *
+   * The End button sits beside the camera and microphone controls, and the
+   * three are a thumb's width apart on a phone. Ending is the one of them
+   * that cannot be undone, so it is the one that asks - and it says plainly
+   * that leaving is not cancelling, because the two are different things
+   * with different consequences for the money.
+   */
+  const confirmLeave = () =>
+    new Promise<boolean>((resolve) => {
+      const toastId = toast.custom(
+        () => (
+          <div className="w-[320px] rounded-[16px] border border-[#BFDBFE] bg-[#F8FAFC] p-4 text-[#334155] shadow-[0_18px_42px_rgba(15,23,42,0.2)]">
+            <p className="text-[15px] font-semibold text-[#0F172A]">
+              Leave this consultation?
+            </p>
+            <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+              The room stays open until the booked time ends, so you can come
+              back. This does not cancel your appointment.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  resolve(false);
+                }}
+                className="flex-1 rounded-[10px] bg-[#1565C0] px-3 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0D47A1]"
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  resolve(true);
+                }}
+                className="flex-1 rounded-[10px] border border-[#DC2626] px-3 py-2 text-[14px] font-semibold text-[#DC2626] transition hover:bg-[#FEF2F2]"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: Infinity },
+      );
+    });
+
   const leaveSession = async () => {
     if (!consultation || isLeaving) return;
     setIsLeaving(true);
@@ -734,6 +783,7 @@ export function PatientLiveConsultationPage() {
         onMessageDraftChange={setMessageDraft}
         onSendMessage={sendMessage}
         isEnding={isLeaving}
+        onBeforeEnd={confirmLeave}
         onEnd={() => void leaveSession()}
         summaryContent={
           <div className="flex min-h-[254px] flex-col justify-between">

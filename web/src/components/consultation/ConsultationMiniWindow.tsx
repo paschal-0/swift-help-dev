@@ -61,6 +61,67 @@ function readRemoteVideo(session: ConsultationCallSession) {
   return null;
 }
 
+/**
+ * Whether this browser can detach the video into its own floating window.
+ *
+ * Chrome, Edge and desktop Safari can; iOS Safari uses an older WebKit call
+ * of its own; Firefox offers it only through its own controls, which is why
+ * it is not claimed here. Asked rather than assumed, so a browser that
+ * cannot do it is not offered a button that fails.
+ */
+type PipVideoElement = HTMLVideoElement & {
+  webkitSetPresentationMode?: (mode: string) => void;
+  webkitSupportsPresentationMode?: (mode: string) => boolean;
+};
+
+function supportsPictureInPicture(element: HTMLVideoElement | null) {
+  if (!element) return false;
+  const video = element as PipVideoElement;
+  if (
+    typeof document !== "undefined" &&
+    document.pictureInPictureEnabled &&
+    typeof video.requestPictureInPicture === "function"
+  ) {
+    return true;
+  }
+  return (
+    typeof video.webkitSupportsPresentationMode === "function" &&
+    video.webkitSupportsPresentationMode("picture-in-picture")
+  );
+}
+
+async function togglePictureInPicture(element: HTMLVideoElement) {
+  const video = element as PipVideoElement;
+  if (
+    typeof document !== "undefined" &&
+    typeof video.requestPictureInPicture === "function"
+  ) {
+    if (document.pictureInPictureElement === video) {
+      await document.exitPictureInPicture();
+      return;
+    }
+    await video.requestPictureInPicture();
+    return;
+  }
+  // The iOS route. It returns nothing and reports nothing, so there is no
+  // state to read back - only the request.
+  video.webkitSetPresentationMode?.("picture-in-picture");
+}
+
+function PipIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        d="M3 5h18v14H3z"
+      />
+      <path fill="currentColor" d="M12 12h8v5h-8z" />
+    </svg>
+  );
+}
+
 function formatDuration(startedAt: number, now: number) {
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
   const minutes = Math.floor(seconds / 60);
@@ -124,6 +185,7 @@ export function ConsultationMiniWindow({
   const [now, setNow] = useState(() => Date.now());
   const [ending, setEnding] = useState(false);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [pipAvailable, setPipAvailable] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
 
@@ -162,6 +224,9 @@ export function ConsultationMiniWindow({
     }
     element.srcObject = new MediaStream([remoteTrack]);
     void element.play().catch(() => undefined);
+    // Asked once there is something to detach: a video element with no
+    // stream reports nothing useful.
+    setPipAvailable(supportsPictureInPicture(element));
     return () => {
       element.srcObject = null;
     };
@@ -293,6 +358,24 @@ export function ConsultationMiniWindow({
         >
           <CameraIcon off={!media.videoEnabled} />
         </button>
+
+        {pipAvailable ? (
+          <button
+            type="button"
+            // Hands the video to the browser's own floating player, which
+            // keeps running over other apps and other tabs. Only offered
+            // where the browser says it can.
+            onClick={() => {
+              const element = videoRef.current;
+              if (element) void togglePictureInPicture(element).catch(() => undefined);
+            }}
+            aria-label="Pop out video"
+            title="Pop out - stays on top of other windows"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1E293B] text-white transition hover:bg-[#334155]"
+          >
+            <PipIcon />
+          </button>
+        ) : null}
 
         <Link
           href={session.returnHref}
