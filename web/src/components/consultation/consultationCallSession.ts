@@ -61,6 +61,12 @@ export function getConsultationCallSessionFor(meetingUrl: string) {
 
 export function startConsultationCallSession(next: ConsultationCallSession) {
   session = next;
+  rememberConsultation({
+    returnHref: next.returnHref,
+    label: next.label,
+    startedAt: next.startedAt,
+    rememberedAt: Date.now(),
+  });
   announce();
 }
 
@@ -85,6 +91,8 @@ export function describeConsultationCallSession(
 export async function endConsultationCallSession() {
   const ending = session;
   session = null;
+  // Ending is deliberate, so there is nothing to come back to.
+  forgetRememberedConsultation();
   announce();
   if (!ending) return;
 
@@ -111,4 +119,105 @@ export async function endConsultationCallSession() {
 export function forgetConsultationCallSession() {
   session = null;
   announce();
+}
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * A note that a consultation was in progress, kept where a refresh cannot
+ * reach it.
+ *
+ * Refreshing destroys the page's JavaScript and the call with it - no
+ * arrangement of components survives that. What can survive is the knowledge
+ * that a consultation was running, so the person is offered their way back
+ * instead of being left to find the appointment again.
+ *
+ * Session storage, not local storage: it belongs to this tab and this
+ * sitting. Closing the tab ends it, which is the right default for something
+ * that names a patient's consultation.
+ */
+
+const REMEMBERED_KEY = "swifthelp.consultation.inProgress";
+
+/**
+ * A backstop, not the real consultation window. The marker is cleared
+ * properly when the call ends; this only stops a forgotten one lingering for
+ * ever if that never happens.
+ */
+const REMEMBERED_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+export type RememberedConsultation = {
+  returnHref: string;
+  label: string;
+  /** When the call was joined, so the duration does not restart. */
+  startedAt: number;
+  /** When this note was written, for the backstop above. */
+  rememberedAt: number;
+};
+
+/**
+ * Cached so the snapshot is the same object between announcements.
+ *
+ * React compares snapshots by identity, and re-reading storage would hand it
+ * a fresh object every render and spin.
+ */
+let rememberedCache: RememberedConsultation | null = null;
+let rememberedCacheLoaded = false;
+
+/** The remembered consultation, for a component to subscribe to. */
+export function getRememberedConsultationSnapshot() {
+  if (!rememberedCacheLoaded) {
+    rememberedCache = readRememberedConsultation();
+    rememberedCacheLoaded = true;
+  }
+  return rememberedCache;
+}
+
+export function rememberConsultation(entry: RememberedConsultation) {
+  rememberedCache = entry;
+  rememberedCacheLoaded = true;
+  try {
+    window.sessionStorage.setItem(REMEMBERED_KEY, JSON.stringify(entry));
+  } catch {
+    // Private browsing, or storage refused. The call still works; only the
+    // offer to rejoin after a refresh is lost.
+  }
+}
+
+export function readRememberedConsultation(): RememberedConsultation | null {
+  try {
+    const raw = window.sessionStorage.getItem(REMEMBERED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<RememberedConsultation>;
+    if (
+      typeof parsed?.returnHref !== "string" ||
+      typeof parsed?.startedAt !== "number" ||
+      typeof parsed?.rememberedAt !== "number"
+    ) {
+      return null;
+    }
+    if (Date.now() - parsed.rememberedAt > REMEMBERED_MAX_AGE_MS) {
+      forgetRememberedConsultation();
+      return null;
+    }
+    return {
+      returnHref: parsed.returnHref,
+      label: typeof parsed.label === "string" ? parsed.label : "Consultation",
+      startedAt: parsed.startedAt,
+      rememberedAt: parsed.rememberedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function forgetRememberedConsultation() {
+  rememberedCache = null;
+  rememberedCacheLoaded = true;
+  announce();
+  try {
+    window.sessionStorage.removeItem(REMEMBERED_KEY);
+  } catch {
+    // Nothing useful to do, and nothing depends on it succeeding.
+  }
 }

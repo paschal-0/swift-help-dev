@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import {
+  forgetRememberedConsultation,
   getConsultationCallSession,
+  getRememberedConsultationSnapshot,
   subscribeToConsultationCall,
   type ConsultationCallSession,
 } from "./consultationCallSession";
@@ -75,6 +78,14 @@ export function ConsultationCallHost() {
     getConsultationCallSession,
     () => null,
   );
+  // Survives a refresh, which the call itself cannot: reloading destroys the
+  // page's JavaScript and the connection with it. What is left is the
+  // knowledge that a consultation was running, and a way back to it.
+  const remembered = useSyncExternalStore(
+    subscribeToConsultationCall,
+    getRememberedConsultationSnapshot,
+    () => null,
+  );
   const pathname = usePathname();
   const [audioTracks, setAudioTracks] = useState<RemoteAudio[]>([]);
 
@@ -104,7 +115,42 @@ export function ConsultationCallHost() {
     };
   }, [session]);
 
-  if (!session) return null;
+  if (!session) {
+    // No live call, but one was running before the page reloaded. The login
+    // cookie survived too, so this is one tap back in rather than a fresh
+    // sign-in and a hunt for the appointment.
+    if (!remembered || remembered.returnHref.split("?")[0] === pathname) {
+      return null;
+    }
+    return (
+      <div className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-3 sm:left-auto sm:right-4 sm:w-[340px] sm:px-0">
+        <div className="flex items-center gap-3 rounded-[12px] bg-[#1E293B] px-4 py-3 shadow-xl">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold text-white">
+              {remembered.label}
+            </p>
+            <p className="text-[12px] leading-4 text-[#94A3B8]">
+              You were in this consultation
+            </p>
+          </div>
+          <Link
+            href={remembered.returnHref}
+            className="shrink-0 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0D47A1]"
+          >
+            Rejoin
+          </Link>
+          <button
+            type="button"
+            onClick={forgetRememberedConsultation}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-[8px] px-2 py-2 text-[13px] font-semibold text-[#94A3B8] transition hover:text-white"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // The consultation page renders its own call, so the bar would only be in
   // the way there.

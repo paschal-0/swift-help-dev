@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { forgetRememberedConsultation } from "@/components/consultation/consultationCallSession";
 import { toast } from "sonner";
 import {
   createAuthenticatedEventSource,
@@ -768,6 +769,20 @@ export function ProfessionalLiveConsultationPage() {
       toast.error(getApiErrorMessage(error));
     }
   };
+
+
+  // A consultation that has finished is not one to offer a way back into.
+  useEffect(() => {
+    const status = consultation?.status;
+    if (!status) return;
+    if (
+      ["completed", "cancelled", "missed", "ended_unconfirmed"].includes(
+        status,
+      )
+    ) {
+      forgetRememberedConsultation();
+    }
+  }, [consultation?.status]);
 
   return (
     <section className="w-full max-w-none">
