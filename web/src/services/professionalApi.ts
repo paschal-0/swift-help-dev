@@ -443,6 +443,9 @@ export type ProfessionalEarningDetails = {
   platformFeeCents: number;
   professionalNetCents: number;
   feeRatePercentage: number;
+  /** False while the consultation has not settled: the split above is then
+   *  what settlement will produce, not what it produced. */
+  settled?: boolean;
   provider: string | null;
   providerReference: string | null;
   transferReference: string | null;
@@ -1054,11 +1057,15 @@ export function endProfessionalConsultationSession(
   );
 }
 
-export function cancelProfessionalConsultation(consultationId: string) {
+export function cancelProfessionalConsultation(
+  consultationId: string,
+  reason: string,
+) {
   return apiRequest<ProfessionalConsultation>(
     `/professional/consultations/${consultationId}/cancel`,
     {
       method: "POST",
+      body: JSON.stringify({ reason }),
     },
   );
 }

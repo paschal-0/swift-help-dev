@@ -1287,10 +1287,13 @@ export function disputePatientConsultationCompletion(
   );
 }
 
-export function cancelPatientConsultation(consultationId: string) {
+export function cancelPatientConsultation(
+  consultationId: string,
+  reason: string,
+) {
   return apiRequest<PatientConsultation>(
     `/patient/consultations/${encodeURIComponent(consultationId)}/cancel`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ reason }) },
   );
 }
 

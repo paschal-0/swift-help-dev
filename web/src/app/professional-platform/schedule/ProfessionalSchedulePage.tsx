@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import { CancelConsultationDialog } from "@/components/CancelConsultationDialog";
 import {
   cancelProfessionalConsultation,
   createProfessionalBlockedTime,
@@ -613,6 +614,8 @@ export function ProfessionalSchedulePage() {
   const [activeConsultationId, setActiveConsultationId] = useState<
     string | null
   >(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [blockEntireDay, setBlockEntireDay] = useState(false);
   const [calendarHeaderIndex, setCalendarHeaderIndex] = useState(0);
   const [blockedTimeItems, setBlockedTimeItems] = useState<BlockedItem[]>([]);
@@ -659,6 +662,31 @@ export function ProfessionalSchedulePage() {
   const [handoverTaskText, setHandoverTaskText] = useState("");
 
   const query = searchText.trim().toLowerCase();
+  const confirmCancelConsultation = async (reason: string) => {
+    if (!activeConsultationId) return;
+    setIsCancelling(true);
+    try {
+      await cancelProfessionalConsultation(activeConsultationId, reason);
+      setScheduleConsultations((current) =>
+        current.filter((item) => item.id !== activeConsultationId),
+      );
+      setIsCancelDialogOpen(false);
+      setIsAppointmentDetailsModalOpen(false);
+      toast.warning("Appointment cancelled.");
+    } catch (error) {
+      // The server has the last word on whether this was allowed, so its
+      // refusal is what the professional sees - a consultation that has
+      // already happened is refused here, not silently cancelled.
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to cancel appointment",
+      );
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const activeAppointmentDetails = useMemo(() => {
     const activeConsultation = consultationRecords.find(
       (item) => item.id === activeConsultationId,
@@ -2402,6 +2430,15 @@ export function ProfessionalSchedulePage() {
           </motion.div>
         ) : null}
 
+        <CancelConsultationDialog
+          open={isCancelDialogOpen}
+          actor="professional"
+          consultationLabel={activeAppointmentDetails?.type ?? null}
+          busy={isCancelling}
+          onKeep={() => setIsCancelDialogOpen(false)}
+          onConfirm={confirmCancelConsultation}
+        />
+
         {isAppointmentDetailsModalOpen ? (
           <motion.div
             className="fixed inset-0 z-[60] flex items-end justify-center bg-[#0F172A]/40 px-4 pb-8 sm:items-center sm:py-0"
@@ -2552,26 +2589,11 @@ export function ProfessionalSchedulePage() {
               <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7">
                 <button
                   type="button"
-                  onClick={async () => {
+                  // Opens the confirmation. Nothing is cancelled and no
+                  // refund is started until it is confirmed there.
+                  onClick={() => {
                     if (!activeConsultationId) return;
-                    try {
-                      await cancelProfessionalConsultation(
-                        activeConsultationId,
-                      );
-                      setScheduleConsultations((current) =>
-                        current.filter(
-                          (item) => item.id !== activeConsultationId,
-                        ),
-                      );
-                      setIsAppointmentDetailsModalOpen(false);
-                      toast.warning("Appointment cancelled.");
-                    } catch (error) {
-                      toast.error(
-                        error instanceof Error
-                          ? error.message
-                          : "Unable to cancel appointment",
-                      );
-                    }
+                    setIsCancelDialogOpen(true);
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] border border-[#334155] bg-[#F8FAFC] px-2 text-[13px] font-medium leading-[15px] tracking-[-0.05em] text-[#334155] sm:h-[32px] sm:rounded-[9.26984px] sm:text-[14px]"
                 >

@@ -708,11 +708,18 @@ export function ProfessionalEarningsPage() {
                   <p className="mt-4 text-[#64748B]">Loading transaction breakdown...</p>
                 ) : selectedTransactionDetails ? (
                   <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                    {selectedTransactionDetails.settled === false ? (
+                      <p className="rounded-[8px] border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[13px] leading-5 text-[#92400E] sm:col-span-2">
+                        This consultation has not settled yet. The amounts
+                        below are what it will settle at once the patient
+                        confirms, at your current commission rate.
+                      </p>
+                    ) : null}
                     <p>Original payment: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.originalAmountCents, selectedTransactionDetails.currency)}</span></p>
                     <p>Used / chargeable amount: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.chargeableAmountCents, selectedTransactionDetails.currency)}</span></p>
                     <p>Unused-time refund: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.unusedRefundCents, selectedTransactionDetails.currency)}</span></p>
-                    <p>Swift HELP fee: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.platformFeeCents, selectedTransactionDetails.currency)} ({selectedTransactionDetails.feeRatePercentage}%)</span></p>
-                    <p>Professional net earning: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.professionalNetCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>{selectedTransactionDetails.settled === false ? "Swift HELP fee (estimated)" : "Swift HELP fee"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.platformFeeCents, selectedTransactionDetails.currency)} ({selectedTransactionDetails.feeRatePercentage}%)</span></p>
+                    <p>{selectedTransactionDetails.settled === false ? "Professional net earning (estimated)" : "Professional net earning"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.professionalNetCents, selectedTransactionDetails.currency)}</span></p>
                     <p>Status: <span className={`font-semibold ${statusTone(earningStatusLabel[selectedTransactionDetails.status])}`}>{earningStatusLabel[selectedTransactionDetails.status]}</span></p>
                     <p>Transaction ID: <span className="break-all font-semibold">{selectedTransactionDetails.transactionId}</span></p>
                     <p>Booking reference: <span className="break-all font-semibold">{selectedTransactionDetails.bookingReference ?? "-"}</span></p>
