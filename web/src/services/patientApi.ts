@@ -88,6 +88,9 @@ export type PatientConsultation = {
   disputedByUserId?: string | null;
   disputeReason?: string | null;
   liveStartedAt?: string | null;
+  /** Set while that side's connection has dropped but they have not left. */
+  patientReconnectingSince?: string | null;
+  professionalReconnectingSince?: string | null;
   liveEndedAt?: string | null;
   billableDurationSeconds?: number;
   professionalLeftAt?: string | null;
@@ -1347,6 +1350,8 @@ export function updatePatientConsultationPresence(
     cameraEnabled?: boolean;
     microphoneEnabled?: boolean;
     inCall?: boolean;
+    /** Tells a dropped connection apart from somebody leaving. */
+    state?: "connected" | "reconnecting" | "left";
   },
 ) {
   return apiRequest<PatientConsultationPresence>(

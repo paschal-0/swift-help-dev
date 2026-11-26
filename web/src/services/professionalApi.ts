@@ -177,6 +177,9 @@ export type ProfessionalConsultation = {
   startedAt: string | null;
   completedAt: string | null;
   liveStartedAt?: string | null;
+  /** Set while that side's connection has dropped but they have not left. */
+  patientReconnectingSince?: string | null;
+  professionalReconnectingSince?: string | null;
   liveEndedAt?: string | null;
   billableDurationSeconds?: number;
   professionalLeftAt?: string | null;
@@ -1025,7 +1028,10 @@ export function updateProfessionalConsultationPresence(
       ProfessionalConsultationPresence,
       "online" | "cameraEnabled" | "microphoneEnabled" | "inCall"
     >
-  >,
+  > & {
+    /** Tells a dropped connection apart from somebody leaving. */
+    state?: "connected" | "reconnecting" | "left";
+  },
 ) {
   return apiRequest<ProfessionalConsultationPresence>(
     `/professional/consultations/${encodeURIComponent(consultationId)}/presence`,

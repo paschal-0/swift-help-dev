@@ -772,6 +772,8 @@ export function ProfessionalLiveConsultationPage() {
   return (
     <section className="w-full max-w-none">
       <ConsultationVideoRoom
+        // Shown as waiting for them, not as the consultation having ended.
+        remoteReconnecting={Boolean(consultation?.patientReconnectingSince)}
         // The call carries on in the floating window; only this page closes.
         onMinimise={() => router.push("/professional-platform/dashboard")}
         token={videoAccess?.roomToken ?? null}

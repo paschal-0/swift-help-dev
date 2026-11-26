@@ -66,6 +66,11 @@ type ConsultationVideoRoomProps = {
    * is shown.
    */
   onMinimise?: () => void;
+  /**
+   * The other participant's connection has dropped but they have not left.
+   * Shown as waiting rather than as the consultation having ended.
+   */
+  remoteReconnecting?: boolean;
   onBeforeEnd?: () => Promise<boolean> | boolean;
   onEnd: () => void;
   playAllRemoteAudio?: boolean;
@@ -73,6 +78,12 @@ type ConsultationVideoRoomProps = {
     inCall?: boolean;
     cameraEnabled?: boolean;
     microphoneEnabled?: boolean;
+    /**
+     * `reconnecting` is a connection that has dropped, not a departure. The
+     * two used to be reported identically, which is why a moment of bad
+     * signal told the other participant you had gone.
+     */
+    state?: "connected" | "reconnecting" | "left";
   }) => void;
 };
 
@@ -832,6 +843,7 @@ export function ConsultationVideoRoom({
   onTranscriptText,
   isEnding,
   onMinimise,
+  remoteReconnecting = false,
   onBeforeEnd,
   onEnd,
   playAllRemoteAudio = false,
@@ -840,6 +852,7 @@ export function ConsultationVideoRoom({
   const callRef = useRef<DailyCallObject | null>(null);
   const mediaRecoveryRef = useRef<(() => Promise<void>) | null>(null);
   const presenceChangeRef = useRef(onPresenceChange);
+  const [reconnecting, setReconnecting] = useState(false);
   // Read through a ref so a heading change cannot retrigger the join effect
   // and make the participant leave and rejoin the room.
   const headingRef = useRef(heading);
@@ -1063,14 +1076,28 @@ export function ConsultationVideoRoom({
     const handleNetworkConnection = (...args: unknown[]) => {
       addCallDiagnostic("network connection", args);
       const statusText = JSON.stringify(args).toLowerCase();
-      if (
+      const dropped =
+        statusText.includes("interrupted") ||
         statusText.includes("disconnected") ||
         statusText.includes("failed") ||
-        statusText.includes("closed")
-      ) {
+        statusText.includes("closed");
+
+      if (dropped) {
+        setReconnecting(true);
         setNetworkNotice(
-          "Daily media transport disconnected. Check network, TURN, and room connectivity.",
+          "Your connection dropped. Trying to reconnect - the consultation is still open.",
         );
+        // Reported as a drop, never as leaving. The other participant is
+        // told to wait rather than that the consultation has ended, and the
+        // billable clock pauses while nobody can actually be heard.
+        presenceChangeRef.current?.({ state: "reconnecting" });
+        return;
+      }
+
+      if (statusText.includes("connected")) {
+        setReconnecting(false);
+        setNetworkNotice(null);
+        presenceChangeRef.current?.({ state: "connected", inCall: true });
       }
     };
 
@@ -1436,6 +1463,7 @@ export function ConsultationVideoRoom({
           // left. Reporting it on every unmount is what produced the
           // "has left the consultation" notice on a page change.
           presenceChangeRef.current?.({
+            state: "left",
             inCall: false,
             cameraEnabled: false,
             microphoneEnabled: false,
@@ -1658,6 +1686,7 @@ export function ConsultationVideoRoom({
     if (!shouldEnd) return;
     setBusyControl("leave");
     presenceChangeRef.current?.({
+      state: "left",
       inCall: false,
       cameraEnabled: false,
       microphoneEnabled: false,
@@ -2034,6 +2063,18 @@ export function ConsultationVideoRoom({
           ) : connectionStatus === "connecting" ? (
             <div className="absolute inset-x-4 bottom-4 rounded-[12px] bg-[rgba(15,23,42,0.55)] px-4 py-3 text-center text-[13px] font-medium tracking-[-0.04em] text-white">
               Connecting to secure consultation...
+            </div>
+          ) : null}
+
+          {remoteReconnecting ? (
+            <div className="absolute left-4 right-4 top-[26px] rounded-[12px] bg-[rgba(146,64,14,0.92)] px-4 py-2 text-center text-[12px] font-medium tracking-[-0.04em] text-white">
+              {remoteRoleLabel} temporarily disconnected. Waiting for them to
+              reconnect - the consultation is still open.
+            </div>
+          ) : reconnecting ? (
+            <div className="absolute left-4 right-4 top-[26px] rounded-[12px] bg-[rgba(146,64,14,0.92)] px-4 py-2 text-center text-[12px] font-medium tracking-[-0.04em] text-white">
+              Reconnecting. The consultation is still open and nobody is being
+              charged for this time.
             </div>
           ) : null}
 
