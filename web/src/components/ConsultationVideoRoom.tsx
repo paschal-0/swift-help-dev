@@ -9,6 +9,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  endConsultationCallSession,
+  getConsultationCallSessionFor,
+  startConsultationCallSession,
+  type PersistentDailyCall,
+} from "./consultation/consultationCallSession";
 
 type ConsultationRoomMessage = {
   id: string;
@@ -827,6 +833,9 @@ export function ConsultationVideoRoom({
   const callRef = useRef<DailyCallObject | null>(null);
   const mediaRecoveryRef = useRef<(() => Promise<void>) | null>(null);
   const presenceChangeRef = useRef(onPresenceChange);
+  // Read through a ref so a heading change cannot retrigger the join effect
+  // and make the participant leave and rejoin the room.
+  const headingRef = useRef(heading);
   const transcriptTextRef = useRef(onTranscriptText);
   const [participants, setParticipants] = useState<
     Record<string, DailyParticipant>
@@ -946,6 +955,10 @@ export function ConsultationVideoRoom({
   useEffect(() => {
     presenceChangeRef.current = onPresenceChange;
   }, [onPresenceChange]);
+
+  useEffect(() => {
+    headingRef.current = heading;
+  }, [heading]);
 
   useEffect(() => {
     transcriptTextRef.current = onTranscriptText;
@@ -1107,6 +1120,78 @@ export function ConsultationVideoRoom({
       }
     };
 
+    /**
+     * The handlers this page needs while it is open.
+     *
+     * Attached on mount and detached on unmount, separately from the call's
+     * own life: the call outlives the page, the listeners do not.
+     */
+    const attachHandlers = (call: DailyCallObject) => {
+      call
+        .on("joined-meeting", handleJoined)
+        .on("left-meeting", handleLeft)
+        .on("participant-joined", syncParticipants)
+        .on("participant-updated", syncParticipants)
+        .on("participant-left", syncParticipants)
+        .on("track-started", syncParticipants)
+        .on("track-stopped", syncParticipants)
+        .on("screen-share-started", syncParticipants)
+        .on("screen-share-stopped", syncParticipants)
+        .on("local-screen-share-started", handleScreenShareStarted)
+        .on("local-screen-share-stopped", handleScreenShareStopped)
+        .on("network-connection", handleNetworkConnection as () => void)
+        .on("network-quality-change", handleNetworkQuality as () => void)
+        .on("receive-settings-updated", handleNetworkConnection as () => void)
+        .on("transcription-message", handleTranscription as () => void)
+        .on("app-message", handleTranscription as () => void)
+        .on("error", handleError);
+    };
+
+    const detachHandlers = (call: DailyCallObject) => {
+      call.off("joined-meeting", handleJoined);
+      call.off("left-meeting", handleLeft);
+      call.off("participant-joined", syncParticipants);
+      call.off("participant-updated", syncParticipants);
+      call.off("participant-left", syncParticipants);
+      call.off("track-started", syncParticipants);
+      call.off("track-stopped", syncParticipants);
+      call.off("screen-share-started", syncParticipants);
+      call.off("screen-share-stopped", syncParticipants);
+      call.off("local-screen-share-started", handleScreenShareStarted);
+      call.off("local-screen-share-stopped", handleScreenShareStopped);
+      call.off("network-connection", handleNetworkConnection as () => void);
+      call.off("network-quality-change", handleNetworkQuality as () => void);
+      call.off("receive-settings-updated", handleNetworkConnection as () => void);
+      call.off("transcription-message", handleTranscription as () => void);
+      call.off("app-message", handleTranscription as () => void);
+      call.off("error", handleError);
+    };
+
+    // Already in this room, from before a page change. Pick the call back up
+    // rather than joining a second time, which would read as the participant
+    // leaving and re-entering.
+    const existing = getConsultationCallSessionFor(meetingUrl);
+    if (existing) {
+      const resumed = existing.call as unknown as DailyCallObject;
+      activeCall = resumed;
+      callRef.current = resumed;
+      attachHandlers(resumed);
+      setConnectionStatus("connected");
+      setConnectionError(null);
+      syncParticipants();
+      addCallDiagnostic("resumed existing daily session", {
+        meetingUrl,
+        roomName,
+      });
+      return () => {
+        cancelled = true;
+        detachHandlers(resumed);
+        if (callRef.current === resumed) {
+          callRef.current = null;
+        }
+      };
+    }
+
     setConnectionStatus("connecting");
     setConnectionError(null);
     setControlNotice(null);
@@ -1264,24 +1349,7 @@ export function ConsultationVideoRoom({
         };
         mediaRecoveryRef.current = recoverLocalMedia;
 
-        activeCall
-          .on("joined-meeting", handleJoined)
-          .on("left-meeting", handleLeft)
-          .on("participant-joined", syncParticipants)
-          .on("participant-updated", syncParticipants)
-          .on("participant-left", syncParticipants)
-          .on("track-started", syncParticipants)
-          .on("track-stopped", syncParticipants)
-          .on("screen-share-started", syncParticipants)
-          .on("screen-share-stopped", syncParticipants)
-          .on("local-screen-share-started", handleScreenShareStarted)
-          .on("local-screen-share-stopped", handleScreenShareStopped)
-          .on("network-connection", handleNetworkConnection as () => void)
-          .on("network-quality-change", handleNetworkQuality as () => void)
-          .on("receive-settings-updated", handleNetworkConnection as () => void)
-          .on("transcription-message", handleTranscription as () => void)
-          .on("app-message", handleTranscription as () => void)
-          .on("error", handleError);
+        attachHandlers(activeCall);
 
         void activeCall
           .join({ url: meetingUrl, token })
@@ -1301,6 +1369,20 @@ export function ConsultationVideoRoom({
                 ),
               );
             }
+            // Handed to the store so it survives this page. From here the
+            // call belongs to the session, not to this component.
+            startConsultationCallSession({
+              meetingUrl,
+              roomName,
+              call: call as unknown as PersistentDailyCall,
+              prewarmedStream,
+              returnHref:
+                typeof window === "undefined"
+                  ? "/"
+                  : `${window.location.pathname}${window.location.search}`,
+              label: headingRef.current,
+              startedAt: Date.now(),
+            });
             addCallDiagnostic("joined daily room", {
               meetingUrl,
               roomName,
@@ -1332,30 +1414,27 @@ export function ConsultationVideoRoom({
       cancelled = true;
       const call = activeCall ?? callRef.current;
       if (call) {
-        call.off("joined-meeting", handleJoined);
-        call.off("left-meeting", handleLeft);
-        call.off("participant-joined", syncParticipants);
-        call.off("participant-updated", syncParticipants);
-        call.off("participant-left", syncParticipants);
-        call.off("track-started", syncParticipants);
-        call.off("track-stopped", syncParticipants);
-        call.off("screen-share-started", syncParticipants);
-        call.off("screen-share-stopped", syncParticipants);
-        call.off("local-screen-share-started", handleScreenShareStarted);
-        call.off("local-screen-share-stopped", handleScreenShareStopped);
-        call.off("network-connection", handleNetworkConnection as () => void);
-        call.off("network-quality-change", handleNetworkQuality as () => void);
-        call.off(
-          "receive-settings-updated",
-          handleNetworkConnection as () => void,
-        );
-        call.off("transcription-message", handleTranscription as () => void);
-        call.off("app-message", handleTranscription as () => void);
-        call.off("error", handleError);
-        void ignoreDailyResult(() => call.leave());
-        void ignoreDailyResult(() => call.destroy());
+        detachHandlers(call);
+
+        // Leaving and destroying used to happen here. It is why navigating
+        // anywhere ended the consultation and told the other participant you
+        // had gone. The call belongs to the session now; only an explicit
+        // end closes it, and only a call this page never handed over is torn
+        // down here.
+        if (!getConsultationCallSessionFor(meetingUrl)) {
+          void ignoreDailyResult(() => call.leave());
+          void ignoreDailyResult(() => call.destroy());
+          prewarmedStream?.getTracks().forEach((track) => track.stop());
+          // Presence is reported only where the participant has genuinely
+          // left. Reporting it on every unmount is what produced the
+          // "has left the consultation" notice on a page change.
+          presenceChangeRef.current?.({
+            inCall: false,
+            cameraEnabled: false,
+            microphoneEnabled: false,
+          });
+        }
       }
-      prewarmedStream?.getTracks().forEach((track) => track.stop());
       setLocalPreviewTrack(null);
       if (callRef.current === call) {
         callRef.current = null;
@@ -1363,11 +1442,6 @@ export function ConsultationVideoRoom({
       if (mediaRecoveryRef.current === recoverLocalMedia) {
         mediaRecoveryRef.current = null;
       }
-      presenceChangeRef.current?.({
-        inCall: false,
-        cameraEnabled: false,
-        microphoneEnabled: false,
-      });
     };
   }, [addCallDiagnostic, canJoin, meetingUrl, networkMode, roomName, token]);
 
@@ -1581,6 +1655,9 @@ export function ConsultationVideoRoom({
       cameraEnabled: false,
       microphoneEnabled: false,
     });
+    // Closes the shared session as well, so nothing is left running behind
+    // the page the professional or patient has just left.
+    await endConsultationCallSession();
     await ignoreDailyResult(() => callRef.current?.leave());
     onEnd();
   };
