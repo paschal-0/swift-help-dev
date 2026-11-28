@@ -835,7 +835,7 @@ export function PatientBookAppointmentPage() {
                         {prof.promoted ? (
                           <span
                             className="mt-1 inline-flex items-center rounded-full bg-[#EEF2F7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
-                            title="This professional subscribes to Swift HELP Pro, which lists them higher"
+                            title="This professional subscribes to Swift HELP Pro, which lists them higher among the professionals who already match your search. Clinical suitability and safety decide who is shown at all."
                           >
                             Promoted
                           </span>
@@ -876,7 +876,7 @@ export function PatientBookAppointmentPage() {
                         {prof.promoted ? (
                           <span
                             className="mt-1 inline-flex items-center rounded-full bg-[#EEF2F7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
-                            title="This professional subscribes to Swift HELP Pro, which lists them higher"
+                            title="This professional subscribes to Swift HELP Pro, which lists them higher among the professionals who already match your search. Clinical suitability and safety decide who is shown at all."
                           >
                             Promoted
                           </span>

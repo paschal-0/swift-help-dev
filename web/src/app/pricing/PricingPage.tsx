@@ -225,6 +225,11 @@ const faqs = [
       "Where unused-time refunds apply, the patient is charged only for the time used and the rest is refunded. Commission is worked out on that final chargeable amount, not on the original booking.",
   },
   {
+    question: "Does paying for Pro put a professional ahead of a better match?",
+    answer:
+      "No. Clinical suitability and patient safety take precedence over paid search placement. Specialisation, consultation type, location and verification decide who is shown at all; a Pro subscription only affects the order of the professionals who already match, and those listings are labelled Promoted.",
+  },
+  {
     question: "Are there hidden fees?",
     answer:
       "No. Consultation prices, plan prices and commission rates are shown in full before checkout, and every settled consultation keeps the rate it was charged at.",
@@ -737,6 +742,23 @@ export function PricingPage() {
                 </p>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f4fbff] py-10 max-[767px]:py-8">
+        <div className={containerClass}>
+          <div className="px-6 max-[767px]:px-2">
+            <p className="mx-auto max-w-[860px] text-center text-[16px] font-light leading-7 tracking-[-0.05em] text-slate-700">
+              <span className="font-semibold text-slate-950">
+                Clinical suitability and patient safety take precedence over
+                paid search placement.
+              </span>{" "}
+              Specialisation, consultation type, location and verification
+              decide which professionals a patient sees. A Pro subscription
+              changes the order of those already shown, never who is shown, and
+              a promoted listing says so on its face.
+            </p>
           </div>
         </div>
       </section>
