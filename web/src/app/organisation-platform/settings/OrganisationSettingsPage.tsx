@@ -2,13 +2,11 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   changeOrganizationPassword,
   formatOrganizationMoney,
   getOrganizationSettings,
-  initializeOrganizationStripeSubscription,
   updateOrganizationNotificationPreferences,
   updateOrganizationOperatingPreference,
   updateOrganizationPreferences,
@@ -446,7 +444,6 @@ function SessionStatusBadge({ status }: { status: SessionItem["status"] }) {
 }
 
 export function OrganisationSettingsPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("General");
 
   // Stripe returns the organisation to ?tab=subscription after the portal, so
@@ -483,15 +480,6 @@ export function OrganisationSettingsPage() {
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods);
   const [billingHistory, setBillingHistory] = useState(initialBillingHistory);
   const [billingPage, setBillingPage] = useState(1);
-
-  const startOrganizationSubscription = async (plan: "starter" | "growth") => {
-    try {
-      const result = await initializeOrganizationStripeSubscription(plan);
-      window.location.assign(result.authorizationUrl);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to start subscription checkout.");
-    }
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -1057,30 +1045,20 @@ export function OrganisationSettingsPage() {
               ))}
             </div>
 
+            {/* One plan comparison, on the Subscription tab, which knows what
+                this organisation is already on. The buttons that used to sit
+                here offered Starter and Growth to everybody, including an
+                organisation already paying for one of them. */}
             <motion.button
               type="button"
-              onClick={() => router.push("/pricing")}
+              onClick={() => handleTabChange("Subscription")}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.97 }}
               transition={{ duration: 0.2, ease: premiumEase }}
               className="mt-6 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] border border-[#1E88E5] bg-[#F8FAFC] text-[16px] tracking-[-0.05em] text-[#1565C0] transition hover:bg-[#eff6ff]"
             >
-              Review pricing
+              Review plans and manage subscription
             </motion.button>
-            <button
-              type="button"
-              onClick={() => void startOrganizationSubscription("starter")}
-              className="mt-3 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1E88E5] text-[16px] text-white transition hover:bg-[#1565C0]"
-            >
-              Subscribe to Starter
-            </button>
-            <button
-              type="button"
-              onClick={() => void startOrganizationSubscription("growth")}
-              className="mt-3 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] border border-[#1E88E5] bg-transparent text-[16px] text-[#1E88E5] transition hover:bg-[#eff6ff]"
-            >
-              Subscribe to Growth
-            </button>
           </motion.article>
         </div>
       </section>

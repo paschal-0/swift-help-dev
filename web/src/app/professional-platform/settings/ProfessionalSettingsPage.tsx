@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   changeProfessionalPassword,
@@ -361,7 +360,6 @@ function buildWeeklySchedule(form: AvailabilityForm, current: WeeklyAvailability
 }
 
 export function ProfessionalSettingsPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   // Stripe returns the professional to ?tab=subscription after checkout, so
@@ -855,8 +853,11 @@ export function ProfessionalSettingsPage() {
             <SettingsCard
               title="Billing and plan"
               right={
-                <PrimaryButton variant="secondary" onClick={() => router.push("/pricing")}>
-                  Review pricing
+                <PrimaryButton
+                  variant="secondary"
+                  onClick={() => setActiveTab("subscription")}
+                >
+                  Review plans
                 </PrimaryButton>
               }
             >

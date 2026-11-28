@@ -1,16 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { containerClass } from "../landing/classes";
 import { getProfile, platformPathForRole, type BackendRole } from "@/services/authApi";
+import { getPublicPricing, type PublicPricing, type PublicPricingPlan } from "@/services/pricingApi";
+import {
+  getProfessionalSubscription,
+  type ProfessionalSubscriptionOverview,
+} from "@/services/professionalApi";
 
 type Audience = "patients" | "professionals" | "organizations";
 
 type PricingPlan = {
+  /** Matches the plan to the row the backend prices, where there is one. */
+  planCode?: string;
   name: string;
+  /** Used only until the real price arrives, and only where it is right. */
   price: string;
+  /** Countries this written price is true for. Empty means every country. */
+  priceCountries?: string[];
+  /** Shown instead of a price where no price is published for the country. */
+  priceUnavailable?: string;
   description: string;
   features: string[];
   highlights?: string[];
@@ -25,11 +37,39 @@ const audienceLabels: Record<Audience, string> = {
   organizations: "Organizations",
 };
 
+const SUBSCRIPTION_SETTINGS = "/professional-platform/settings?tab=subscription";
+
+/**
+ * Where each role manages its own plan. A signed-in visitor reading the plans
+ * for their own audience belongs here rather than back at registration.
+ */
+const PLAN_SETTINGS: Partial<Record<BackendRole, string>> = {
+  professional: SUBSCRIPTION_SETTINGS,
+  organization: "/organisation-platform/settings?tab=Subscription",
+  patient: "/patient-platform/settings?tab=billing",
+};
+
+/** The audience whose plans a role actually buys. */
+const AUDIENCE_FOR_ROLE: Partial<Record<BackendRole, Audience>> = {
+  professional: "professionals",
+  organization: "organizations",
+  patient: "patients",
+};
+
+/**
+ * The written page, used where the backend publishes no price for a plan in
+ * the country being viewed.
+ *
+ * Prices here are a last resort, not the source of truth: anything the
+ * backend prices overwrites them. Each written price records the countries it
+ * is actually true for, because quoting a pound figure to a visitor who would
+ * be charged in naira is the fault this replaces.
+ */
 const pricingPlans: Record<Audience, PricingPlan[]> = {
   patients: [
     {
-      name: "Free Plan",
-      price: "GBP 0/month",
+      name: "Free",
+      price: "Free",
       description: "Core access for people who want basic digital healthcare support.",
       features: [
         "Basic AI symptom checker",
@@ -37,26 +77,32 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "View professional availability",
         "Secure patient account",
       ],
-      cta: "Get Started Free",
+      cta: "Get started free",
       href: "/get-started/create-account?role=patient",
     },
     {
-      name: "Pay-As-You-Go",
+      name: "Pay as you go",
       price: "No subscription",
-      description: "Book care only when you need it, with transparent checkout before payment.",
+      description: "Book care only when you need it, at a price you see before you pay.",
       features: [
-        "Professional consultation: professional sets price",
-        "Specialist consultation: specialist sets price",
-        "Home care services: provider sets price",
+        "The professional sets their consultation price",
+        "The specialist sets their specialist price",
+        "The provider sets their home care price",
+        "Unused consultation time is refunded",
       ],
-      highlights: ["Pay only when you need care", "Secure payments", "Verified professionals"],
-      cta: "Book a Consultation",
+      highlights: [
+        "Pay only when you need care",
+        "The full price is shown before checkout",
+      ],
+      cta: "Book a consultation",
       href: "/patient-platform/appointments/book",
       featured: true,
     },
     {
-      name: "Premium Plan",
-      price: "GBP 9.99/month",
+      name: "Premium",
+      price: "£9.99/month",
+      priceCountries: ["GB"],
+      priceUnavailable: "Coming to your country",
       description: "For patients who want faster access, deeper AI support, and care tracking.",
       features: [
         "Unlimited AI triage",
@@ -72,43 +118,43 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
   ],
   professionals: [
     {
+      planCode: "professional_starter",
       name: "Starter",
-      price: "GBP 0/month",
+      price: "Free",
       description: "A simple way for verified healthcare professionals to join and earn.",
       features: [
-        "Create professional profile",
-        "Accept bookings",
-        "Basic visibility",
-        "Secure payments",
+        "Professional profile listed in patient search",
+        "Booking, scheduling and secure payouts",
+        "Consultation earnings and transaction history",
       ],
-      highlights: ["15% platform fee applies per booking"],
       cta: "Join as a Professional",
       href: "/get-started/create-account?role=professional",
     },
     {
-      name: "Pro Plan",
-      price: "GBP 29/month",
+      planCode: "professional_pro",
+      name: "Pro",
+      price: "£29/month",
+      priceCountries: ["GB"],
+      priceUnavailable: "See your plan options",
       description: "A lower commission and higher placement for professionals seeing regular bookings.",
       features: [
-        "7.5% commission instead of 15%",
-        "Listed above Starter professionals in search",
-        "Advanced analytics: repeat patients, cancellations, busiest times",
+        "Listed above Starter professionals in patient search, shown as promoted",
+        "Repeat patient, cancellation rate and busiest times analytics",
         "Earnings trends over the last six months",
         "Everything in Starter",
       ],
-      highlights: [
-        "7.5% platform fee applies per booking",
-        "Pays for itself at around GBP 390/month of consultations",
-      ],
-      cta: "Upgrade to Pro",
+      cta: "Join and start on Pro",
       href: "/get-started/create-account?role=professional&plan=pro",
       featured: true,
     },
   ],
   organizations: [
     {
+      planCode: "organization_starter",
       name: "Starter",
-      price: "GBP 99/month",
+      price: "£99/month",
+      priceCountries: ["GB"],
+      priceUnavailable: "See your plan options",
       description: "For teams starting with shift posting and basic professional matching.",
       features: [
         "Post shifts",
@@ -116,12 +162,15 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "Basic matching",
         "Up to 3 admin users",
       ],
-      cta: "Start Hiring",
+      cta: "Start hiring",
       href: "/get-started/create-account?role=organisation&plan=starter",
     },
     {
+      planCode: "organization_growth",
       name: "Growth",
-      price: "GBP 299/month",
+      price: "£299/month",
+      priceCountries: ["GB"],
+      priceUnavailable: "See your plan options",
       description: "For active care organizations that need stronger staffing operations.",
       features: [
         "Unlimited shift posting",
@@ -147,9 +196,8 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "Dedicated account manager",
         "Custom workflows",
         "Admin seats sized to need",
-        "Setup and onboarding from GBP 500 to GBP 5,000",
       ],
-      cta: "Book a Demo",
+      cta: "Book a demo",
       href: "/#contact",
     },
   ],
@@ -162,36 +210,31 @@ const trustItems = [
   "Scalable for individuals and organizations",
 ];
 
-const partnerTabs = [
-  "Dashboard",
-  "Earnings",
-  "Referrals",
-  "Rewards",
-  "Leaderboard",
-  "Marketing Tools",
-  "Rank Progress",
-];
-
 const faqs = [
   {
-    question: "How does Swift HELP make money?",
+    question: "What does Swift HELP charge for?",
     answer:
-      "Swift HELP earns from small transaction commissions and premium subscriptions for advanced patient, professional, and organization features.",
+      "Two things, both shown before you pay: an optional monthly plan, and a commission on the final chargeable amount of each consultation. Patients can use Swift HELP without a subscription at all.",
   },
   {
     question: "Do patients need a subscription?",
     answer:
-      "No. Patients can pay per consultation or upgrade to Premium for stronger AI support, priority booking, care tracking, and discounts.",
+      "No. Patients can pay per consultation, or choose Premium for stronger AI support, priority booking, care tracking and a consultation discount.",
   },
   {
     question: "How are professionals paid?",
     answer:
-      "Payments are processed securely. Professionals receive payouts after the applicable platform fee and any payment settlement checks.",
+      "Payouts are released after the consultation is confirmed, less the commission for the plan you are on. Your transaction history shows the original payment, the chargeable amount, any unused-time refund, the commission and your net earning, line by line.",
+  },
+  {
+    question: "What happens to time we do not use?",
+    answer:
+      "Where unused-time refunds apply, the patient is charged only for the time used and the rest is refunded. Commission is worked out on that final chargeable amount, not on the original booking.",
   },
   {
     question: "Are there hidden fees?",
     answer:
-      "No. Consultation prices, subscription prices, and platform fees should be shown clearly before checkout.",
+      "No. Consultation prices, plan prices and commission rates are shown in full before checkout, and every settled consultation keeps the rate it was charged at.",
   },
 ];
 
@@ -204,37 +247,159 @@ function Mark() {
 }
 
 /**
- * Where a plan's button should lead for whoever is reading the page.
+ * The country whose prices this visitor should see.
  *
- * A signed-in professional upgrading to Pro belongs in their own subscription
- * settings; sending them to create an account would make them register twice
- * and leave the account they already have on the Starter rate.
+ * The public site is country-prefixed - /uk/pricing, /ng/pricing - and the
+ * prefix is rewritten away before the route renders, so it is read from the
+ * address bar rather than from the router. `uk` in a path is `GB` in the data.
+ */
+function readCountry(): string {
+  if (typeof window === "undefined") return "GB";
+  const segment = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
+  if (/^[a-z]{2}$/i.test(segment)) {
+    return segment.toUpperCase() === "UK" ? "GB" : segment.toUpperCase();
+  }
+  const cookie = document.cookie
+    .split(";")
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith("swifthelp_country="))
+    ?.split("=")[1];
+  if (!cookie) return "GB";
+  return cookie.toUpperCase() === "UK" ? "GB" : cookie.toUpperCase();
+}
+
+/** A price in the currency it will actually be charged in. */
+function formatMonthlyPrice(minor: number, currency: string) {
+  if (minor <= 0) return "Free";
+  const major = minor / 100;
+  try {
+    const formatted = new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: major % 1 === 0 ? 0 : 2,
+    }).format(major);
+    return `${formatted}/month`;
+  } catch {
+    return `${currency} ${major}/month`;
+  }
+}
+
+type AudienceState = {
+  plans: PricingPlan[];
+  /** True when these prices came from the backend rather than the page. */
+  priced: boolean;
+};
+
+/**
+ * The written plan, with whatever the backend actually prices laid over it.
+ *
+ * Only the price, the commission line and the feature list are taken from the
+ * backend; the marketing description and the call to action stay here.
+ */
+function applyPricing(
+  plans: PricingPlan[],
+  priced: PublicPricingPlan[],
+  country: string,
+): AudienceState {
+  if (!priced.length) {
+    return {
+      plans: plans.map((plan) => withCountryPrice(plan, country)),
+      priced: false,
+    };
+  }
+
+  const byCode = new Map(
+    priced.filter((plan) => plan.planCode).map((plan) => [plan.planCode, plan]),
+  );
+
+  return {
+    plans: plans.map((plan) => {
+      const match = plan.planCode ? byCode.get(plan.planCode) : undefined;
+      if (!match) return withCountryPrice(plan, country);
+      return {
+        ...plan,
+        price: formatMonthlyPrice(match.monthlyPriceMinor, match.currency),
+        priceCountries: undefined,
+        description: match.description ?? plan.description,
+        features: match.features.length ? match.features : plan.features,
+      };
+    }),
+    priced: true,
+  };
+}
+
+/**
+ * A written price is shown only in the countries it is true for. Elsewhere
+ * the card says so rather than quoting a figure nobody would be charged.
+ */
+function withCountryPrice(plan: PricingPlan, country: string): PricingPlan {
+  if (!plan.priceCountries?.length) return plan;
+  if (plan.priceCountries.includes(country)) return plan;
+  return { ...plan, price: plan.priceUnavailable ?? "Shown at checkout" };
+}
+
+function defaultAudienceForRole(role: BackendRole | null): Audience {
+  if (role === "professional") return "professionals";
+  if (role === "organization") return "organizations";
+  return "patients";
+}
+
+type Viewer = {
+  role: BackendRole | null;
+  subscription: ProfessionalSubscriptionOverview | null;
+};
+
+/**
+ * Where a plan's button should lead for whoever is reading the page, and what
+ * it should say.
+ *
+ * A professional already paying for Pro was being shown "Join as a
+ * Professional" and "Upgrade to Pro" - an invitation to register a second
+ * time and to buy a plan they already hold. What someone is offered here now
+ * depends on what they already have.
  */
 function resolvePlanCta(
   plan: PricingPlan,
-  role: BackendRole | null,
+  audience: Audience,
+  viewer: Viewer,
 ): PricingPlan {
+  const { role, subscription } = viewer;
   if (!role) return plan;
-  const isProfessionalUpgrade =
-    role === "professional" &&
-    plan.href.includes("role=professional") &&
-    plan.href.includes("plan=pro");
-  if (isProfessionalUpgrade) {
-    return {
-      ...plan,
-      cta: "Upgrade to Pro",
-      href: "/professional-platform/settings?tab=subscription",
-    };
+
+  if (audience === "professionals" && role === "professional") {
+    const isPro = subscription?.isPro ?? false;
+    const ending = subscription?.cancelAtPeriodEnd ?? false;
+
+    if (plan.planCode === "professional_pro") {
+      if (isPro && ending) {
+        return { ...plan, cta: "Resume your Pro plan", href: SUBSCRIPTION_SETTINGS };
+      }
+      if (isPro) {
+        return { ...plan, cta: "Current plan - manage subscription", href: SUBSCRIPTION_SETTINGS };
+      }
+      return { ...plan, cta: "Upgrade to Pro", href: SUBSCRIPTION_SETTINGS };
+    }
+
+    if (plan.planCode === "professional_starter") {
+      if (isPro && ending) {
+        return { ...plan, cta: "Your plan returns to Starter", href: SUBSCRIPTION_SETTINGS };
+      }
+      if (isPro) {
+        return { ...plan, cta: "Switch to Starter", href: SUBSCRIPTION_SETTINGS };
+      }
+      return { ...plan, cta: "Current plan", href: SUBSCRIPTION_SETTINGS };
+    }
   }
-  // Anyone signed in who is already on the free tier of their own audience
-  // goes to their platform rather than to registration.
-  const isOwnFreePlan =
-    plan.href.includes(`role=${role === "organization" ? "organisation" : role}`) &&
-    !plan.href.includes("plan=");
-  if (isOwnFreePlan) {
-    return { ...plan, cta: "Go to your dashboard", href: platformPathForRole(role) };
+
+  // Their own audience: send them to the place they manage that plan.
+  if (AUDIENCE_FOR_ROLE[role] === audience && PLAN_SETTINGS[role]) {
+    return { ...plan, cta: "Manage your plan", href: PLAN_SETTINGS[role] as string };
   }
-  return plan;
+
+  // Someone else's audience. One account holds one role, so a signed-in
+  // patient reading the professional plans is not invited to register as a
+  // professional - they are sent back to their own dashboard.
+  return { ...plan, cta: "Go to your dashboard", href: platformPathForRole(role) };
 }
 
 function PlanCard({ plan }: { plan: PricingPlan }) {
@@ -280,48 +445,108 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
 
       <Link
         href={plan.href}
-        className={`mt-auto inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[45px] px-5 py-3 text-center text-[18px] font-normal tracking-[-0.05em] transition max-[767px]:text-[16px] ${
+        className={`mt-auto inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[45px] px-5 py-3 text-center text-[18px] font-medium tracking-[-0.05em] transition max-[767px]:text-[16px] ${
           plan.featured
-            ? "bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[#e3f2fd] hover:brightness-110"
+            ? // White on a darker blue, so the label is readable on a phone
+              // in daylight. The old pale-blue-on-light-blue was below the
+              // contrast floor for text this size.
+              "bg-[linear-gradient(180deg,#1565c0_0%,#0d3f6e_72.12%)] text-white hover:brightness-110"
             : "border border-[#1565c0] bg-white text-[#1565c0] hover:bg-[#e3f2fd]"
         }`}
       >
-        {plan.cta}
+        <span className="min-w-0">{plan.cta}</span>
         <span aria-hidden="true">-&gt;</span>
       </Link>
     </article>
   );
 }
 
-export function PricingPage() {
-  const [audience, setAudience] = useState<Audience>("patients");
-  const [signedInRole, setSignedInRole] = useState<BackendRole | null>(null);
+/** The country is a property of the address bar, not of React state. */
+const subscribeToNothing = () => () => {};
 
-  // Someone already signed in should be sent to the plan they can act on,
-  // not back through registration.
+export function PricingPage() {
+  /** Set once the visitor picks a tab, so their choice is not overridden. */
+  const [chosenAudience, setChosenAudience] = useState<Audience | null>(null);
+  const [viewer, setViewer] = useState<Viewer>({ role: null, subscription: null });
+  const [pricing, setPricing] = useState<PublicPricing | null>(null);
+
+  // Read through a store rather than set in an effect, so the server and the
+  // first client render agree and nothing cascades.
+  const country = useSyncExternalStore(
+    subscribeToNothing,
+    readCountry,
+    () => "GB",
+  );
+
+  // Open on the plans that belong to whoever is reading, rather than always
+  // on the patient ones - and stay wherever they then click.
+  const audience: Audience =
+    chosenAudience ?? defaultAudienceForRole(viewer.role);
+
   useEffect(() => {
     let cancelled = false;
-    getProfile()
-      .then((profile) => {
-        if (cancelled) return;
-        const role =
-          profile && typeof profile === "object" && "role" in profile
-            ? (profile as { role?: unknown }).role
-            : null;
-        setSignedInRole(typeof role === "string" ? (role as BackendRole) : null);
+    getPublicPricing(country)
+      .then((next) => {
+        if (!cancelled) setPricing(next);
       })
       .catch(() => {
-        // Signed out. The public call-to-action is correct as written.
+        // The written prices stand in. They say which countries they apply to.
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [country]);
 
-  const plans = useMemo(
-    () => pricingPlans[audience].map((plan) => resolvePlanCta(plan, signedInRole)),
-    [audience, signedInRole],
-  );
+  // Someone already signed in should be shown what they already have, and
+  // sent to the plan they can actually act on.
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then(async (profile) => {
+        if (cancelled) return;
+        const value =
+          profile && typeof profile === "object" && "role" in profile
+            ? (profile as { role?: unknown }).role
+            : null;
+        const role = typeof value === "string" ? (value as BackendRole) : null;
+        if (role !== "professional") {
+          setViewer({ role, subscription: null });
+          return;
+        }
+        // Their actual plan, so the page cannot offer Pro to somebody paying
+        // for it. A failure here leaves the public wording, which is safe.
+        const subscription = await getProfessionalSubscription(country).catch(
+          () => null,
+        );
+        if (!cancelled) setViewer({ role, subscription });
+      })
+      .catch(() => {
+        // Signed out. The public call to action is correct as written.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+
+  const { plans, priced } = useMemo(() => {
+    const written = pricingPlans[audience];
+    const fromBackend = pricing ? pricing[audience] : [];
+    const state = applyPricing(written, fromBackend, country);
+    return {
+      plans: state.plans.map((plan) => resolvePlanCta(plan, audience, viewer)),
+      priced: state.priced,
+    };
+  }, [audience, pricing, country, viewer]);
+
+  const commission = pricing?.commission ?? null;
+  const subscription = viewer.subscription;
+  const periodEnd = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <main className="bg-white text-slate-900">
@@ -339,17 +564,36 @@ export function PricingPage() {
                 Whether you are a patient, healthcare professional, or organization,
                 Swift HELP scales with your needs.
               </p>
+              {viewer.role ? (
+                <Link
+                  href={platformPathForRole(viewer.role)}
+                  className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-[45px] border border-[#1565c0] bg-white px-6 text-[16px] font-medium tracking-[-0.05em] text-[#1565c0] transition hover:bg-white/70"
+                >
+                  Back to your dashboard
+                </Link>
+              ) : null}
             </div>
 
             <aside className="rounded-[8px] border border-white/80 bg-white p-6 shadow-[0_18px_55px_rgba(30,136,229,0.13)]">
               <p className="text-[18px] font-semibold leading-6 tracking-[-0.05em] text-[#1565c0]">
-                Multi-revenue platform
+                What you pay for
               </p>
               <div className="mt-5 space-y-4">
                 {[
-                  ["Subscriptions", "Premium plans for patients, professionals, and organizations."],
-                  ["Transactions", "Platform fees on consultations, services, and shift bookings."],
-                  ["Partner Network", "Referral growth with transparent reward and payout rules."],
+                  [
+                    "Care when you need it",
+                    "Book and pay per consultation, with the price shown before checkout and unused time refunded.",
+                  ],
+                  [
+                    "Optional monthly plans",
+                    "Patients, professionals and organizations can choose a plan for more support and lower costs. Nobody has to.",
+                  ],
+                  [
+                    "A clear commission",
+                    commission
+                      ? `Professionals keep the consultation fee less commission: ${commission.starterPercentage}% on Starter, ${commission.proPercentage}% on Pro, charged on the final chargeable amount.`
+                      : "Professionals keep the consultation fee less a commission charged on the final chargeable amount, never on time that was refunded.",
+                  ],
                 ].map(([label, text]) => (
                   <div key={label} className="border-l-4 border-[#1e88e5] pl-4">
                     <p className="font-semibold tracking-[-0.05em] text-slate-950">{label}</p>
@@ -379,7 +623,8 @@ export function PricingPage() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setAudience(key)}
+                  onClick={() => setChosenAudience(key)}
+                  aria-pressed={audience === key}
                   className={`min-h-[52px] rounded-[45px] px-4 text-[17px] font-normal tracking-[-0.05em] transition max-[767px]:min-h-[44px] max-[767px]:px-2 max-[767px]:text-[13px] ${
                     audience === key
                       ? "bg-[#334155] text-white shadow-sm"
@@ -391,6 +636,29 @@ export function PricingPage() {
               ))}
             </div>
           </div>
+
+          {subscription && audience === "professionals" ? (
+            <div className="mt-8 rounded-[8px] border border-[#1565c0] bg-[#f4fbff] px-6 py-4 max-[767px]:mx-2 max-[767px]:px-4">
+              <p className="text-[16px] font-semibold tracking-[-0.05em] text-slate-950">
+                You are on the {subscription.planName} plan.
+              </p>
+              <p className="mt-1 text-[15px] font-light leading-6 tracking-[-0.05em] text-slate-700">
+                {subscription.cancelAtPeriodEnd && periodEnd
+                  ? `Your Pro plan ends on ${periodEnd}. You keep Pro and the ${subscription.commissionPercentage}% commission rate until then, and you can resume it before that date.`
+                  : `Your commission is ${subscription.commissionPercentage}% on the final chargeable amount of each consultation.`}{" "}
+                <Link href={SUBSCRIPTION_SETTINGS} className="font-semibold text-[#1565c0] underline">
+                  Manage your subscription
+                </Link>
+                .
+              </p>
+            </div>
+          ) : null}
+
+          {!priced ? (
+            <p className="mt-8 px-6 text-[14px] leading-5 tracking-[-0.05em] text-slate-500 max-[767px]:px-2">
+              Prices for your country are confirmed at checkout before you pay.
+            </p>
+          ) : null}
 
           <div className="mt-10 grid items-stretch gap-6 px-6 max-[767px]:px-2 lg:grid-cols-3">
             {plans.map((plan) => (
@@ -418,42 +686,45 @@ export function PricingPage() {
           <div className="grid gap-9 px-6 max-[767px]:px-2 lg:grid-cols-[380px_minmax(0,1fr)]">
             <div>
               <p className="text-[20px] font-light leading-7 tracking-[-0.05em] text-[#1565c0]">
-                Investor-friendly growth
+                Share Swift HELP, earn rewards
               </p>
               <h2 className="mt-3 text-[42px] font-semibold leading-[46px] tracking-[-0.05em] text-black max-[767px]:text-[30px] max-[767px]:leading-9">
                 Swift HELP Partner Network
               </h2>
               <p className="mt-5 text-[20px] font-light leading-7 tracking-[-0.05em] text-[#1e1e1e] max-[767px]:text-[15px] max-[767px]:leading-6">
-                Use referral marketing, ambassador contracts, transparent payouts,
-                and fraud scoring so the program is measurable and auditable.
+                Invite the people and organizations you think Swift HELP would
+                help. When they join and are verified, you earn a reward, and
+                you can see and withdraw what you have earned at any time.
               </p>
+              <Link
+                href="/partner-network"
+                className="mt-6 inline-flex min-h-[54px] items-center justify-center rounded-[45px] bg-[linear-gradient(180deg,#1565c0_0%,#0d3f6e_72.12%)] px-6 text-[17px] font-medium tracking-[-0.05em] text-white transition hover:brightness-110"
+              >
+                How the Partner Network works
+              </Link>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
               <article className="rounded-[8px] border border-[#dbeafe] bg-white p-5 shadow-sm">
                 <h3 className="text-[24px] font-semibold leading-8 tracking-[-0.05em] text-slate-950">
-                  Platform placement
+                  Open to everyone
                 </h3>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {["Home", "Bookings", "Messages", "Wallet", "Partner Network", "Settings"].map((item) => (
-                    <span key={item} className="rounded-full bg-[#e3f2fd] px-3 py-2 text-[14px] font-medium tracking-[-0.05em] text-[#1565c0]">
-                      {item}
-                    </span>
-                  ))}
-                </div>
+                <p className="mt-3 text-[15px] font-light leading-6 tracking-[-0.05em] text-slate-700">
+                  Patients, professionals and organizations all have a referral
+                  code and a Referrals section in their account. There is
+                  nothing to apply for and nothing to pay.
+                </p>
               </article>
 
               <article className="rounded-[8px] border border-[#dbeafe] bg-white p-5 shadow-sm">
                 <h3 className="text-[24px] font-semibold leading-8 tracking-[-0.05em] text-slate-950">
-                  Partner section tabs
+                  Rewards you can check
                 </h3>
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  {partnerTabs.map((tab) => (
-                    <span key={tab} className="rounded-[8px] bg-[#f4fbff] px-3 py-2 text-[14px] font-medium tracking-[-0.05em] text-slate-700">
-                      {tab}
-                    </span>
-                  ))}
-                </div>
+                <p className="mt-3 text-[15px] font-light leading-6 tracking-[-0.05em] text-slate-700">
+                  Every referral, the reward it earned and your withdrawable
+                  balance are listed in your account, in your own currency.
+                  Rewards rise as you reach each tier.
+                </p>
               </article>
             </div>
           </div>

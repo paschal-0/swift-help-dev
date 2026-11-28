@@ -800,8 +800,8 @@ export function ProfessionalEarningsPage() {
                       </p>
                     ) : null}
                     <p>Original payment: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.originalAmountCents, selectedTransactionDetails.currency)}</span></p>
-                    <p>Used / chargeable amount: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.chargeableAmountCents, selectedTransactionDetails.currency)}</span></p>
-                    <p>Unused-time refund: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.unusedRefundCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>{selectedTransactionDetails.settled === false ? "Used / chargeable amount (estimated)" : "Used / chargeable amount"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.chargeableAmountCents, selectedTransactionDetails.currency)}</span></p>
+                    <p>{selectedTransactionDetails.settled === false ? "Unused-time refund (estimated)" : "Unused-time refund"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.unusedRefundCents, selectedTransactionDetails.currency)}</span></p>
                     <p>{selectedTransactionDetails.settled === false ? "Swift HELP fee (estimated)" : "Swift HELP fee"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.platformFeeCents, selectedTransactionDetails.currency)} ({selectedTransactionDetails.feeRatePercentage}%)</span></p>
                     <p>{selectedTransactionDetails.settled === false ? "Professional net earning (estimated)" : "Professional net earning"}: <span className="font-semibold">{formatApiMoney(selectedTransactionDetails.professionalNetCents, selectedTransactionDetails.currency)}</span></p>
                     <p>Status: <span className={`font-semibold ${statusTone(earningStatusLabel[selectedTransactionDetails.status])}`}>{earningStatusLabel[selectedTransactionDetails.status]}</span></p>

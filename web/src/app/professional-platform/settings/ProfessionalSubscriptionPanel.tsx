@@ -507,7 +507,7 @@ export default function ProfessionalSubscriptionPanel() {
                 <span className="font-semibold text-[#334155]">
                   {plan.commissionPercentage}%
                 </span>{" "}
-                commission on chargeable consultations
+                commission on the final chargeable consultation amount
               </p>
             ) : null}
 
@@ -524,6 +524,10 @@ export default function ProfessionalSubscriptionPanel() {
               </ul>
             ) : null}
 
+            {/* What this plan offers depends on the plan already held. A
+                professional paying for Pro was shown nothing at all beside
+                Starter, so there was no way to move down from the comparison
+                they were reading. */}
             {!plan.isCurrent && plan.monthlyPrice > 0 ? (
               <button
                 type="button"
@@ -532,6 +536,39 @@ export default function ProfessionalSubscriptionPanel() {
                 className="mt-5 w-full rounded-[10px] bg-[#1565C0] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {upgrading ? "Starting checkout..." : `Upgrade to ${plan.name}`}
+              </button>
+            ) : null}
+
+            {!plan.isCurrent && plan.monthlyPrice === 0 && overview.isPro ? (
+              overview.cancelAtPeriodEnd ? (
+                <p className="mt-5 rounded-[10px] bg-[#FFFBEB] px-4 py-3 text-[13px] leading-5 text-[#92400E]">
+                  Your plan moves to {plan.name} on{" "}
+                  {formatDate(overview.currentPeriodEnd) ??
+                    "the end of your paid period"}
+                  . Until then you keep Pro.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(true)}
+                  disabled={busy !== null}
+                  className="mt-5 w-full rounded-[10px] border border-[#DDE6F0] px-4 py-3 text-[15px] font-semibold text-[#64748B] transition hover:border-[#C9D7E6] hover:text-[#334155] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Switch to {plan.name} at the end of this period
+                </button>
+              )
+            ) : null}
+
+            {plan.isCurrent && overview.isPro && overview.cancelAtPeriodEnd ? (
+              <button
+                type="button"
+                onClick={reactivate}
+                disabled={busy !== null}
+                className="mt-5 w-full rounded-[10px] bg-[#1565C0] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0F4C94] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy === "reactivate"
+                  ? "Restarting..."
+                  : `Keep my ${plan.name} plan`}
               </button>
             ) : null}
           </div>
