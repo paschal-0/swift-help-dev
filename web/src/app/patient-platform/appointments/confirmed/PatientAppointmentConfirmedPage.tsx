@@ -33,21 +33,36 @@ function SuccessBadgeIcon() {
 export function PatientAppointmentConfirmedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [paymentState, setPaymentState] = useState<"idle" | "verifying" | "confirmed" | "pending">("idle");
   const provider = searchParams.get("payment");
   const reference = searchParams.get("reference");
   const paymentCancelled = searchParams.get("payment_cancelled") === "1";
 
+  const canVerify =
+    Boolean(reference) && (provider === "paystack" || provider === "stripe");
+
+  /**
+   * The verification result, and which payment it belongs to.
+   *
+   * Kept together on purpose. "Verifying" used to be a state the effect set
+   * on itself the moment it ran, which React now rightly objects to - and
+   * which also meant a result could outlive the payment it was about. Here
+   * a result only counts for the reference it was obtained for, so landing
+   * on this page again with a different payment shows that payment being
+   * checked rather than the last one's answer.
+   */
+  const [result, setResult] = useState<{
+    reference: string;
+    state: "confirmed" | "pending";
+  } | null>(null);
+
+  const outcome = result?.reference === reference ? result.state : null;
+
   useEffect(() => {
-    if (
-      !reference ||
-      (provider !== "paystack" && provider !== "stripe")
-    ) {
+    if (!reference || (provider !== "paystack" && provider !== "stripe")) {
       return;
     }
 
     let cancelled = false;
-    setPaymentState("verifying");
     void (async () => {
       try {
         if (provider === "stripe") {
@@ -57,11 +72,11 @@ export function PatientAppointmentConfirmedPage() {
         }
         if (cancelled) return;
         window.sessionStorage.removeItem("patientAppointmentDraft");
-        setPaymentState("confirmed");
+        setResult({ reference, state: "confirmed" });
         toast.success("Payment verified. Your appointment is confirmed.");
-      } catch (error) {
+      } catch {
         if (cancelled) return;
-        setPaymentState("pending");
+        setResult({ reference, state: "pending" });
         toast.error("Payment was not completed. Your appointment remains pending.");
       }
     })();
@@ -71,8 +86,10 @@ export function PatientAppointmentConfirmedPage() {
     };
   }, [provider, reference]);
 
-  const isPendingPayment = paymentState === "pending" || paymentCancelled;
-  const isVerifying = paymentState === "verifying";
+  // Still checking, rather than a state anybody had to set: there is a
+  // payment to verify and no answer about it yet.
+  const isVerifying = canVerify && outcome === null;
+  const isPendingPayment = outcome === "pending" || paymentCancelled;
 
   return (
     <article className="mt-[26px] min-h-[800px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-4 md:px-6 xl:px-10 xl:pb-[34px] xl:pt-[17px]">
