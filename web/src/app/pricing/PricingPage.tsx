@@ -98,23 +98,11 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
       href: "/patient-platform/appointments/book",
       featured: true,
     },
-    {
-      name: "Premium",
-      price: "£9.99/month",
-      priceCountries: ["GB"],
-      priceUnavailable: "Coming to your country",
-      description: "For patients who want faster access, deeper AI support, and care tracking.",
-      features: [
-        "Unlimited AI triage",
-        "Priority booking access",
-        "5% consultation discount",
-        "AI voice assistant",
-        "Care history and tracking",
-        "Smart care recommendations",
-      ],
-      cta: "Upgrade to Premium",
-      href: "/get-started/create-account?role=patient&plan=premium",
-    },
+    // The Premium patient plan is not on sale. It was advertised here at a
+    // price that existed in no plan on the system, and none of the benefits
+    // it described - higher AI allowances, priority booking, a consultation
+    // discount - was gated on holding it. It returns when those are built and
+    // enforced by entitlement, and priced for each country.
   ],
   professionals: [
     {
@@ -197,6 +185,11 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "Custom workflows",
         "Admin seats sized to need",
       ],
+      // The original specification quotes GBP 500 to GBP 5,000 for setup. It
+      // is written as a quote rather than a range because there is no
+      // equivalent figure for Nigeria, and a pound range on a naira page is
+      // the fault this page was just corrected for.
+      highlights: ["Setup and onboarding quoted for your organization"],
       cta: "Book a demo",
       href: "/#contact",
     },
@@ -214,12 +207,12 @@ const faqs = [
   {
     question: "What does Swift HELP charge for?",
     answer:
-      "Two things, both shown before you pay: an optional monthly plan, and a commission on the final chargeable amount of each consultation. Patients can use Swift HELP without a subscription at all.",
+      "Two things, both shown before you pay: a monthly plan for professionals and organizations who want one, and a commission on the final chargeable amount of each consultation. Patients pay only for the care they book.",
   },
   {
     question: "Do patients need a subscription?",
     answer:
-      "No. Patients can pay per consultation, or choose Premium for stronger AI support, priority booking, care tracking and a consultation discount.",
+      "No, and there is no patient plan to buy at the moment. Patients keep a free account and pay for each consultation, at the price shown before checkout.",
   },
   {
     question: "How are professionals paid?",
@@ -375,7 +368,7 @@ function resolvePlanCta(
         return { ...plan, cta: "Resume your Pro plan", href: SUBSCRIPTION_SETTINGS };
       }
       if (isPro) {
-        return { ...plan, cta: "Current plan - manage subscription", href: SUBSCRIPTION_SETTINGS };
+        return { ...plan, cta: "Current Plan - manage subscription", href: SUBSCRIPTION_SETTINGS };
       }
       return { ...plan, cta: "Upgrade to Pro", href: SUBSCRIPTION_SETTINGS };
     }
@@ -387,7 +380,7 @@ function resolvePlanCta(
       if (isPro) {
         return { ...plan, cta: "Switch to Starter", href: SUBSCRIPTION_SETTINGS };
       }
-      return { ...plan, cta: "Current plan", href: SUBSCRIPTION_SETTINGS };
+      return { ...plan, cta: "Current Plan", href: SUBSCRIPTION_SETTINGS };
     }
   }
 
@@ -747,6 +740,32 @@ export function PricingPage() {
           </div>
         </div>
       </section>
+
+      {viewer.role ? null : (
+        <section className="py-[72px] max-[767px]:py-12">
+          <div className={containerClass}>
+            <div className="px-6 text-center max-[767px]:px-2">
+              <h2 className="m-0 text-[42px] font-semibold leading-[46px] tracking-[-0.05em] text-black max-[767px]:text-[30px] max-[767px]:leading-9">
+                Ready for smarter healthcare access?
+              </h2>
+              <div className="mt-8 flex flex-wrap justify-center gap-4">
+                <Link
+                  href="/get-started/create-account?role=patient"
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-[45px] bg-[linear-gradient(180deg,#1565c0_0%,#0d3f6e_72.12%)] px-7 text-[17px] font-medium tracking-[-0.05em] text-white transition hover:brightness-110"
+                >
+                  Get started free
+                </Link>
+                <Link
+                  href="/#contact"
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-[45px] border border-[#1565c0] bg-white px-7 text-[17px] font-medium tracking-[-0.05em] text-[#1565c0] transition hover:bg-[#e3f2fd]"
+                >
+                  Book a demo
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

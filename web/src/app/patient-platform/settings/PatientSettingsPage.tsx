@@ -1280,36 +1280,52 @@ export function PatientSettingsPage() {
                   </button>
                 </div>
 
-                <div className="flex h-full flex-col rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <h3 className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
-                        {highlightedPlan?.name ?? "Pro"}
-                      </h3>
-                      <p className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
-                        {highlightedPlan?.priceLabel ?? "Not configured"}
-                      </p>
+                {/* No plan is offered while patient subscriptions are off.
+                    Advertising one that cannot be bought, and whose benefits
+                    are not built, is what this replaces. */}
+                {highlightedPlan ? (
+                  <div className="flex h-full flex-col rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h3 className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
+                          {highlightedPlan.name}
+                        </h3>
+                        <p className="min-w-0 break-words text-[22px] font-semibold sm:text-[26px]">
+                          {highlightedPlan.priceLabel}
+                        </p>
+                      </div>
+                      <p className="text-[15px] font-medium text-[#CBD5E1] sm:text-[16px]">Available plan</p>
                     </div>
-                    <p className="text-[15px] font-medium text-[#CBD5E1] sm:text-[16px]">Available plan</p>
+                    <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-[#E2E8F0] sm:text-[16px]">
+                      {highlightedPlan.features.slice(0, 3).map((feature) => (
+                        <p key={feature} className="flex items-start gap-2">
+                          <span className="mt-0.5 shrink-0">
+                            <CheckBadgeIcon />
+                          </span>
+                          <span className="min-w-0 break-words">{feature}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => startSubscriptionPayment(highlightedPlan)}
+                      className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-center text-[15px] font-semibold text-[#1565C0] transition hover:bg-white sm:text-[16px]"
+                    >
+                      Add payment detail
+                    </button>
                   </div>
-                  <div className="mb-6 mt-6 space-y-3 text-[15px] font-medium text-[#E2E8F0] sm:text-[16px]">
-                    {(highlightedPlan?.features?.length ? highlightedPlan.features : ["Priority consultations", "Expanded health reports", "Advanced reminders"]).slice(0, 3).map((feature) => (
-                      <p key={feature} className="flex items-start gap-2">
-                        <span className="mt-0.5 shrink-0">
-                          <CheckBadgeIcon />
-                        </span>
-                        <span className="min-w-0 break-words">{feature}</span>
-                      </p>
-                    ))}
+                ) : (
+                  <div className="flex h-full flex-col justify-center rounded-[16px] border-2 border-dashed border-[#C9D7E6] bg-surface p-5 sm:p-7">
+                    <h3 className="text-[20px] font-semibold text-ink sm:text-[22px]">
+                      No subscription needed
+                    </h3>
+                    <p className="mt-3 text-[15px] font-medium leading-6 text-ink-faint sm:text-[16px]">
+                      Your account is free to keep, and you can book and pay
+                      for consultations whenever you need one. Patient plans
+                      are not on sale at the moment.
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => startSubscriptionPayment(highlightedPlan)}
-                    className="mt-auto flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-center text-[15px] font-semibold text-[#1565C0] transition hover:bg-white sm:text-[16px]"
-                  >
-                    Add payment detail
-                  </button>
-                </div>
+                )}
               </div>
             </section>
 
