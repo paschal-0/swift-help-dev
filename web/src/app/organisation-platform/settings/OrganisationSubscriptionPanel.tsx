@@ -519,6 +519,19 @@ export default function OrganisationSubscriptionPanel() {
                           invoice.amountMinor / 100,
                           invoice.currency,
                         )}
+                        {/* Prices include tax, so this says what is
+                            already in the figure rather than adding to
+                            it. Shown only where tax was charged. */}
+                        {invoice.tax?.applied ? (
+                          <span className="mt-0.5 block text-[12px] text-[#64748B]">
+                            includes{" "}
+                            {formatPrice(
+                              invoice.tax.taxMinor / 100,
+                              invoice.currency,
+                            )}{" "}
+                            {invoice.tax.label}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3 capitalize">
                         {invoice.status ?? "-"}

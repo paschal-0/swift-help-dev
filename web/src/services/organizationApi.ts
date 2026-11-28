@@ -895,6 +895,19 @@ export type OrganizationSubscriptionInvoice = {
   createdAt: string | null;
   hostedInvoiceUrl: string | null;
   invoicePdf: string | null;
+  /**
+   * The tax split recorded when the charge was taken. Null for a charge
+   * taken before it was recorded; `applied: false` where none was due.
+   */
+  tax?: {
+    grossMinor: number;
+    netMinor: number;
+    taxMinor: number;
+    ratePercentage: number;
+    label: string;
+    applied: boolean;
+    country: string;
+  } | null;
 };
 
 export function getOrganizationSubscription(country?: string) {

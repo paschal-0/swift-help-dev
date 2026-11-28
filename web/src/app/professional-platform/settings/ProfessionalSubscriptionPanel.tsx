@@ -417,6 +417,20 @@ export default function ProfessionalSubscriptionPanel() {
                             due
                           </span>
                         ) : null}
+                        {/* The price is advertised inclusive of tax, so
+                            this says what is already in the figure above
+                            rather than adding to it. Shown only where tax
+                            was actually charged. */}
+                        {invoice.tax?.applied ? (
+                          <span className="mt-0.5 block text-[12px] text-[#64748B]">
+                            includes{" "}
+                            {formatPrice(
+                              invoice.tax.taxMinor / 100,
+                              invoice.currency,
+                            )}{" "}
+                            {invoice.tax.label}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         {invoice.paid ? (

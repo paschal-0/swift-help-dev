@@ -1565,6 +1565,21 @@ export type ProfessionalSubscriptionInvoice = {
   /** The receipt once paid, the invoice while payment is outstanding. */
   documentUrl?: string | null;
   documentLabel?: string;
+  /**
+   * The tax split recorded when the charge was taken.
+   *
+   * Null for a charge taken before it was recorded, and `applied: false`
+   * where no tax was due. Both mean the same thing on screen: say nothing.
+   */
+  tax?: {
+    grossMinor: number;
+    netMinor: number;
+    taxMinor: number;
+    ratePercentage: number;
+    label: string;
+    applied: boolean;
+    country: string;
+  } | null;
 };
 
 export type ProfessionalCancellationSummary = {
